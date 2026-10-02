@@ -220,7 +220,7 @@ und ohne Inhalte, die jemandem zuzuordnen wären.
 - was dieser Skill beschreibt, auch wenn ein Schritt bei der Lehrkraft liegt;
 - was an der Datenschutz-Sperre scheitert — das ist Absicht, dafür gibt es den
   Datenschutzbefund;
-- Kursrahmen-Aktionen an Aktivitäten fremder Typen: verbergen, verschieben, duplizieren, löschen. Sie sind typunabhängig und gehen mit `sichtbarkeit_setzen`, `verschieben`, `duplizieren` und `loeschen`.
+- Kursrahmen-Aktionen an Aktivitäten fremder Typen: verbergen, verschieben, duplizieren, löschen. Sie sind typunabhängig und gehen mit `sichtbarkeit_setzen`, `verschieben`, `duplizieren` und `loeschen`. Eine **Fragensammlung** ist die Ausnahme: Sie steht nicht in der Kursstruktur, deshalb geht nur `loeschen`. Verbergen, verschieben und duplizieren sind dort echte Lücken.
 
 **Die Sperre nicht umgehen.** Kein anderes Werkzeug zweckentfremden, keine
 Adresse umschreiben, bis sie durchrutscht. Das täte dasselbe, nur ohne dass
@@ -472,13 +472,7 @@ Textseite (`page`), Textfeld (`label`), Aufgabe (`assign`), Verzeichnis
 Buch (`book`), Test (`quiz`), Fragensammlung (`qbank`), Fortschrittsliste
 (`checklist`), Wiki (`wiki`), Board (`board`), Kanban-Board (`kanban`).
 
-*Lesen* geht bei allen Typen. Für Forum, Glossar, H5P und die übrigen Plugins
-ist das Formular nicht gemessen; die App weigert sich mit „Typ … kann die App
-nicht anlegen" bzw. „Ändern geht bisher für …". Das ist eine **Lücke** (Abschnitt
-„Was der Skill nicht kann"). Offen bleiben die **Kursrahmen-Aktionen**: Ein von
-Hand angelegtes Forum darf verborgen, verschoben, dupliziert und gelöscht werden — sie sind
-typunabhängig.
-
+*Lesen* geht bei allen Typen. Für Forum, Glossar, H5P und die übrigen Plugins ist das Formular nicht gemessen; die App weigert sich mit „Typ … kann die App nicht anlegen" bzw. „Ändern geht bisher für …". Das ist eine **Lücke** (Abschnitt „Was der Skill nicht kann"). Offen bleiben die **Kursrahmen-Aktionen**: Ein von Hand angelegtes Forum darf verborgen, verschoben, dupliziert und gelöscht werden — sie sind typunabhängig. Nicht so die **Fragensammlung** (`qbank`): Sie steht nicht in der Kursstruktur, deshalb geht von diesen vieren nur `loeschen`. Moodle legt sie außerdem immer im allgemeinen Abschnitt an, einerlei welchen du angibst. 
 <!-- <<< gemeinsam/html-kurz.md - von build.py erzeugt, hier nicht bearbeiten -->
 ## HTML schreiben
 

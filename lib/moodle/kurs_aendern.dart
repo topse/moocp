@@ -78,6 +78,23 @@ String _nichtGefragt(Freigaben f) =>
   return (cm: null, abschnitt: a);
 }
 
+/// Nach der Freigabe noch einmal gegen Moodle. Zwischen Dialog und Handlung
+/// liegt die Frist -- bis zu 30 Minuten, in denen eine zweite Sitzung oder
+/// die Lehrkraft selbst umbenennen, verschieben oder löschen kann. Gehandelt
+/// wird nur, wenn das Ziel noch dasteht wie in der Freigabe; sonst ist der
+/// Name, den der Dialog zeigte, nicht mehr der Name in Moodle (A3). `aendern`
+/// prüft an derselben Stelle seinen Stand erneut.
+Future<KursStruktur> _nachFreigabe(MoodleZugang moodle, int kurs, int? cmid, int? abschnittId, String name) async {
+  final k = await kursLesen(moodle, kurs);
+  try {
+    _ziel(k, cmid, abschnittId, name);
+  } on MoodleFehler catch (x) {
+    throw MoodleFehler('Seit der Freigabe hat sich in Moodle etwas geändert: ${x.meldung} '
+        'Nichts geändert -- bitte neu lesen und die Freigabe auf dem neuen Stand einholen.');
+  }
+  return k;
+}
+
 String _inhaltText(KursStruktur k, KursAbschnitt a) {
   final inhalt = k.inhalt(a);
   if (inhalt.isEmpty) return 'Der Abschnitt ist leer.';
@@ -114,6 +131,7 @@ Future<String> sichtbarkeitSetzen(MoodleZugang moodle, Freigaben freigaben,
     knopf: sichtbar ? 'Sichtbar machen' : 'Verbergen',
   ));
   if (!ja) return 'Nicht geändert: ${_nichtGefragt(freigaben)}';
+  k = await _nachFreigabe(moodle, kurs, cmid, abschnittId, name);
 
   if (abschnitt != null) {
     await kursAktion(moodle, kurs, sichtbar ? 'section_show' : 'section_hide', [abschnitt.id]);
@@ -166,6 +184,7 @@ Future<String> verschieben(MoodleZugang moodle, Freigaben freigaben,
       knopf: 'Verschieben',
     ));
     if (!ja) return 'Nicht verschoben: ${_nichtGefragt(freigaben)}';
+    await _nachFreigabe(moodle, kurs, cmid, abschnittId, name);
     await kursAktion(moodle, kurs, 'cm_move', [c.cmid], zielAbschnitt: zielAbschnittId, zielCmid: vorCmid);
     k = await kursLesen(moodle, kurs);
     final liste = k.nachId[zielAbschnittId]?.aktivitaeten.map((x) => x.cmid).toList() ?? const [];
@@ -197,6 +216,7 @@ Future<String> verschieben(MoodleZugang moodle, Freigaben freigaben,
     knopf: 'Verschieben',
   ));
   if (!ja) return 'Nicht verschoben: ${_nichtGefragt(freigaben)}';
+  await _nachFreigabe(moodle, kurs, cmid, abschnittId, name);
   await kursAktion(moodle, kurs, 'section_move_after', [a.id], zielAbschnitt: nachAbschnittId);
   k = await kursLesen(moodle, kurs);
   final haupt = k.abschnitte.where((x) => !x.istUnterabschnitt).map((x) => x.id).toList();
@@ -470,9 +490,44 @@ Future<FormularGelesen> _formulareVergleichen(MoodleZugang moodle, Probe probe, 
 // loeschen
 // ---------------------------------------------------------------------------
 
+/// Eine Fragensammlung löschen. Eigener Weg, weil sie nicht in der
+/// Kursstruktur steht (kurs.dart): Ohne ihn liefe jedes Aufräumen in „cmid …
+/// gibt es in Kurs … nicht", und die Lehrkraft müsste in Moodle nachsehen.
+Future<String> _fragensammlungLoeschen(
+    MoodleZugang moodle, Freigaben freigaben, int kurs, Fragensammlung s, String name) async {
+  nameBestaetigen(name, s.name, 'cmid ${s.cmid}');
+  final ja = await freigaben.anfragen(FreigabeAnfrage(
+    titel: 'Fragensammlung endgültig löschen?',
+    punkte: [
+      'Fragensammlung „${s.name}" (cmid ${s.cmid}) in ${await kursBezeichnung(moodle, kurs)}',
+      'Mit allen Kategorien und Fragen darin, auch denen, die in Tests benutzt werden.',
+      'Zurückholen geht nur, wenn der Papierkorb des Kurses eingeschaltet ist.',
+    ],
+    vergleich: const [],
+    knopf: 'Löschen',
+  ));
+  if (!ja) return 'Nicht gelöscht: ${_nichtGefragt(freigaben)}';
+  // Dieselbe Nachprüfung wie bei den Aktivitäten, nur über die Sammlungsliste.
+  final jetzt = (await fragensammlungenLesen(moodle, kurs)).where((x) => x.cmid == s.cmid).toList();
+  if (jetzt.length != 1 || jetzt.single.name != s.name) {
+    throw MoodleFehler('Seit der Freigabe hat sich in Moodle etwas geändert: Die Fragensammlung cmid '
+        '${s.cmid} heißt nicht mehr „${s.name}" oder ist weg. Nichts gelöscht.');
+  }
+  await kursAktion(moodle, kurs, 'cm_delete', [s.cmid]);
+  final weg = !(await fragensammlungenLesen(moodle, kurs)).any((x) => x.cmid == s.cmid);
+  return weg
+      ? 'Gelöscht: Fragensammlung „${s.name}" (cmid ${s.cmid}) in ${await kursBezeichnung(moodle, kurs)}. '
+          'verified: true'
+      : 'Löschauftrag für „${s.name}" angenommen, aber die Sammlung steht noch in der Liste. verified: false';
+}
+
 Future<String> loeschen(MoodleZugang moodle, Freigaben freigaben,
     {required int kurs, int? cmid, int? abschnittId, required String name}) async {
   var k = await kursLesen(moodle, kurs);
+  if (cmid != null && !k.nachCmid.containsKey(cmid)) {
+    final s = (await fragensammlungenLesen(moodle, kurs)).where((x) => x.cmid == cmid && x.geteilt).toList();
+    if (s.length == 1) return _fragensammlungLoeschen(moodle, freigaben, kurs, s.single, name);
+  }
   final z = _ziel(k, cmid, abschnittId, name);
   final kursText = await kursBezeichnung(moodle, kurs);
 
@@ -491,6 +546,7 @@ Future<String> loeschen(MoodleZugang moodle, Freigaben freigaben,
       knopf: 'Löschen',
     ));
     if (!ja) return 'Nicht gelöscht: ${_nichtGefragt(freigaben)}';
+    await _nachFreigabe(moodle, kurs, cmid, abschnittId, name);
     await kursAktion(moodle, kurs, 'cm_delete', [c.cmid]);
     k = await kursLesen(moodle, kurs);
     var waise = '';
@@ -522,6 +578,7 @@ Future<String> loeschen(MoodleZugang moodle, Freigaben freigaben,
     knopf: 'Löschen',
   ));
   if (!ja) return 'Nicht gelöscht: ${_nichtGefragt(freigaben)}';
+  k = await _nachFreigabe(moodle, kurs, cmid, abschnittId, name);
   final unter = k.inhalt(a).where((c) => c.unterabschnittId != null).length;
   await kursAktion(moodle, kurs, 'section_delete', [a.id]);
   k = await kursLesen(moodle, kurs);

@@ -66,6 +66,30 @@ void main() {
     expect(() => stackXml(f, version: '1'), throwsA(isA<MoodleFehler>()));
   });
 
+  test('STACK bauen verweigert eine Testeingabe, die keine Option der Auswahlliste ist', () {
+    Map<String, Object?> auswahl(String testwert, {String tans = '[[4,true],[2,false]]'}) => {
+          ..._stackFrage(),
+          'fragetext': '<p>Welche Zahl? [[input:ans1]]</p>',
+          'eingaben': [
+            {'name': 'ans1', 'typ': 'dropdown', 'tans': tans}
+          ],
+          'tests': [
+            {
+              'eingaben': {'ans1': testwert},
+              'erwartet': {
+                'prt1': {'punkte': 1, 'hinweis': 'prt1-1-T'}
+              }
+            }
+          ],
+        };
+    // Gemessen: STACK wertet den Testwert nicht aus; zur Option 4 fällt 3+1 durch.
+    expect(() => stackXml(auswahl('3+1'), version: '1'),
+        throwsA(predicate((e) => e is MoodleFehler && e.meldung.contains('keine der Optionen'))));
+    expect(stackXml(auswahl('4'), version: '1'), contains('<value>4</value>'));
+    // Steht in tans keine wörtliche Liste, lässt sich nichts prüfen.
+    expect(stackXml(auswahl('kb+1', tans: 'optionen'), version: '1'), contains('<value>kb+1</value>'));
+  });
+
   test('CodeRunner bauen verweigert, was still danebenginge', () {
     final gut = {
       'name': 'ZZ Summe',

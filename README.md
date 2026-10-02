@@ -79,7 +79,7 @@ Die Aktivitäten in dieser Tabelle kann Claude lesen, anlegen und ändern – Te
 | Unterabschnitt | `subsection` | mit allem, was darin liegt, sichtbar schalten |
 | Buch | `book` | Kapitel anlegen, ändern, verschieben, löschen |
 | Test | `quiz` | Fragen und Zufallsfragen einfügen; Punkte, Reihenfolge, Seiten, Fragen mischen, Beste Bewertung |
-| Fragensammlung | `qbank` | Kategorien anlegen; Fragen siehe unten |
+| Fragensammlung | `qbank` | Kategorien anlegen; Fragen siehe unten. Moodle legt sie immer im allgemeinen Abschnitt an; verbergen, verschieben und duplizieren gehen bei ihr nicht |
 | Fortschrittsliste\* | `checklist` | Einträge anlegen, ändern, ordnen, einrücken, löschen |
 | Wiki | `wiki` | Seiten schreiben und löschen – nur gemeinsame Wikis, nicht nach Gruppen getrennt |
 | Board\* | `board` | Spalten und eigene Notizen – nicht im Einzelnutzermodus |
@@ -271,7 +271,7 @@ Was Claude hier ohne Klick anlegt, ist für Lernende nicht sichtbar. Eine Ausnah
 | `buchkapitel_anlegen` | Legt ein Kapitel oder Unterkapitel an. Ein Kapitel erscheint sofort, wenn das Buch für Lernende sichtbar ist. | wenn das Buch sichtbar ist |
 | `wikiseite_schreiben` | Legt eine Seite in einem gemeinsamen Wiki an oder ersetzt den Inhalt einer vorhandenen – auch das, was andere geschrieben haben. | Ersetzen: **ja**; Anlegen: wenn das Wiki sichtbar ist |
 | `duplizieren` | Kopiert eine Aktivität oder einen Abschnitt samt Inhalt, ohne Daten von Lernenden. Nummer und Name müssen zusammenpassen. | – |
-| `kategorie_anlegen` | Legt in einer Fragensammlung eine Kategorie an, auf Wunsch unter einer anderen. | – |
+| `kategorie_anlegen` | Legt in einer bestehenden Fragensammlung eine Kategorie an, auf Wunsch unter einer anderen. Eine neue Fragensammlung ist dagegen eine Aktivität (`aktivitaet_anlegen`, Typ `qbank`). | – |
 | `fragen_importieren` | Legt Fragen aus einer XML-Datei im Arbeitsordner in einer Kategorie an, nach Prüfung der Datei. Lernende sehen sie erst in einem Test. | – |
 
 #### Bestehendes ändern, verschieben, sichtbar schalten, löschen: immer mit Freigabe
@@ -283,7 +283,7 @@ Was Claude hier ohne Klick anlegt, ist für Lernende nicht sichtbar. Eine Ausnah
 | `links_setzen` | Setzt die Links zwischen den Seiten eines Abschnitts, etwa einer Lernsituation. Der sichtbare Text bleibt gleich. Ist nichts zu tun, gibt es keine Freigabe. | **ja** |
 | `sichtbarkeit_setzen` | Macht eine Aktivität oder einen Abschnitt für Lernende sichtbar oder verbirgt sie; ein Unterabschnitt samt allem darin. | **ja** |
 | `verschieben` | Verschiebt eine Aktivität in einen anderen Abschnitt oder einen Abschnitt hinter einen anderen. | **ja** |
-| `loeschen` | Löscht eine Aktivität oder einen Abschnitt samt Inhalt. Zurückholen geht nur über den Papierkorb des Kurses, falls er eingeschaltet ist. | **ja** |
+| `loeschen` | Löscht eine Aktivität oder einen Abschnitt samt Inhalt, auch eine Fragensammlung mit ihren Kategorien und Fragen. Zurückholen geht nur über den Papierkorb des Kurses, falls er eingeschaltet ist. | **ja** |
 | `buchkapitel_verschieben`, `buch_ordnen` | Verschieben ein Kapitel schrittweise bzw. bringen die Hauptkapitel eines Buchs in eine Reihenfolge. | **ja** |
 | `buchkapitel_loeschen` | Löscht ein Kapitel, ein Hauptkapitel samt Unterkapiteln. | **ja** |
 | `fragen_loeschen` | Löscht Fragen endgültig, jede mit allen Versionen. Steckt eine in einem Test, verbirgt Moodle sie nur. | **ja** |

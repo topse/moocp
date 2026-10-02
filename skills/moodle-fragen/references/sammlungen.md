@@ -37,10 +37,15 @@ wohin du es gelegt hast.
 
 ## Eine neue Fragensammlung anlegen
 
-Ein Fragenpool ist eine gewöhnliche Aktivität:
-`aktivitaet_anlegen(kurs, abschnitt_id, typ: "qbank", name)` (Skill `moodle`).
-Sinnvoll ist eine eigene Sammlung je Fach, Lernfeld oder Jahrgang. Mehr als
-eine Handvoll wird unübersichtlich; die Feingliederung gehört in Kategorien.
+Eine Sammlung ist eine gewöhnliche Aktivität: `aktivitaet_anlegen(kurs, abschnitt_id, typ: "qbank", name)`. Das Werkzeug gehört zum Skill `moodle`, der Auftrag aber hierher — du rufst es selbst auf, statt den Nutzer weiterzuschicken.
+
+**Erst nachsehen, dann anlegen.** `fragensammlungen(kurs)` zeigt, was es gibt. Sinnvoll ist eine eigene Sammlung je Fach, Lernfeld oder Jahrgang; mehr als eine Handvoll wird unübersichtlich, und die Feingliederung gehört ohnehin in Kategorien. Für ein einzelnes Thema reicht fast immer eine **Kategorie in der geteilten Sammlung** des Kurses.
+
+**Der Name gehört in den Plan, der Abschnitt nicht:** Moodle legt jede Fragensammlung im allgemeinen Abschnitt ab, einerlei welche `abschnitt_id` du mitgibst (das Werkzeug verlangt sie trotzdem, weil jede andere Aktivität sie braucht). Ein Name, der die Reichweite nennt („Fragen LF 3"), ist besser als einer, der an eine Lernsituation gebunden ist: Die Sammlung soll länger leben als der Anlass.
+
+**Was mit einer Sammlung nicht geht:** Sie steht nicht in der Kursstruktur, also zeigt `kurs_uebersicht` sie nicht, und verbergen, verschieben und duplizieren gibt es für sie nicht. `loeschen(kurs, cmid, name)` geht — mit Freigabe, mit Namensprüfung und mit allen Kategorien und Fragen darin.
+
+**Nicht verwechseln mit der Kategorie.** Sagt der Nutzer „Fragensammlung", „Fragenpool" oder „Fragenkatalog", meint er diese Aktivität. Eine Kategorie anzulegen und das als erledigt zu melden, ist kein Ersatz: Er sucht die Sammlung später in der Liste seiner Fragensammlungen und findet sie nicht. Hältst du die Kategorie für den besseren Weg, schlag sie vor und begründe es — entscheiden tut er.
 
 ## Kategorien: die Gliederung innerhalb einer Sammlung
 

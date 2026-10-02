@@ -1,6 +1,6 @@
 ---
 name: moodle-fragen
-description: "Fragensammlungen und Tests in Moodle über die App moocp lesen und bearbeiten. Fragen einer Sammlung oder eines Tests auflisten, neue Fragen anlegen, ändern und löschen, Tests aus vorhandenen oder neuen Fragen zusammenstellen, Zufallsfragen einfügen, Fragen mischen, Kategorien und Fragenpools anlegen, die Gesamtpunkte eines Tests auf die Summe der Fragenpunkte abgleichen. Diesen Skill verwenden, sobald von einem Test, Quiz, einer Klausur, Fragensammlung, einem Fragenpool, Fragenkatalog, einer Frage, einem Fragetyp, von Multiple Choice, Lückentext, Zuordnung, Wahr-Falsch, Freitext, STACK oder CodeRunner die Rede ist, auch bei berechneten Fragen mit Zufallswerten, Rückmeldebaum oder CAS, bei Programmieraufgaben, bei Zeichnungen in Fragen, oder bei URLs mit mod/quiz, mod/qbank, question/edit.php oder question/type/stack. Nicht verwenden für Testergebnisse, Versuche, Abgaben, Bewertungen und Noten - diese Daten sind tabu. Für Kursstruktur, Abschnitte, Aufgaben und Verzeichnisse den Skill moodle verwenden."
+description: "Fragensammlungen und Tests in Moodle über die App moocp lesen und bearbeiten. Fragen einer Sammlung oder eines Tests auflisten, neue Fragen anlegen, ändern und löschen, Tests aus vorhandenen oder neuen Fragen zusammenstellen, Zufallsfragen einfügen, Fragen mischen, Fragensammlungen und Kategorien anlegen, die Gesamtpunkte eines Tests auf die Summe der Fragenpunkte abgleichen. Diesen Skill verwenden, sobald von einem Test, Quiz, einer Klausur, Fragensammlung, einem Fragenpool, Fragenkatalog, einer Frage, einem Fragetyp, von Multiple Choice, Lückentext, Zuordnung, Wahr-Falsch, Freitext, STACK oder CodeRunner die Rede ist, auch bei berechneten Fragen mit Zufallswerten, Rückmeldebaum oder CAS, bei Programmieraufgaben, bei Zeichnungen in Fragen, oder bei URLs mit mod/quiz, mod/qbank, question/edit.php oder question/type/stack. Nicht verwenden für Testergebnisse, Versuche, Abgaben, Bewertungen und Noten - diese Daten sind tabu. Für Kursstruktur, Abschnitte, Aufgaben und Verzeichnisse den Skill moodle verwenden."
 ---
 
 # Moodle: Fragensammlungen und Tests
@@ -19,7 +19,8 @@ diesen.
 
 | Wofür | Werkzeuge |
 |---|---|
-| Sammlungen | `fragensammlungen`, `kategorie_anlegen`, `fragetypen` |
+| Sammlungen | `fragensammlungen`, `fragetypen`; anlegen über `aktivitaet_anlegen` (Typ `qbank`) |
+| Kategorien | `kategorie_anlegen` — die Gliederung *innerhalb* einer Sammlung |
 | Fragen lesen | `fragen_lesen`, `frage_lesen` |
 | Fragen anlegen | `fragen_importieren`, dazu die Bauhilfen `stack_xml`, `coderunner_xml` |
 | Fragen ändern | `frage_lesen`, dann `aendern` |
@@ -63,11 +64,7 @@ App das bewusst nicht kann.
 
 ## Bevor du etwas veränderst
 
-- **Anlegen** von Fragen, Kategorien und Tests: erst der Plan, dann ein Ja,
-  dann die Arbeit (Abschnitt „Erst der Plan, dann das Schreiben"). Der Auftrag
-  „erstelle einen Test zu Thema X mit 8 Fragen" ist der Anlass für den Plan,
-  nicht die Freigabe — Typ, Punkte, AFB, Kategorie und Formulierung stehen im
-  Plan, weil sie die Lehrkraft entscheidet.
+- **Anlegen** von Fragen, Kategorien, Sammlungen und Tests: erst der Plan, dann ein Ja, dann die Arbeit (Abschnitt „Erst der Plan, dann das Schreiben"). Der Auftrag „erstelle einen Test zu Thema X mit 8 Fragen" ist der Anlass für den Plan, nicht die Freigabe — Typ, Punkte, AFB, Kategorie und Formulierung stehen im Plan, weil sie die Lehrkraft entscheidet.
 - **Ändern bestehender Fragen**: erst lesen, dann ändern. Eine Frage, die schon
   in einem Test benutzt wird, ändert sich für alle Tests mit.
 - **Fragen löschen** (`fragen_loeschen`) nur, wenn der Auftrag es ausdrücklich
@@ -220,7 +217,7 @@ und ohne Inhalte, die jemandem zuzuordnen wären.
 - was dieser Skill beschreibt, auch wenn ein Schritt bei der Lehrkraft liegt;
 - was an der Datenschutz-Sperre scheitert — das ist Absicht, dafür gibt es den
   Datenschutzbefund;
-- Kursrahmen-Aktionen an Aktivitäten fremder Typen: verbergen, verschieben, duplizieren, löschen. Sie sind typunabhängig und gehen mit `sichtbarkeit_setzen`, `verschieben`, `duplizieren` und `loeschen`.
+- Kursrahmen-Aktionen an Aktivitäten fremder Typen: verbergen, verschieben, duplizieren, löschen. Sie sind typunabhängig und gehen mit `sichtbarkeit_setzen`, `verschieben`, `duplizieren` und `loeschen`. Eine **Fragensammlung** ist die Ausnahme: Sie steht nicht in der Kursstruktur, deshalb geht nur `loeschen`. Verbergen, verschieben und duplizieren sind dort echte Lücken.
 
 **Die Sperre nicht umgehen.** Kein anderes Werkzeug zweckentfremden, keine
 Adresse umschreiben, bis sie durchrutscht. Das täte dasselbe, nur ohne dass
@@ -358,6 +355,21 @@ Das Fehlen ist der Normalfall, kein Mangel.
 
 Die Werkzeuge nehmen die **cmid der Sammlung** (`sammlung`) und die
 Kategorie als id oder Namen.
+
+## Sammlung oder Kategorie? Das Wort des Nutzers entscheidet
+
+Zwei verschiedene Dinge — und das kleinere ist nie der Ersatz für das größere:
+
+| Der Nutzer sagt | Er meint | Werkzeug |
+|---|---|---|
+| Fragensammlung, Fragenpool, Fragenkatalog, Fragenbank | eine **Aktivität** im Kurs (`mod_qbank`) | `aktivitaet_anlegen(kurs, abschnitt_id, typ: "qbank", name)` |
+| Kategorie, Ordner, Unterteilung, Gliederung, „die Fragen nach … sortieren" | die **Gliederung innerhalb** einer Sammlung | `kategorie_anlegen(sammlung, name)` |
+
+„Erstelle eine Fragensammlung dafür" ist also ein Auftrag für eine neue Aktivität. Stattdessen eine Kategorie in der geteilten Sammlung des Kurses anzulegen mag der bessere Weg sein — dann steht er als Vorschlag im Plan und wird begründet. Still das Kleinere zu tun und „angelegt" zu melden, ist falsch: Der Nutzer glaubt dann, er habe eine wiederverwendbare Sammlung, und sucht sie später vergeblich in der Liste seiner Fragensammlungen.
+
+Weil eine Sammlung eine Aktivität ist, gehört ihr **Name** in den Plan — den Abschnitt wählst du nicht: Moodle legt jede Sammlung im allgemeinen Abschnitt ab, einerlei welche `abschnitt_id` du mitgibst (verlangt wird sie trotzdem, weil jede andere Aktivität sie braucht). Sieh vorher mit `fragensammlungen(kurs)` nach, was es schon gibt: Oft reicht die geteilte Sammlung des Kurses, und eine eigene Sammlung je Lernsituation macht nur die Übersicht voll.
+
+Zwei Eigenheiten, die du kennen musst: Eine Sammlung steht **nicht** in `kurs_uebersicht`, nur in `fragensammlungen`. Und **verbergen, verschieben und duplizieren gehen bei ihr nicht** — löschen schon, mit `loeschen(kurs, cmid, name)`, nach Freigabe und mit allem, was darin liegt.
 
 ## Ab Moodle 5: Fragensammlungen sind Aktivitäten
 

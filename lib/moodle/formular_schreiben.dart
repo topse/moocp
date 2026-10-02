@@ -222,6 +222,14 @@ class Formular {
 
 Future<Formular> formularHolen(MoodleZugang moodle, String adresse) async {
   final r = await moodle.lesen(adresse);
+  // Erst der Status: Eine Fehlerseite trägt eigene Formulare -- etwa den
+  // Schalter „Bearbeiten einschalten". Ohne diese Prüfung wurde das erstbeste
+  // davon abgeschickt, und die Meldung zeigte auf eine ganz andere Adresse
+  // als die, die fehlte.
+  if (r.status != 200) {
+    throw MoodleFehler('Moodle liefert für $adresse HTTP ${r.status} statt der Seite. Gibt es das '
+        'Ziel, und ist es für diesen Zweck die richtige Adresse?');
+  }
   final form = hauptformular(html_parser.parse(r.text));
   if (form == null) {
     throw MoodleFehler('Moodle liefert kein Bearbeitungsformular (HTTP ${r.status}). Gibt es das '
@@ -512,6 +520,31 @@ Future<(Map<String, String>, List<Gesetzt>)> formularFuellen(MoodleZugang moodle
 // aktivitaet_anlegen
 // ---------------------------------------------------------------------------
 
+/// Die neue Aktivität aus der Kursstruktur: cmid und Name, wie Moodle sie
+/// jetzt führt.
+Future<(int, String)> _neueAktivitaet(MoodleZugang moodle, int kurs, String typ, Set<int> vorher) async {
+  final neu = (await kursLesen(moodle, kurs)).nachCmid.values
+      .where((c) => !vorher.contains(c.cmid) && c.modul == typ)
+      .toList();
+  if (neu.length != 1) {
+    throw MoodleFehler('Gespeichert, aber die neue Aktivität ist nicht eindeutig zu finden '
+        '(${neu.length} neue ${typName(typ)}-Einträge in Kurs $kurs). Bitte mit kurs_uebersicht prüfen.');
+  }
+  return (neu.single.cmid, neu.single.name);
+}
+
+/// Dasselbe für eine Fragensammlung -- über die Sammlungsliste, weil die
+/// Kursstruktur sie nicht führt. Ohne diesen Weg meldete das Anlegen einen
+/// Fehler, obwohl die Sammlung entstanden war.
+Future<(int, String)> _neueSammlung(MoodleZugang moodle, int kurs, Set<int> vorher) async {
+  final neu = (await fragensammlungenLesen(moodle, kurs)).where((s) => !vorher.contains(s.cmid)).toList();
+  if (neu.length != 1) {
+    throw MoodleFehler('Gespeichert, aber die neue Fragensammlung ist nicht eindeutig zu finden '
+        '(${neu.length} neue Einträge in Kurs $kurs). Bitte mit fragensammlungen prüfen.');
+  }
+  return (neu.single.cmid, neu.single.name);
+}
+
 Future<String> aktivitaetAnlegen(
   MoodleZugang moodle,
   Freigaben freigaben, {
@@ -540,7 +573,15 @@ Future<String> aktivitaetAnlegen(
   if (abschnitt == null) {
     throw MoodleFehler('Abschnitt id $abschnittId gibt es in Kurs $kurs nicht (kurs_uebersicht).');
   }
-  final wo = '${await kursBezeichnung(moodle, kurs)}, Abschnitt „${abschnitt.titel}"';
+  // Eine Fragensammlung ist eine Aktivität, aber keine Kursseite: Moodle nimmt
+  // sie nur im allgemeinen Abschnitt an (gemessen: add=qbank&section=0 -> 200,
+  // jeder andere Abschnitt -> 404), und sie steht nicht in der Kursstruktur.
+  // Daher die beiden Sonderwege unten -- Abschnitt 0 und Zurücklesen über die
+  // Sammlungsliste.
+  final istSammlung = typ == 'qbank';
+  final wo = istSammlung
+      ? '${await kursBezeichnung(moodle, kurs)}, allgemeiner Abschnitt'
+      : '${await kursBezeichnung(moodle, kurs)}, Abschnitt „${abschnitt.titel}"';
 
   if (sichtbar) {
     final ja = await freigaben.anfragen(FreigabeAnfrage(
@@ -562,11 +603,15 @@ Future<String> aktivitaetAnlegen(
     }
   }
 
-  final vorher = vorherStruktur.nachCmid.keys.toSet();
+  final vorher = istSammlung
+      ? (await fragensammlungenLesen(moodle, kurs)).map((s) => s.cmid).toSet()
+      : vorherStruktur.nachCmid.keys.toSet();
 
   Future<(Map<String, String>, List<Gesetzt>)> versuch() async {
     final f = await formularHolen(
-        moodle, '/course/modedit.php?add=$typ&type=&course=$kurs&section=${abschnitt.nummer}&return=0&sr=0');
+        moodle,
+        '/course/modedit.php?add=$typ&type=&course=$kurs'
+        '&section=${istSammlung ? 0 : abschnitt.nummer}&return=0&sr=0');
     final (geschrieben, gesetzt) = await formularFuellen(moodle, f,
         quelle: quelle,
         felder: inhalt.felder,
@@ -588,23 +633,21 @@ Future<String> aktivitaetAnlegen(
   }
   final (geschrieben, gesetzt) = ergebnis;
 
-  // Die neue cmid: was vorher nicht im Kurs war. Das Textfeld hat keine
-  // eigene Seite, auf die Moodle umleiten könnte -- so geht es für alle Typen.
-  final neu = (await kursLesen(moodle, kurs)).nachCmid.values
-      .where((c) => !vorher.contains(c.cmid) && c.modul == typ)
-      .toList();
-  if (neu.length != 1) {
-    throw MoodleFehler('Gespeichert, aber die neue Aktivität ist nicht eindeutig zu finden '
-        '(${neu.length} neue ${typName(typ)}-Einträge in Kurs $kurs). Bitte mit kurs_uebersicht prüfen.');
-  }
-  final cmid = neu.single.cmid;
+  // Die neue cmid: was vorher nicht da war. Das Textfeld hat keine eigene
+  // Seite, auf die Moodle umleiten könnte -- so geht es für alle Typen.
+  final (int cmid, String angelegt) = istSammlung
+      ? await _neueSammlung(moodle, kurs, vorher)
+      : await _neueAktivitaet(moodle, kurs, typ, vorher);
 
   final g = await formularLesen(moodle, Formularziel.aktivitaet(cmid), arbeitsordner);
   final probe = await zuruecklesen(g,
       felder: geschrieben, dateien: inhalt.dateien, bereiche: inhalt.bereiche, einstellungen: gesetzt);
   return [
-    'Angelegt: ${typName(typ)} „${neu.single.name}" in $wo, cmid $cmid, '
+    'Angelegt: ${typName(typ)} „$angelegt" in $wo, cmid $cmid, '
         '${sichtbar ? "SICHTBAR" : "verborgen"}.',
+    if (istSammlung && abschnitt.nummer != 0)
+      'Hinweis: Moodle legt Fragensammlungen nur im allgemeinen Abschnitt an; '
+          'der gewünschte Abschnitt „${abschnitt.titel}" wurde nicht verwendet.',
     if (geschrieben.isNotEmpty || inhalt.dateien.isNotEmpty || inhalt.bereiche.isNotEmpty)
       'Geschrieben: ${geschrieben.keys.map((k) => '$k.html').join(", ")}'
           '${inhalt.dateien.isEmpty ? '' : '; Dateien: ${inhalt.dateien.keys.join(", ")}'}'

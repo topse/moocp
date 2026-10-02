@@ -349,7 +349,8 @@ class McpDienst {
             'Aufgabe zusätzlich activityeditor.html für die Arbeitsanweisungen), eingebundene '
             'Bilder in dateien/ als src="@@PLUGINFILE@@/<name>", Dateibereiche in bereiche/<feld>/ '
             '(Verzeichnis: bereiche/files/, Aufgabe: bereiche/introattachments/, Datei: '
-            'bereiche/files/). Einstellungen wie Fristen als Parameter (Schlüssel: nach dem '
+            'bereiche/files/). Eine Fragensammlung (qbank) legt Moodle immer im allgemeinen '
+            'Abschnitt an, einerlei welcher angegeben ist. Einstellungen wie Fristen als Parameter (Schlüssel: nach dem '
             'Anlegen in einstellungen.json; Pflichtangaben eines Typs meldet Moodle). Legt '
             'verborgen an; sichtbar nur nach Freigabe in der App. Liest danach zurück.',
         parameter: {
@@ -479,10 +480,10 @@ class McpDienst {
 
     _werkzeug(server, 'loeschen',
         titel: 'Löschen',
-        beschreibung: 'Löscht eine Aktivität (auch einen Unterabschnitt samt Inhalt über seine cmid) '
-            'oder einen Abschnitt samt Inhalt -- nur nach Freigabe in der App, die Kurs, Namen und '
-            'alles Mitgelöschte zeigt. Nummer und Name müssen zusammenpassen. Prüft danach die '
-            'Kursstruktur.',
+        beschreibung: 'Löscht eine Aktivität (auch einen Unterabschnitt samt Inhalt über seine cmid, auch '
+            'eine Fragensammlung samt Kategorien und Fragen) oder einen Abschnitt samt Inhalt -- nur nach '
+            'Freigabe in der App, die Kurs, Namen und alles Mitgelöschte zeigt. Nummer und Name müssen '
+            'zusammenpassen, vor der Freigabe und noch einmal danach. Prüft danach die Kursstruktur.',
         parameter: {'kurs': _kurs, 'cmid': _cmid, 'abschnitt_id': _abschnittId, 'name': _name},
         pflicht: ['kurs', 'name'],
         zerstoerend: true,
@@ -600,9 +601,9 @@ class McpDienst {
         parameter: {'kurs': _kurs},
         pflicht: ['kurs'],
         nurLesen: true, ausfuehren: (a) async {
-      final l = await sammlungenLesen(moodle, _zahl(a, 'kurs'));
+      final l = await fragensammlungenLesen(moodle, _zahl(a, 'kurs'));
       if (l.isEmpty) return 'Keine Fragensammlung in diesem Kurs.';
-      return [for (final s in l) '${s.cmid} „${s.name}" (${s.geteilt ? 'geteilt' : 'eigene Sammlung eines Tests'})']
+      return [for (final s in l) '${s.cmid} „${s.name}" (${s.geteilt ? 'geteilt' : 'eigene Fragensammlung eines Tests'})']
           .join('\n');
     });
 
@@ -617,7 +618,7 @@ class McpDienst {
 
     _werkzeug(server, 'fragen_lesen',
         titel: 'Fragen lesen',
-        beschreibung: 'Listet die Kategorien einer Sammlung (id, Name, Anzahl) und exportiert eine Kategorie '
+        beschreibung: 'Listet die Kategorien einer Fragensammlung (id, Name, Anzahl) und exportiert eine Kategorie '
             '(oder mit alle: true jede nicht leere) als Moodle-XML nach fragen-<sammlung>/kategorie-<id>.xml; '
             'zurück kommt je Frage: questionid, Typ, Name, Sachnummer, Punkte, Antworten, Anfang des Texts. '
             'Mit idnummer: sucht die Frage mit dieser Sachnummer und nennt ihre AKTUELLE questionid '
@@ -672,7 +673,9 @@ class McpDienst {
 
     _werkzeug(server, 'kategorie_anlegen',
         titel: 'Kategorie anlegen',
-        beschreibung: 'Legt in einer Fragensammlung eine Kategorie an, optional unter einer anderen.',
+        beschreibung: 'Legt in einer BESTEHENDEN Fragensammlung eine Kategorie an, optional unter einer anderen. '
+            'Eine Kategorie ist die Gliederung innerhalb einer Fragensammlung -- eine neue Fragensammlung (Fragenpool, '
+            'Fragenkatalog) ist dagegen eine Aktivität: aktivitaet_anlegen mit typ qbank.',
         parameter: {
           'sammlung': sammlung,
           'name': JsonSchema.string(description: 'Name der neuen Kategorie'),
@@ -688,7 +691,7 @@ class McpDienst {
 
     _werkzeug(server, 'fragen_loeschen',
         titel: 'Fragen löschen',
-        beschreibung: 'Löscht Fragen einer Sammlung endgültig, jede mit allen Versionen. Je Frage die AKTUELLE '
+        beschreibung: 'Löscht Fragen einer Fragensammlung endgültig, jede mit allen Versionen. Je Frage die AKTUELLE '
             'questionid (fragen_lesen) und der Name, wie er jetzt in Moodle steht; passt ein Name nicht, bricht '
             'das Werkzeug ab, bevor etwas geschieht. Nur nach Freigabe in der App. Steckt eine Frage in einem '
             'Test, löscht Moodle sie nicht, sondern verbirgt sie nur -- das Zurücklesen meldet es. Nicht '

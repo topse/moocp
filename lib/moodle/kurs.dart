@@ -27,6 +27,35 @@ import 'package:html/parser.dart' as html_parser;
 
 import 'moodle_zugang.dart';
 
+// Die Fragensammlungen eines Kurses. Sie stehen NICHT in der Kursstruktur
+// (core_courseformat_get_state führt sie nicht), deshalb die eigene Quelle:
+// die Übersichtsseite, die Moodle selbst dafür hat. Hier statt bei den
+// Fragen, weil auch das Anlegen und Löschen einer Aktivität sie braucht.
+class Fragensammlung {
+  Fragensammlung(this.cmid, this.name, this.geteilt);
+  final int cmid;
+  final String name;
+
+  /// Geteilt (mod_qbank) -- sonst die eigene Sammlung eines Tests, deren
+  /// Fragen anderswo nicht verwendbar sind.
+  final bool geteilt;
+}
+
+Future<List<Fragensammlung>> fragensammlungenLesen(MoodleZugang moodle, int kurs) async {
+  final r = await moodle.lesen('/question/banks.php?courseid=$kurs');
+  final d = html_parser.parse(r.text);
+  final aus = <int, Fragensammlung>{};
+  for (final a in d.querySelectorAll('#region-main a[href]')) {
+    final u = Uri.tryParse(a.attributes['href'] ?? '');
+    final name = a.text.replaceAll(RegExp(r'\s+'), ' ').trim();
+    final id = int.tryParse(u?.queryParameters['id'] ?? '');
+    if (u == null || id == null || name.isEmpty) continue;
+    if (u.path.endsWith('/mod/qbank/view.php')) aus.putIfAbsent(id, () => Fragensammlung(id, name, true));
+    if (u.path.endsWith('/mod/quiz/view.php')) aus.putIfAbsent(id, () => Fragensammlung(id, name, false));
+  }
+  return aus.values.toList();
+}
+
 /// Wie Lernende an etwas herankommen.
 enum Sichtbarkeit {
   sichtbar('sichtbar'),

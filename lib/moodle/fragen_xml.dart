@@ -133,6 +133,48 @@ int _weiter(Object? w) {
   return n - 1;
 }
 
+/// Die Optionen einer Auswahlliste, wie sie in der Musterantwort stehen:
+/// `[[kn,true],[kf,false]]` -> `[kn, kf]`. null, wenn dort keine wörtliche
+/// Liste steht (ein Variablenname etwa) -- dann lässt sich nichts prüfen.
+List<String>? _auswahlOptionen(String tans) {
+  final s = tans.trim();
+  if (!s.startsWith('[') || !s.endsWith(']')) return null;
+  final aus = <String>[];
+  for (final t in _obereEbene(s.substring(1, s.length - 1))) {
+    final e = t.trim();
+    if (!e.startsWith('[') || !e.endsWith(']')) return null;
+    final felder = _obereEbene(e.substring(1, e.length - 1));
+    if (felder.first.trim().isEmpty) return null;
+    aus.add(felder.first.trim());
+  }
+  return aus.isEmpty ? null : aus;
+}
+
+/// Zerlegt an den Kommas der obersten Ebene; Klammern und Zeichenketten
+/// bleiben zusammen.
+List<String> _obereEbene(String s) {
+  final aus = <String>[];
+  var tiefe = 0, start = 0;
+  String? anfuehrung;
+  for (var i = 0; i < s.length; i++) {
+    final c = s[i];
+    if (anfuehrung != null) {
+      if (c == anfuehrung && s[i - 1] != '\\') anfuehrung = null;
+    } else if (c == '"' || c == "'") {
+      anfuehrung = c;
+    } else if ('[({'.contains(c)) {
+      tiefe++;
+    } else if (']})'.contains(c)) {
+      tiefe--;
+    } else if (c == ',' && tiefe == 0) {
+      aus.add(s.substring(start, i));
+      start = i + 1;
+    }
+  }
+  aus.add(s.substring(start));
+  return aus;
+}
+
 /// Baut das XML einer STACK-Frage aus einer knappen Beschreibung (Aufbau wie
 /// in der Skill-Referenz stack.md). [dateien] liefert die Bytes zu
 /// zeichnungen[].name.
@@ -152,6 +194,32 @@ String stackXml(Map<String, Object?> o, {required String version, Map<String, Li
   final fehlt = [for (final e in eingaben) if (!fragetext.contains('[[input:${_t(e, 'name')}]]')) _t(e, 'name')];
   if (fehlt.isNotEmpty) {
     throw MoodleFehler('STACK: Im Fragetext fehlen die Platzhalter ${fehlt.map((n) => '[[input:$n]]').join(', ')}.');
+  }
+  // Auswahllisten: Eine Testeingabe muss eine der Optionen sein, WIE SIE
+  // DASTEHT -- STACK wertet sie nicht aus. Gemessen: Zur Option `4` fällt
+  // der Testfall mit `3+1` durch, ohne dass ein Baum gerechnet wird, und ein
+  // Testfall ist nachträglich nur in Moodle zu ändern. Deshalb hier, bevor
+  // etwas hochgeladen ist. Geprüft wird nur gegen eine wörtliche
+  // Optionsliste; `checkbox` bleibt außen vor, weil seine Testeingabe eine
+  // Liste mehrerer Optionen ist (nicht gemessen).
+  final auswahl = <String, List<String>>{};
+  for (final e in eingaben) {
+    if (!const ['dropdown', 'radio'].contains(_t(e, 'typ'))) continue;
+    final o = _auswahlOptionen(_t(e, 'tans'));
+    if (o != null) auswahl[_t(e, 'name')] = o;
+  }
+  String ohneLeer(String x) => x.replaceAll(RegExp(r'\s+'), '');
+  for (final (i, t) in tests.indexed) {
+    for (final e in _map(t['eingaben'], 'eingaben').entries) {
+      final optionen = auswahl[e.key];
+      final wert = '${e.value ?? ''}'.trim();
+      if (optionen == null || wert.isEmpty) continue;
+      if (optionen.any((x) => ohneLeer(x) == ohneLeer(wert))) continue;
+      throw MoodleFehler('STACK „$name": Testfall ${i + 1}, Eingabe ${e.key}: „$wert" ist keine der '
+          'Optionen (${optionen.join(", ")}). STACK wertet Testeingaben für Auswahllisten nicht aus -- der '
+          'Wert muss dastehen wie in tans; sonst eine Hilfsvariable in den Aufgabenvariablen anlegen und '
+          'die verwenden.');
+    }
   }
   final spez = o['spezifischesFeedback'] != null
       ? _t(o, 'spezifischesFeedback')

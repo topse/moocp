@@ -64,10 +64,27 @@ Future<String> stackTesten(MoodleZugang moodle, {required int sammlung, required
   final faelle = <String, List<String>>{};
   final durchgefallen = <String>[];
   var anzahl = 0;
+  var verworfen = false;
   for (final tab in haupt.querySelectorAll('table.stacktestsuite')) {
     final spalten = tab.querySelectorAll('thead th').length;
-    if (spalten < 7) continue;
     final titel = _ueberschrift(tab);
+    // Sechs Spalten: die Eingaben des Testfalls -- Name, Wert aus dem
+    // Testfall, übernommener Wert, Anzeige, Status, Fehler. Ist der
+    // übernommene Wert leer, hat STACK den Testwert verworfen und rechnet
+    // die Bäume gar nicht; die Zeilen darunter bleiben dann leer, und ohne
+    // diesen Hinweis sucht man den Fehler im Baum statt in der Eingabe.
+    if (spalten == 6) {
+      for (final tr in tab.querySelectorAll('tbody tr')) {
+        final z = _zellen(tr);
+        if (z.length < 6 || z[1].isEmpty || z[2].isNotEmpty) continue;
+        final warum = [z[4], z[5]].where((t) => t.isNotEmpty).join(' -- ');
+        faelle.putIfAbsent(titel, () => []).add('! Eingabe ${z[0]}: „${z[1]}" nicht übernommen'
+            '${warum.isEmpty ? '' : ' ($warum)'}');
+        verworfen = true;
+      }
+      continue;
+    }
+    if (spalten < 7) continue;
     anzahl++;
     for (final tr in tab.querySelectorAll('tbody tr')) {
       final z = _zellen(tr);
@@ -85,6 +102,10 @@ Future<String> stackTesten(MoodleZugang moodle, {required int sammlung, required
   final b = StringBuffer('STACK-Frage $frage${seed == null ? '' : ', Variante $seed'}: '
       '${anzahl == 0 ? 'KEINE Testfälle -- nicht überprüfbar' : bestanden ? 'alle $anzahl Testfälle bestanden' : 'NICHT bestanden'}. '
       'verified: $bestanden\n');
+  if (verworfen) {
+    b.writeln('Mindestens eine Testeingabe hat STACK nicht übernommen; dieser Testfall prüft dann nichts. '
+        'Bei Auswahllisten (dropdown, radio) muss die Testeingabe eine der Optionen sein, wie sie dasteht.');
+  }
   for (final e in faelle.entries) {
     b.writeln('${e.key}:');
     for (final z in e.value) {

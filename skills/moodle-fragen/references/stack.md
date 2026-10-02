@@ -272,6 +272,7 @@ Punktzahl** dagegen schon.
   (Vorgabe 0,1).
 - `hinweis` ist der erwartete Antworthinweis. Er ist die eigentliche Prüfung:
   Punkte können zufällig stimmen, der Pfad durch den Baum nicht.
+- **Bei einer Auswahlliste (`dropdown`, `radio`, `checkbox`) muss die Testeingabe eine der Optionen sein, wie sie in `tans` dasteht.** STACK setzt die Aufgabenvariablen zwar ein, vereinfacht aber nicht: Zur Option `4` kommt `3+1` als `3+1` an und zählt nicht als Option, der Testfall prüft dann nichts. Soll der Wert aus einer Rechnung kommen, gehört er als Variable in die Aufgabenvariablen (`kn : kb+1;`) und steht dann in den Optionen **und** im Testfall; `stack_testen` meldet sonst „Eingabe … nicht übernommen".
 
 **Mindestens drei Fälle**: alles richtig, der eingeplante typische Fehler,
 alles falsch. Ohne den mittleren ist der Zweig für den typischen Fehler
@@ -315,6 +316,7 @@ hier**, und es ist der Hauptgrund, warum dieser Schritt nicht optional ist.
 - **Struktur einer vorhandenen Frage ändern** — ein zusätzlicher Knoten, ein
   zusätzliches Eingabefeld, ein weiterer Testfall. Inhalte vorhandener Knoten
   und Eingaben lassen sich ändern (siehe unten), die Struktur nicht.
+- **Einen vorhandenen Testfall ändern oder löschen.** Er steht auf einer eigenen Seite, die die App nicht aufruft; in Moodle gehen beide Wege, unter den Ergebnissen jedes Testfalls auf der Seite mit den Fragetests. Über die App bleibt nur, die Frage neu anzulegen — deshalb die Testfälle vor dem Import genau nehmen.
 - **„Antworten analysieren" öffnen.** Diese Seite wertet **echte Abgaben** aus
   und ist gesperrt. Testlauf, Varianten und CAS-Notizblock arbeiten nur mit der
   Frage selbst und sind offen.

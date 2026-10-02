@@ -30,31 +30,6 @@ import 'formular_schreiben.dart';
 import 'fragen_xml.dart';
 import 'moodle_zugang.dart';
 
-class Sammlung {
-  Sammlung(this.cmid, this.name, this.geteilt);
-  final int cmid;
-  final String name;
-
-  /// Geteilte Sammlung (mod_qbank) -- sonst die eigene Sammlung eines Tests,
-  /// deren Fragen anderswo nicht verwendbar sind.
-  final bool geteilt;
-}
-
-Future<List<Sammlung>> sammlungenLesen(MoodleZugang moodle, int kurs) async {
-  final r = await moodle.lesen('/question/banks.php?courseid=$kurs');
-  final d = html_parser.parse(r.text);
-  final aus = <int, Sammlung>{};
-  for (final a in d.querySelectorAll('#region-main a[href]')) {
-    final u = Uri.tryParse(a.attributes['href'] ?? '');
-    final name = a.text.replaceAll(RegExp(r'\s+'), ' ').trim();
-    final id = int.tryParse(u?.queryParameters['id'] ?? '');
-    if (u == null || id == null || name.isEmpty) continue;
-    if (u.path.endsWith('/mod/qbank/view.php')) aus.putIfAbsent(id, () => Sammlung(id, name, true));
-    if (u.path.endsWith('/mod/quiz/view.php')) aus.putIfAbsent(id, () => Sammlung(id, name, false));
-  }
-  return aus.values.toList();
-}
-
 class Kategorie {
   Kategorie(this.wert, this.name, this.anzahl, this.tiefe);
 
@@ -270,6 +245,10 @@ Future<Importiert> fragenImportieren(MoodleZugang moodle, String arbeitsordner,
 
 const String kategorieFormular = r'qbank_managecategories\form\question_category_edit_form';
 
+/// Legt eine Kategorie IN einer Sammlung an -- nicht die Sammlung selbst; die
+/// ist eine Aktivität (`aktivitaet_anlegen`, Typ `qbank`). Die Meldung nennt
+/// deshalb die Sammlung mit: Wer „Fragensammlung" sagte und eine Kategorie
+/// bekommt, erkennt die Verwechslung nur, wenn das Ziel dabeisteht.
 Future<String> kategorieAnlegen(MoodleZugang moodle,
     {required int sammlung, required String name, String? eltern, String? beschreibung}) async {
   final kats = await kategorienLesen(moodle, sammlung);
@@ -293,7 +272,7 @@ Future<String> kategorieAnlegen(MoodleZugang moodle,
   final neu = nachher.where((k) => k.name == name).toList();
   final ok = r is Map && r['submitted'] == true && neu.length == 1;
   return '${ok ? 'Angelegt' : 'NICHT angelegt'}: Kategorie „$name"${neu.isEmpty ? '' : ' (id ${neu.single.id})'}'
-      '${elternK == null ? '' : ' unter „${elternK.name}"'}. verified: $ok';
+      '${elternK == null ? '' : ' unter „${elternK.name}"'} in Sammlung cmid $sammlung. verified: $ok';
 }
 
 // ---------------------------------------------------------------------------

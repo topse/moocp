@@ -54,7 +54,7 @@ und ohne Inhalte, die jemandem zuzuordnen wären.
 - was dieser Skill beschreibt, auch wenn ein Schritt bei der Lehrkraft liegt;
 - was an der Datenschutz-Sperre scheitert — das ist Absicht, dafür gibt es den
   Datenschutzbefund;
-- Kursrahmen-Aktionen an Aktivitäten fremder Typen: verbergen, verschieben, duplizieren, löschen. Sie sind typunabhängig und gehen mit `sichtbarkeit_setzen`, `verschieben`, `duplizieren` und `loeschen`.
+- Kursrahmen-Aktionen an Aktivitäten fremder Typen: verbergen, verschieben, duplizieren, löschen. Sie sind typunabhängig und gehen mit `sichtbarkeit_setzen`, `verschieben`, `duplizieren` und `loeschen`. Eine **Fragensammlung** ist die Ausnahme: Sie steht nicht in der Kursstruktur, deshalb geht nur `loeschen`. Verbergen, verschieben und duplizieren sind dort echte Lücken.
 
 **Die Sperre nicht umgehen.** Kein anderes Werkzeug zweckentfremden, keine
 Adresse umschreiben, bis sie durchrutscht. Das täte dasselbe, nur ohne dass

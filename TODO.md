@@ -1,5 +1,8 @@
 # Features
 - "Sitzung verwerfen (Test)" Button entfernen
+- Wissenspeicher STACK untersuchen und integrieren
+- Fragensammlung verbergen, verschieben und duplizieren: geht nicht, weil `qbank` nicht in der Kursstruktur steht. Löschen hat einen eigenen Weg über die Sammlungsliste; die drei bräuchten denselben.
+- Wartende Freigabe sichtbar machen: Zähler im Dialog („1 weitere Anfrage wartet") und eine Protokollzeile, wenn eine Anfrage sich einreiht.
 - Aktivität "Lernpfad" vollständig unterstützen inkl. didaktischer und pädagogischer Ideen, Hilfestellungen und Regeln, wie die gut einzusetzen sind, auch unter Regeln der Gamification
 - Badges vollumfänglich unterstützen, inkl. didaktischer und pädagogischer Ideen, Hilfestellungen und Regeln, wie die gut einzusetzen sind, auch unter Regeln der Gamification
 - Optimierungsphase: MCP-Server und Skill prüfen, ob wir tokenoptimiert arbeiten, z.B. ist das MCP Interface so gestaltet, dass kein balast durchgeleitet und nur nutzdaten (werden also z.B. alle nicht benötigten HTML-Tags von der Moodle Seite rausgefiltert?)
@@ -35,6 +38,7 @@
 - Fragen: Struktur vorhandener Fragen ändern (weitere Antwort, weiterer
   Knoten) ist nicht eingebaut; das Formular baut sich dafür über eigene
   Knöpfe neu auf.
+- STACK: einen vorhandenen Fragetest ändern, löschen oder ergänzen. Er steht auf einer eigenen Seite (`questiontestedit.php`, nicht auf der Positivliste); bisher hilft nur, die Frage neu anzulegen.
 
 # Bugs
 - Einstellungen mit Optionsfeldern: Die Zeilen der Abschlussverfolgung
@@ -58,7 +62,7 @@ Umgesetzt, aber noch nicht als Ganzes auf einer Instanz gelaufen.
 - Druckaufbereitung: Karofeld auf echtem Papier (Grauwert `#c0c0c0`,
   0,4 pt hell genug und trotzdem sichtbar?); ob erzeugte Inhalte sauber
   umbrechen, besonders Tabellen und lange Listen.
-- Anlegen von Link (`url`), Datei (`resource`) und Fragensammlung (`qbank`).
+- Anlegen von Link (`url`) und Datei (`resource`).
 - Übernahme eines echten Blatts (PDF, ODT, DOCX) nach
   `skills/moodle/references/uebernehmen.md`.
 - Fragen: `calculated` (die geteilte Variante, Aufbau wie

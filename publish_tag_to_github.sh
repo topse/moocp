@@ -112,6 +112,6 @@ Veröffentlicht: ${TAG} auf ${REMOTE}
   Zweig:   ${ZWEIG} -> ${REMOTE}/main
   Tag:     github-${TAG}
 
-Auf GitHub noch: aus dem Tag github-${TAG} ein Release machen und die
-Installer anhängen (Grundausstattung und berufsbildend).
+Auf GitHub noch: aus dem Tag github-${TAG} ein Release machen
+und den Installer anhängen.
 EOF

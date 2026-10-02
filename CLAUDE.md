@@ -1,6 +1,6 @@
 # CLAUDE.md – moocp
 
-Keine git Aktionen durchführen - das macht ausschließlich der Benutzer.
+Keine git Aktionen durchführen - das macht ausschließlich der Benutzer. Wenn Du während der Arbeit Fehler, Probleme oder sonstige Ungenauigkeiten findest, beseitige Sie entweder sofort oder nimm einen Punkt ins TODO.md auf. Keine Newlines als Zeilenumbrüche in MD files, nur am Ende von Absätzen.
 
 ## Regeln für die Dokumentation (zuerst lesen, immer einhalten)
 
