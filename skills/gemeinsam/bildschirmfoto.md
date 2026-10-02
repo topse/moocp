@@ -1,0 +1,18 @@
+/* Gemeinsamer Doku-Block der Skills, die in Moodle schreiben: Geschriebenes
+ * selbst ansehen (Werkzeug bildschirmfoto). build.py setzt ihn zwischen die
+ * Marker in SKILL.md. Nicht dort bearbeiten.
+ */
+
+## Selbst nachsehen: Bildschirmfotos
+
+`bildschirmfoto` zeigt dir, wie eine Textseite, ein Buchkapitel, eine Seite eines gemeinsamen Wikis oder eine Frage in der Vorschau im Browser aussieht — mit `druck: true` bei Seite, Buch und Wiki so, wie sie gedruckt wird. Das Bild zeigt nur den Inhalt, ohne Kopf, Navigation und Blöcke.
+
+**Wofür:** prüfen, was du geschrieben hast, wo der Quelltext es nicht verrät — ob Formeln gesetzt sind, wie ein Blatt im Ausdruck umbricht, ob eine Frage in der Vorschau läuft und richtig aussieht. Bitte die Lehrkraft nicht um ein Bildschirmfoto, wenn du selbst nachsehen kannst.
+
+**Nicht wofür:** zum Lesen von Inhalten — das tun die Lesewerkzeuge, vollständig und als Text. Und nicht routinemäßig nach jedem Schreiben: Jedes Bild erscheint in der App, und die Lehrkraft muss es freigeben.
+
+- `grund` ist Pflicht: ein Satz für die Lehrkraft, was das Bild prüfen soll („Prüfen, ob die Formeln auf Infoblatt 2 gesetzt werden"). Er steht im Dialog über dem Bild.
+- Geplante Bilder gehören in den Plan, und vor jedem kündigst du die Freigabe im Chat an.
+- Verwirft die Lehrkraft das Bild, ist das ihre Entscheidung — frag nicht nach, sondern beschreib, was du prüfen wolltest, und lass sie selbst nachsehen.
+- Meldet das Werkzeug, dass der Browser nicht steuerbar ist, gibt es auf diesem Rechner keine Bildschirmfotos. Weich nicht aus; die Lehrkraft sieht selbst nach.
+- Kleine Abweichungen sind keine Befunde: Schriften von fremden Servern (etwa Google Fonts) fehlen, dort steht eine Ersatzschrift, und Formeln wirken etwas kräftiger.

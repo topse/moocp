@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Symbol von moocp: Schild (die Datensperre) mit offenem Buch (die
+       Kursinhalte), Petrol. Bewusst nicht Moodle-Orange, kein Doktorhut (den
+       trägt das Moodle-Logo) und keine Farben von Claude. Daraus entstehen
+       icon.png und das Windows-Symbol; wie, steht in pubspec.yaml unter
+       flutter_launcher_icons. -->
+  <rect x="32" y="32" width="960" height="960" rx="216" fill="#0E6B73"/>
+  <path d="M512 150 L812 258 V492 C812 690 682 818 512 884 C342 818 212 690 212 492 V258 Z" fill="#FFFFFF"/>
+  <path d="M494 452 C436 414 368 400 300 408 V664 C368 656 436 668 494 706 Z" fill="#0E6B73"/>
+  <path d="M530 452 C588 414 656 400 724 408 V664 C656 656 588 668 530 706 Z" fill="#0E6B73"/>
+</svg>

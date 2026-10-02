@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<quiz>
+
+<question type="calculatedsimple">
+  <name><text>ZZOP calculatedsimple</text></name>
+  <questiontext format="html"><text><![CDATA[<p>Ein Widerstand von {R} Ohm liegt an {U} V. Welcher Strom fliesst in A?</p>]]></text></questiontext>
+  <generalfeedback format="html"><text></text></generalfeedback>
+  <defaultgrade>2.0000000</defaultgrade>
+  <penalty>0.3333333</penalty>
+  <hidden>0</hidden>
+  <synchronize>0</synchronize>
+  <single>0</single>
+  <answernumbering>abc</answernumbering>
+  <answer fraction="100" format="moodle_auto_format">
+    <text>{U}/{R}</text>
+    <tolerance>0.01</tolerance>
+    <tolerancetype>1</tolerancetype>
+    <correctanswerformat>2</correctanswerformat>
+    <correctanswerlength>3</correctanswerlength>
+    <feedback format="html"><text>Richtig.</text></feedback>
+  </answer>
+  <unitgradingtype>0</unitgradingtype>
+  <unitpenalty>0.1000000</unitpenalty>
+  <showunits>3</showunits>
+  <unitsleft>0</unitsleft>
+  <dataset_definitions>
+    <dataset_definition>
+      <status><text>private</text></status>
+      <name><text>R</text></name>
+      <type>calculatedsimple</type>
+      <distribution><text>uniform</text></distribution>
+      <minimum><text>10</text></minimum>
+      <maximum><text>100</text></maximum>
+      <decimals><text>0</text></decimals>
+      <itemcount>3</itemcount>
+      <dataset_items>
+        <dataset_item><number>1</number><value>10</value></dataset_item>
+        <dataset_item><number>2</number><value>50</value></dataset_item>
+        <dataset_item><number>3</number><value>100</value></dataset_item>
+      </dataset_items>
+      <number_of_items>3</number_of_items>
+    </dataset_definition>
+    <dataset_definition>
+      <status><text>private</text></status>
+      <name><text>U</text></name>
+      <type>calculatedsimple</type>
+      <distribution><text>uniform</text></distribution>
+      <minimum><text>12</text></minimum>
+      <maximum><text>230</text></maximum>
+      <decimals><text>0</text></decimals>
+      <itemcount>3</itemcount>
+      <dataset_items>
+        <dataset_item><number>1</number><value>12</value></dataset_item>
+        <dataset_item><number>2</number><value>24</value></dataset_item>
+        <dataset_item><number>3</number><value>230</value></dataset_item>
+      </dataset_items>
+      <number_of_items>3</number_of_items>
+    </dataset_definition>
+  </dataset_definitions>
+</question>
+
+<question type="calculatedmulti">
+  <name><text>ZZOP calculatedmulti</text></name>
+  <questiontext format="html"><text><![CDATA[<p>Welche Leistung nimmt ein Geraet mit {U} V und {I} A auf?</p>]]></text></questiontext>
+  <generalfeedback format="html"><text></text></generalfeedback>
+  <defaultgrade>2.0000000</defaultgrade>
+  <penalty>0.3333333</penalty>
+  <hidden>0</hidden>
+  <synchronize>0</synchronize>
+  <single>1</single>
+  <shuffleanswers>1</shuffleanswers>
+  <answernumbering>abc</answernumbering>
+  <correctfeedback format="html"><text>Richtig.</text></correctfeedback>
+  <partiallycorrectfeedback format="html"><text>Teilweise.</text></partiallycorrectfeedback>
+  <incorrectfeedback format="html"><text>Falsch.</text></incorrectfeedback>
+  <answer fraction="100" format="moodle_auto_format">
+    <text>{U}*{I}</text>
+    <tolerance>0.01</tolerance>
+    <tolerancetype>1</tolerancetype>
+    <correctanswerformat>2</correctanswerformat>
+    <correctanswerlength>3</correctanswerlength>
+    <feedback format="html"><text>Richtig, P = U mal I.</text></feedback>
+  </answer>
+  <answer fraction="0" format="moodle_auto_format">
+    <text>{U}/{I}</text>
+    <tolerance>0.01</tolerance>
+    <tolerancetype>1</tolerancetype>
+    <correctanswerformat>2</correctanswerformat>
+    <correctanswerlength>3</correctanswerlength>
+    <feedback format="html"><text>Das waere der Widerstand.</text></feedback>
+  </answer>
+  <unitgradingtype>0</unitgradingtype>
+  <unitpenalty>0.1000000</unitpenalty>
+  <showunits>3</showunits>
+  <unitsleft>0</unitsleft>
+  <dataset_definitions>
+    <dataset_definition>
+      <status><text>private</text></status>
+      <name><text>U</text></name>
+      <type>calculated</type>
+      <distribution><text>uniform</text></distribution>
+      <minimum><text>12</text></minimum>
+      <maximum><text>230</text></maximum>
+      <decimals><text>0</text></decimals>
+      <itemcount>3</itemcount>
+      <dataset_items>
+        <dataset_item><number>1</number><value>12</value></dataset_item>
+        <dataset_item><number>2</number><value>24</value></dataset_item>
+        <dataset_item><number>3</number><value>230</value></dataset_item>
+      </dataset_items>
+      <number_of_items>3</number_of_items>
+    </dataset_definition>
+    <dataset_definition>
+      <status><text>private</text></status>
+      <name><text>I</text></name>
+      <type>calculated</type>
+      <distribution><text>uniform</text></distribution>
+      <minimum><text>1</text></minimum>
+      <maximum><text>16</text></maximum>
+      <decimals><text>1</text></decimals>
+      <itemcount>3</itemcount>
+      <dataset_items>
+        <dataset_item><number>1</number><value>1.5</value></dataset_item>
+        <dataset_item><number>2</number><value>6.0</value></dataset_item>
+        <dataset_item><number>3</number><value>16.0</value></dataset_item>
+      </dataset_items>
+      <number_of_items>3</number_of_items>
+    </dataset_definition>
+  </dataset_definitions>
+</question>
+
+<question type="shortanswer">
+  <name><text>ZZOP sa Spannung</text></name>
+  <questiontext format="html"><text><![CDATA[<p>Einheit der Spannung?</p>]]></text></questiontext>
+  <generalfeedback format="html"><text></text></generalfeedback>
+  <defaultgrade>1.0000000</defaultgrade><penalty>0.3333333</penalty><hidden>0</hidden><usecase>0</usecase>
+  <answer fraction="100" format="moodle_auto_format"><text>Volt</text><feedback format="html"><text></text></feedback></answer>
+</question>
+
+<question type="shortanswer">
+  <name><text>ZZOP sa Strom</text></name>
+  <questiontext format="html"><text><![CDATA[<p>Einheit der Stromstaerke?</p>]]></text></questiontext>
+  <generalfeedback format="html"><text></text></generalfeedback>
+  <defaultgrade>1.0000000</defaultgrade><penalty>0.3333333</penalty><hidden>0</hidden><usecase>0</usecase>
+  <answer fraction="100" format="moodle_auto_format"><text>Ampere</text><feedback format="html"><text></text></feedback></answer>
+</question>
+
+<question type="shortanswer">
+  <name><text>ZZOP sa Leistung</text></name>
+  <questiontext format="html"><text><![CDATA[<p>Einheit der Leistung?</p>]]></text></questiontext>
+  <generalfeedback format="html"><text></text></generalfeedback>
+  <defaultgrade>1.0000000</defaultgrade><penalty>0.3333333</penalty><hidden>0</hidden><usecase>0</usecase>
+  <answer fraction="100" format="moodle_auto_format"><text>Watt</text><feedback format="html"><text></text></feedback></answer>
+</question>
+
+<question type="randomsamatch">
+  <name><text>ZZOP randomsamatch</text></name>
+  <questiontext format="html"><text><![CDATA[<p>Ordnen Sie Groesse und Einheit zu.</p>]]></text></questiontext>
+  <generalfeedback format="html"><text></text></generalfeedback>
+  <defaultgrade>3.0000000</defaultgrade>
+  <penalty>0.3333333</penalty>
+  <hidden>0</hidden>
+  <choose>3</choose>
+  <subcats>0</subcats>
+  <correctfeedback format="html"><text>Richtig.</text></correctfeedback>
+  <partiallycorrectfeedback format="html"><text>Teilweise.</text></partiallycorrectfeedback>
+  <incorrectfeedback format="html"><text>Falsch.</text></incorrectfeedback>
+</question>
+
+<question type="multichoice">
+  <name><text>ZZOP mit Bild</text></name>
+  <questiontext format="html"><text><![CDATA[<p>Welche Farbe hat das Quadrat?</p><p><img src="@@PLUGINFILE@@/quadrat.png" alt="Quadrat" width="64" height="64"></p>]]></text>
+    <file name="quadrat.png" path="/" encoding="base64">iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR4nGOQizqBFTEMLQkAGBlQATpZBa0AAAAASUVORK5CYII=</file>
+  </questiontext>
+  <generalfeedback format="html"><text></text></generalfeedback>
+  <defaultgrade>1.0000000</defaultgrade>
+  <penalty>0.3333333</penalty>
+  <hidden>0</hidden>
+  <single>true</single>
+  <shuffleanswers>true</shuffleanswers>
+  <answernumbering>abc</answernumbering>
+  <correctfeedback format="html"><text>Richtig.</text></correctfeedback>
+  <partiallycorrectfeedback format="html"><text>Teilweise.</text></partiallycorrectfeedback>
+  <incorrectfeedback format="html"><text>Falsch.</text></incorrectfeedback>
+  <answer fraction="100" format="html"><text>Blau</text><feedback format="html"><text></text></feedback></answer>
+  <answer fraction="0" format="html"><text>Rot</text><feedback format="html"><text></text></feedback></answer>
+</question>
+
+</quiz>

@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Die App nach einer Änderung sauber neu starten: Skills bauen, prüfen,
+# beenden, bauen, starten. Bricht ab, wenn der Bau der Skills, die Analyse
+# oder die Tests nicht sauber sind (A10).
+#
+#   bash tool/neustart.sh
+#
+# Mit gespeicherten Anmeldedaten meldet sich die App selbst an und startet
+# danach den MCP-Server; der Eintrag „MCP-Server läuft auf …" steht dann in
+# %APPDATA%\moocp\protokoll.log.
+set -e
+cd "$(dirname "$0")/.."
+# Die Skills zuerst: Die App bringt skills/dist/ als Assets mit und bietet
+# beim Start an, genau diese Fassung zu installieren.
+python skills/build.py
+flutter analyze
+flutter test
+# Erst regulär schließen: Dann leert die App ihren Arbeitsordner selbst.
+# Hängt sie, hart -- den Rest leert der nächste Start.
+taskkill //IM moocp.exe >/dev/null 2>&1 || true
+sleep 2
+taskkill //IM moocp.exe //F >/dev/null 2>&1 || true
+sleep 1
+flutter build windows --release
+(cd build/windows/x64/runner/Release && cmd //c start "" moocp.exe)

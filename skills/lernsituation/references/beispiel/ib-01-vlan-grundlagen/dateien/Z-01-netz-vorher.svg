@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 240"
+     width="480" height="240" role="img" aria-labelledby="titel beschreibung">
+  <title id="titel">Netz der Muster GmbH vor der Umstellung</title>
+  <desc id="beschreibung">Zwei Switches, über Gi0/1 verbunden. An Switch 1 hängen PC-B1, PC-B2 und der WLAN-AP, an Switch 2 PC-E1, PC-E2, PC-E3 und der Drucker. Alles in einem Segment.</desc>
+  <style>
+    :root, svg {
+      --grund:    #ffffff;
+      --tinte:    #1f2933;
+      --ruhig:    #e4e7eb;
+      --betont:   #14618f;
+      --gegen:    #a8420a;
+    }
+    .flaeche { fill: var(--grund); }
+    .kontur  { fill: none; stroke: var(--tinte); stroke-width: 2;
+               stroke-linejoin: round; stroke-linecap: round; }
+    .hilfe   { fill: none; stroke: var(--tinte); stroke-width: 1;
+               stroke-dasharray: 4 3; opacity: .6; }
+    .stark   { fill: none; stroke: var(--betont); stroke-width: 3;
+               stroke-linejoin: round; stroke-linecap: round; }
+    .fuell   { fill: var(--ruhig); }
+    text     { font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+               font-size: 15px; fill: var(--tinte); }
+    .titel   { font-size: 18px; font-weight: 600; }
+    .klein   { font-size: 13px; }
+  </style>
+  <rect class="flaeche" x="0" y="0" width="480" height="240"/>
+  <text class="titel" x="20" y="30">Muster GmbH — Netz heute</text>
+
+  <!-- Switches -->
+  <rect class="fuell" x="60" y="100" width="120" height="40" rx="4"/>
+  <rect class="kontur" x="60" y="100" width="120" height="40" rx="4"/>
+  <text x="80" y="125">Switch 1</text>
+  <rect class="fuell" x="300" y="100" width="120" height="40" rx="4"/>
+  <rect class="kontur" x="300" y="100" width="120" height="40" rx="4"/>
+  <text x="320" y="125">Switch 2</text>
+
+  <!-- Verbindung Gi0/1 -->
+  <line class="stark" x1="180" y1="120" x2="300" y2="120"/>
+  <text class="klein" x="200" y="112">Gi0/1</text>
+  <text class="klein" x="260" y="112">Gi0/1</text>
+
+  <!-- Geräte an Switch 1 -->
+  <line class="kontur" x1="80" y1="140" x2="80" y2="180"/>
+  <line class="kontur" x1="120" y1="140" x2="120" y2="180"/>
+  <line class="kontur" x1="160" y1="140" x2="160" y2="180"/>
+  <text class="klein" x="62" y="200">PC-B1</text>
+  <text class="klein" x="102" y="200">PC-B2</text>
+  <text class="klein" x="140" y="200">WLAN-AP</text>
+  <text class="klein" x="62" y="218">Fa0/1</text>
+  <text class="klein" x="102" y="218">Fa0/2</text>
+  <text class="klein" x="142" y="218">Fa0/5</text>
+
+  <!-- Geräte an Switch 2 -->
+  <line class="kontur" x1="320" y1="140" x2="320" y2="180"/>
+  <line class="kontur" x1="350" y1="140" x2="350" y2="180"/>
+  <line class="kontur" x1="380" y1="140" x2="380" y2="180"/>
+  <line class="kontur" x1="410" y1="140" x2="410" y2="180"/>
+  <text class="klein" x="302" y="200">PC-E1</text>
+  <text class="klein" x="338" y="200">PC-E2</text>
+  <text class="klein" x="368" y="200">PC-E3</text>
+  <text class="klein" x="398" y="200">Drucker</text>
+  <text class="klein" x="302" y="218">Fa0/1</text>
+  <text class="klein" x="338" y="218">Fa0/2</text>
+  <text class="klein" x="368" y="218">Fa0/3</text>
+  <text class="klein" x="402" y="218">Fa0/5</text>
+
+  <!-- Hinweis: ein Segment -->
+  <rect class="hilfe" x="40" y="80" width="400" height="150" rx="8"/>
+  <text class="klein" x="50" y="70">ein Segment — jeder erreicht jeden</text>
+</svg>

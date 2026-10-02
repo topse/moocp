@@ -1,0 +1,43 @@
+<p><strong>Lernsituation:</strong> Abteilungsnetze für die Muster GmbH · <strong>Zeit gesamt:</strong> 70 min · <strong>Sozialform:</strong> Gruppe (3), Prüfung im Gruppentausch · <strong>Dazu:</strong> Arbeitsblatt 1 (euer Konzept), Infoblatt 1, Hilfe der Netzsimulation</p>
+<p>Öffnet in der Netzsimulation die Datei <code>netz-vorher.pkt</code>. Sie zeigt das Netz aus Abb. 1 auf Arbeitsblatt 1. Setzt jetzt euer Konzept aus Arbeitsblatt 1 um.</p>
+<h3>Aufgabe 1 (15 min · Gruppe · AFB II)</h3>
+<p><strong>Recherchiert:</strong> wie man auf dem Switch ein VLAN anlegt und benennt — in der Hilfe der Netzsimulation oder im Netz, Suchbegriffe etwa „VLAN anlegen" und der Name der Simulation. Die Befehle braucht ihr auch in Aufgabe 2.</p>
+<p>Legt auf beiden Switches die VLANs aus eurer Tabelle an, mit Nummer und Namen. Prüft mit <code>show vlan brief</code>, dass sie da sind.</p>
+<h3>Aufgabe 2 (20 min · Gruppe · AFB II)</h3>
+<p><strong>Lest noch einmal:</strong> Infoblatt 1, Abschnitt 2.</p>
+<p><strong>Recherchiert:</strong> wie man einen Port als Access-Port einem VLAN zuordnet und wie man ihn zum Trunk macht — wie in Aufgabe 1.</p>
+<p>Ordnet die Ports zu: Access-Ports in ihr VLAN, die Verbindung zwischen den Switches als Trunk. Notiert hier, welche Befehle ihr für <strong>einen</strong> Access-Port und für den Trunk verwendet habt:</p>
+<table class="table table-bordered">
+<tbody>
+<tr><th>Access-Port</th><td></td></tr>
+<tr><th>Trunk</th><td></td></tr>
+</tbody>
+</table>
+<h3>Aufgabe 3 (15 min · Gruppe · AFB II)</h3>
+<p>Testet mit <code>ping</code>: Erreicht PC-B1 den PC-B2? Erreicht PC-B1 den PC-E1? Tragt die Ergebnisse ein und erklärt in einem Satz, warum das so ist.</p>
+<table class="table table-bordered">
+<thead>
+<tr><th>von</th><th>nach</th><th>erreichbar?</th><th>warum</th></tr>
+</thead>
+<tbody>
+<tr><td>PC-B1</td><td>PC-B2</td><td></td><td></td></tr>
+<tr><td>PC-B1</td><td>PC-E1</td><td></td><td></td></tr>
+<tr><td>PC-E1</td><td>Drucker</td><td></td><td></td></tr>
+</tbody>
+</table>
+<h3>Aufgabe 4 (20 min · Partner · AFB III)</h3>
+<p>Gruppentausch. Prüft die Konfiguration der anderen Gruppe <strong>gegen die Anforderungen</strong>, nicht gegen eure eigene Lösung. Tragt Befunde ein und gebt das Blatt zurück.</p>
+<table class="table table-bordered">
+<thead>
+<tr><th>Anforderung</th><th>erfüllt?</th><th>Befund</th></tr>
+</thead>
+<tbody>
+<tr><td>Buchhaltung erreicht Entwicklung nicht</td><td></td><td></td></tr>
+<tr><td>Gäste erreichen keine Abteilung</td><td></td><td></td></tr>
+<tr><td>Buchhaltung erreicht Buchhaltung (über beide Switches)</td><td></td><td></td></tr>
+<tr><td>Drucker: die Entscheidung der Gruppe ist umgesetzt</td><td></td><td></td></tr>
+<tr><td>VLAN 1 wird nicht produktiv benutzt</td><td></td><td></td></tr>
+<tr><td>Konzept (Arbeitsblatt 1) und Konfiguration stimmen überein</td><td></td><td></td></tr>
+</tbody>
+</table>
+<p>Beurteilt zum Schluss in zwei Sätzen: Würdet ihr die Lösung der anderen Gruppe dem Betriebsleiter empfehlen? Was ist ihr stärkster Punkt?</p>

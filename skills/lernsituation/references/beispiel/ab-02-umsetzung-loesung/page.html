@@ -1,0 +1,19 @@
+<h3>Aufgabe 1</h3>
+<p>Je Switch: <code>vlan 10</code> / <code>name Buchhaltung</code>, <code>vlan 20</code> / <code>name Entwicklung</code>, <code>vlan 30</code> / <code>name Gaeste</code>, ggf. <code>vlan 40</code> / <code>name Drucker</code>. <code>show vlan brief</code> zeigt sie ohne zugeordnete Ports.</p>
+<h3>Aufgabe 2</h3>
+<p>Access-Port: <code>interface Fa0/1</code> / <code>switchport mode access</code> / <code>switchport access vlan 10</code>. Trunk: <code>interface Gi0/1</code> / <code>switchport mode trunk</code> — <strong>auf beiden Switches</strong>.</p>
+<p><strong>Bewertungshinweis:</strong> Trunk nur einseitig gesetzt ist der häufigste Fehler; Aufgabe 3 deckt ihn auf (PC-B1 erreicht PC-B2 an Switch 2 nicht).</p>
+<h3>Aufgabe 3</h3>
+<table class="table table-bordered">
+<thead>
+<tr><th>von</th><th>nach</th><th>erreichbar?</th><th>warum</th></tr>
+</thead>
+<tbody>
+<tr><td>PC-B1</td><td>PC-B2</td><td>ja</td><td>gleiches VLAN, gleiches Subnetz</td></tr>
+<tr><td>PC-B1</td><td>PC-E1</td><td>nein</td><td>anderes VLAN, kein Router dazwischen</td></tr>
+<tr><td>PC-E1</td><td>Drucker</td><td>je nach Konzept</td><td>(a) nein ohne Routing, (b) ja, (c) eigener Drucker</td></tr>
+</tbody>
+</table>
+<h3>Aufgabe 4</h3>
+<p>Erwartungshorizont: Alle sechs Zeilen mit Befund; ein „nicht erfüllt" ist kein Fehler des Prüfers, sondern sein Ergebnis. Die Beurteilung nennt eine Stärke und bezieht sich auf die Anforderungen des Betriebsleiters.</p>
+<p><strong>Bewertungshinweis:</strong> Fremdkontrolle zählt 15 % — bewertet wird die Sorgfalt der Prüfung, nicht, ob die geprüfte Gruppe fehlerfrei war.</p>

@@ -1,0 +1,24 @@
+<h3>Aufgabe 1</h3>
+<p>Access-Port: gehört zu genau einem VLAN, das angeschlossene Gerät merkt vom VLAN nichts. Trunk-Port: transportiert mehrere VLANs, jedes Paket trägt ein 802.1Q-Tag mit seiner VLAN-ID. Ein Trunk würde auf der Verbindung zwischen Switch 1 und Switch 2 gebraucht (Abb. 1 auf Arbeitsblatt 1), sobald ein VLAN Geräte an beiden Switches hat.</p>
+<p><strong>Bewertungshinweis:</strong> „Trunk = schnelle Leitung" ist der häufigste Fehler — es geht um mehrere VLANs, nicht um Bandbreite.</p>
+<h3>Aufgabe 2</h3>
+<p>Mögliche Gründe: (1) Ein infizierter Rechner der Entwicklung (dort wird ausprobiert, installiert, getestet) soll die Buchhaltung nicht erreichen. (2) Vertrauliche Daten der Buchhaltung sollen nicht im selben Netz liegen wie Testsysteme oder Gäste. Ein VLAN unterbindet den <em>direkten</em> Verkehr auf Ebene 2; es ersetzt keine Firewall und schützt nicht vor einem kompromittierten Router.</p>
+<h3>Aufgabe 3</h3>
+<p>Erwartungshorizont — eine vertretbare Aufteilung:</p>
+<table class="table table-bordered">
+<thead>
+<tr><th>VLAN-ID</th><th>Name</th><th>Geräte</th><th>Ports Switch 1</th><th>Ports Switch 2</th></tr>
+</thead>
+<tbody>
+<tr><td>10</td><td>Buchhaltung</td><td>PC-B1, PC-B2</td><td>Fa0/1–0/2</td><td>—</td></tr>
+<tr><td>20</td><td>Entwicklung</td><td>PC-E1, PC-E2, PC-E3</td><td>—</td><td>Fa0/1–0/3</td></tr>
+<tr><td>30</td><td>Gaeste</td><td>WLAN-AP</td><td>Fa0/5</td><td>—</td></tr>
+<tr><td>40</td><td>Drucker</td><td>Drucker Flur</td><td>—</td><td>Fa0/5</td></tr>
+<tr><td>Trunk</td><td></td><td></td><td>Gi0/1</td><td>Gi0/1</td></tr>
+</tbody>
+</table>
+<p>Drei vertretbare Umgänge mit dem Drucker: (a) eigenes VLAN 40, erreichbar über den Router — sauber, braucht Routing (nächste Lernsituation); (b) Drucker in VLAN 10, Entwicklung druckt über eine Ausnahme am Router — pragmatisch, schwächt die Trennung; (c) zweiter Drucker — löst das Problem mit Geld. Keine ist falsch; die Begründung zählt.</p>
+<p><strong>Bewertungshinweis:</strong> VLAN 1 produktiv genutzt = Abzug. Trunk vergessen = Abzug. Drucker nicht bedacht = Aufgabe nicht vollständig.</p>
+<h3>Aufgabe 4</h3>
+<p>Gute Begründung: geht auf das Anliegen ein (Trennung), nennt die Folge (Drucker braucht einen Weg über den Router oder eine Ausnahme), nennt den Preis (Aufwand, Geld, Sicherheit). Schwache Begründung: „so ist es am einfachsten".</p>
+<p><strong>Bewertungshinweis:</strong> Personale Kompetenz — die Rückfrage wird sachlich beantwortet, nicht abgewehrt.</p>

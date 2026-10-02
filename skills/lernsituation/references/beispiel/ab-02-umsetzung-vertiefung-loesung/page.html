@@ -1,0 +1,3 @@
+<h3>Aufgabe 1</h3>
+<p>Mögliche Ursachen: (1) Port von PC-B2 wurde in ein anderes VLAN gesetzt — wahrscheinlichste, weil nur ein Gerät betroffen ist; prüfen mit <code>show vlan brief</code> oder <code>show interfaces Fa0/2 switchport</code>, beheben mit <code>switchport access vlan 10</code>. (2) Port ist deaktiviert (<code>shutdown</code>) — dann wäre aber gar nichts erreichbar, nicht nur der Drucker. (3) Trunk führt VLAN 10 nicht mehr (<code>switchport trunk allowed vlan</code>) — dann wären <em>beide</em> Buchhaltungs-PCs betroffen, wenn der Drucker am anderen Switch hängt.</p>
+<p><strong>Bewertungshinweis:</strong> AFB III — die Reihenfolge nach Wahrscheinlichkeit muss aus dem Symptom („nur PC-B2") begründet sein.</p>

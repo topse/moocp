@@ -1,0 +1,63 @@
+{
+  "abschnitt": {
+    "name": "Abteilungsnetze für die Muster GmbH",
+    "ordner": "abschnitt"
+  },
+  "aktivitaeten": [
+    {
+      "ordner": "schucu",
+      "typ": "page",
+      "name": "SchuCu"
+    },
+    {
+      "ordner": "lehrerhandreichung",
+      "typ": "page",
+      "name": "Lehrerhandreichung"
+    },
+    {
+      "ordner": "ab-01-auftrag",
+      "typ": "page",
+      "name": "Arbeitsblatt 1: Der Auftrag — Abteilungsnetze für die Muster GmbH"
+    },
+    {
+      "ordner": "ab-01-auftrag-loesung",
+      "typ": "page",
+      "name": "Lösung zu Arbeitsblatt 1: Der Auftrag"
+    },
+    {
+      "ordner": "ib-01-vlan-grundlagen",
+      "typ": "page",
+      "name": "Infoblatt 1: VLAN-Grundlagen"
+    },
+    {
+      "ordner": "ab-01-auftrag-hilfe",
+      "typ": "page",
+      "name": "Hilfe zu Arbeitsblatt 1: Die Aufteilung planen"
+    },
+    {
+      "ordner": "ab-01-auftrag-hilfe-loesung",
+      "typ": "page",
+      "name": "Lösung zur Hilfe zu Arbeitsblatt 1: Die Aufteilung planen"
+    },
+    {
+      "ordner": "ab-02-umsetzung",
+      "typ": "page",
+      "name": "Arbeitsblatt 2: Umsetzung und Prüfung"
+    },
+    {
+      "ordner": "ab-02-umsetzung-loesung",
+      "typ": "page",
+      "name": "Lösung zu Arbeitsblatt 2: Umsetzung und Prüfung"
+    },
+    {
+      "ordner": "ab-02-umsetzung-vertiefung",
+      "typ": "page",
+      "name": "Vertiefung zu Arbeitsblatt 2: Störungssuche"
+    },
+    {
+      "ordner": "ab-02-umsetzung-vertiefung-loesung",
+      "typ": "page",
+      "name": "Lösung zur Vertiefung zu Arbeitsblatt 2: Störungssuche"
+    }
+  ]
+}

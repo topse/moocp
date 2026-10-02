@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Genau das XML, das am 10.09.2026 im Testkurs den Import bestanden hat.
+     Von Hand geschrieben, nicht aus einem Export kopiert - nur so zeigt sich,
+     ob das Muster in references/coderunner.md vollstaendig ist.
+
+     Die fuenfte Frage ist die Kontrolle und absichtlich FALSCH: Ihre
+     Musterloesung rechnet a - b, der Testfall erwartet 5. Sie ist trotzdem
+     anstandslos importiert worden. Genau das ist der Befund - der XML-Import
+     laesst die Musterloesung nicht laufen. Erst das Oeffnen und Speichern im
+     Formular meldete "Erwartet 5, Erhalten -1".
+
+     Die vier anderen sind nach dem Import einmal ueber das Formular
+     gespeichert worden und dabei durch die Sandbox gelaufen.
+
+     Wieder einspielen: in eine LEERE Probierkategorie importieren, jede der
+     vier ersten Fragen oeffnen und speichern (muss durchgehen), die fuenfte
+     oeffnen und speichern (muss scheitern), danach alles loeschen. Achtung:
+     Loeschen entfernt nur die gewaehlte Version - zweimal nachsehen. -->
+<quiz>
+
+<question type="coderunner">
+  <name><text>ZZIMP CodeRunner python3</text></name>
+  <questiontext format="html"><text><![CDATA[<p>Schreibe <code>summe(a, b)</code>.</p>]]></text></questiontext>
+  <generalfeedback format="html"><text></text></generalfeedback>
+  <defaultgrade>2</defaultgrade>
+  <penalty>0</penalty>
+  <hidden>0</hidden>
+  <idnumber>zzimp-cr-py</idnumber>
+  <coderunnertype>python3</coderunnertype>
+  <prototypetype>0</prototypetype>
+  <allornothing>1</allornothing>
+  <penaltyregime>10, 20, ...</penaltyregime>
+  <answer>def summe(a, b):
+    return a + b
+</answer>
+  <validateonsave>1</validateonsave>
+  <testcases>
+    <testcase testtype="0" useasexample="0" hiderestiffail="0" mark="1.0000000">
+      <testcode><text>print(summe(2, 3))</text></testcode>
+      <stdin><text></text></stdin>
+      <expected><text>5
+</text></expected>
+      <extra><text></text></extra>
+      <display><text>SHOW</text></display>
+    </testcase>
+    <testcase testtype="0" useasexample="0" hiderestiffail="0" mark="1.0000000">
+      <testcode><text>print(summe(-4, 4))</text></testcode>
+      <stdin><text></text></stdin>
+      <expected><text>0
+</text></expected>
+      <extra><text></text></extra>
+      <display><text>SHOW</text></display>
+    </testcase>
+  </testcases>
+</question>
+
+<question type="coderunner">
+  <name><text>ZZIMP CodeRunner java</text></name>
+  <questiontext format="html"><text><![CDATA[<p>Schreibe <code>summe(int a, int b)</code>.</p>]]></text></questiontext>
+  <generalfeedback format="html"><text></text></generalfeedback>
+  <defaultgrade>1</defaultgrade>
+  <penalty>0</penalty>
+  <hidden>0</hidden>
+  <idnumber>zzimp-cr-java</idnumber>
+  <coderunnertype>java_method</coderunnertype>
+  <prototypetype>0</prototypetype>
+  <allornothing>1</allornothing>
+  <penaltyregime>10, 20, ...</penaltyregime>
+  <answer>int summe(int a, int b) {
+    return a + b;
+}
+</answer>
+  <validateonsave>1</validateonsave>
+  <testcases>
+    <testcase testtype="0" useasexample="0" hiderestiffail="0" mark="1.0000000">
+      <testcode><text>System.out.println(summe(2, 3))</text></testcode>
+      <stdin><text></text></stdin>
+      <expected><text>5
+</text></expected>
+      <extra><text></text></extra>
+      <display><text>SHOW</text></display>
+    </testcase>
+  </testcases>
+</question>
+
+<question type="coderunner">
+  <name><text>ZZIMP CodeRunner nodejs</text></name>
+  <questiontext format="html"><text><![CDATA[<p>Schreibe <code>summe(a, b)</code>.</p>]]></text></questiontext>
+  <generalfeedback format="html"><text></text></generalfeedback>
+  <defaultgrade>1</defaultgrade>
+  <penalty>0</penalty>
+  <hidden>0</hidden>
+  <idnumber>zzimp-cr-node</idnumber>
+  <coderunnertype>nodejs</coderunnertype>
+  <prototypetype>0</prototypetype>
+  <allornothing>1</allornothing>
+  <penaltyregime>10, 20, ...</penaltyregime>
+  <answer>function summe(a, b) {
+    return a + b;
+}
+</answer>
+  <validateonsave>1</validateonsave>
+  <testcases>
+    <testcase testtype="0" useasexample="0" hiderestiffail="0" mark="1.0000000">
+      <testcode><text>console.log(summe(2, 3));</text></testcode>
+      <stdin><text></text></stdin>
+      <expected><text>5
+</text></expected>
+      <extra><text></text></extra>
+      <display><text>SHOW</text></display>
+    </testcase>
+  </testcases>
+</question>
+
+<question type="coderunner">
+  <name><text>ZZIMP CodeRunner sql</text></name>
+  <questiontext format="html"><text><![CDATA[<p>Gib alle Zeilen der Tabelle <code>artikel</code> aus.</p>]]></text></questiontext>
+  <generalfeedback format="html"><text></text></generalfeedback>
+  <defaultgrade>1</defaultgrade>
+  <penalty>0</penalty>
+  <hidden>0</hidden>
+  <idnumber>zzimp-cr-sql</idnumber>
+  <coderunnertype>sql</coderunnertype>
+  <prototypetype>0</prototypetype>
+  <allornothing>1</allornothing>
+  <penaltyregime>10, 20, ...</penaltyregime>
+  <answer>SELECT * FROM artikel;</answer>
+  <validateonsave>1</validateonsave>
+  <testcases>
+    <testcase testtype="0" useasexample="0" hiderestiffail="0" mark="1.0000000">
+      <testcode><text>-- alle Artikel</text></testcode>
+      <stdin><text></text></stdin>
+      <expected><text>nummer  bezeichnung  preis
+------  -----------  -----
+1       Schraube     0.12
+2       Mutter       0.08
+3       Scheibe      0.05
+</text></expected>
+      <extra><text></text></extra>
+      <display><text>SHOW</text></display>
+    </testcase>
+    <file name="artikel.db" path="/" encoding="base64">U1FMaXRlIGZvcm1hdCAzAAIAAQEAQCAgAAAAAwAAAAIAAAAAAAAAAAAAAAIAAAAEAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAC6KFA0AAAABAaAAAaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABeAQcXGxsBgRN0YWJsZWFydGlrZWxhcnRpa2VsAkNSRUFURSBUQUJMRSBhcnRpa2VsIChudW1tZXIgSU5URUdFUiwgYmV6ZWljaG51bmcgVEVYVCwgcHJlaXMgUkVBTCkNAAAAAwG/AAHqAdUBvwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAwQBGwcDU2NoZWliZT+pmZmZmZmaEwIEARkHAk11dHRlcj+0euFHrhR7FAEECR0HU2NocmF1YmU/vrhR64UeuA==</file>
+  </testcases>
+</question>
+
+<!-- Die Kontrolle. Absichtlich falsch. -->
+<question type="coderunner">
+  <name><text>ZZIMP CodeRunner falsch</text></name>
+  <questiontext format="html"><text><![CDATA[<p>Kontrolle: die Musterloesung ist absichtlich falsch.</p>]]></text></questiontext>
+  <generalfeedback format="html"><text></text></generalfeedback>
+  <defaultgrade>1</defaultgrade>
+  <penalty>0</penalty>
+  <hidden>0</hidden>
+  <idnumber>zzimp-cr-falsch</idnumber>
+  <coderunnertype>python3</coderunnertype>
+  <prototypetype>0</prototypetype>
+  <allornothing>1</allornothing>
+  <penaltyregime>10, 20, ...</penaltyregime>
+  <answer>def summe(a, b):
+    return a - b
+</answer>
+  <validateonsave>1</validateonsave>
+  <testcases>
+    <testcase testtype="0" useasexample="0" hiderestiffail="0" mark="1.0000000">
+      <testcode><text>print(summe(2, 3))</text></testcode>
+      <stdin><text></text></stdin>
+      <expected><text>5
+</text></expected>
+      <extra><text></text></extra>
+      <display><text>SHOW</text></display>
+    </testcase>
+  </testcases>
+</question>
+
+</quiz>

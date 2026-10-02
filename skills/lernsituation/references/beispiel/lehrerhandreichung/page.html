@@ -1,0 +1,146 @@
+<h3>Thematische Einführung für die Lehrkraft</h3>
+<p>Ein <strong>VLAN</strong> (Virtual LAN) teilt ein physisches Netz in mehrere logische Netze. Geräte in verschiedenen VLANs können einander nicht direkt erreichen, auch wenn sie am selben Switch hängen — der Verkehr zwischen ihnen muss über einen Router laufen, und dort lässt er sich steuern oder unterbinden. Das ist der Grund, warum die Muster GmbH die Buchhaltung von der Entwicklung trennen will: nicht weil das Netz zu langsam wäre, sondern weil ein infizierter Entwicklungsrechner sonst die Buchhaltung erreicht.</p>
+<p>Jedes VLAN hat eine <strong>Nummer (VLAN-ID)</strong> zwischen 1 und 4094. VLAN 1 ist die Vorgabe, in der ein neuer Switch alle Ports hat — deshalb sollte man es für nichts Produktives verwenden. Ein Switch-Port ist entweder ein <strong>Access-Port</strong> (gehört zu genau einem VLAN, das Endgerät merkt nichts davon) oder ein <strong>Trunk-Port</strong> (transportiert mehrere VLANs, jedes Paket trägt dabei ein <strong>Tag</strong> nach IEEE 802.1Q mit seiner VLAN-ID). Trunks braucht man zwischen zwei Switches und zum Router.</p>
+<p>Typische Rückfragen der Lernenden und die Antworten [1]:</p>
+<ul>
+<li><em>„Warum nicht einfach zwei Switches kaufen?"</em> — Geht, kostet aber Geräte und Ports; und sobald eine dritte Abteilung dazukommt, ein drittes Gerät. VLANs trennen logisch auf derselben Hardware.</li>
+<li><em>„Sehen sich zwei Rechner im selben VLAN an verschiedenen Switches?"</em> — Ja, wenn die Switches über einen Trunk verbunden sind, der dieses VLAN führt.</li>
+<li><em>„Braucht jedes VLAN ein eigenes Subnetz?"</em> — In der Praxis ja: Ein VLAN ist eine Broadcast-Domäne, und Routing zwischen VLANs setzt getrennte Subnetze voraus. Das ist der Anschluss an die nächste Lernsituation.</li>
+</ul>
+<h4>Quellen</h4>
+<ol>
+<li>Eigene Darstellung. Für tiefergehende Rückfragen: IEEE 802.1Q-2022, Abschnitt 5 (Zusammenfassung frei zugänglich unter <a href="https://standards.ieee.org/ieee/802.1Q/10323/">https://standards.ieee.org/ieee/802.1Q/10323/</a>).</li>
+</ol>
+<h3>Vorwissen, Anschluss und Anrede</h3>
+<p>Vorausgesetzt: IP-Adressen und Subnetzmasken lesen und vergeben; einen Switch in der Simulation anschließen und Ports benennen — beides aus der vorigen Lernsituation. Nicht vorausgesetzt: VLANs. Anschluss: Die folgende Lernsituation verbindet die VLANs über einen Router (Inter-VLAN-Routing); die Rückfrage nach dem eigenen Subnetz je VLAN leitet dorthin über. Anrede der Lernenden auf den Blättern: <strong>du</strong>.</p>
+<h3>Lernumgebung</h3>
+<p>Rechnerraum mit Netzsimulation (Packet Tracer 8 oder gleichwertig), ein Rechner je Gruppe, Beamer für die Vorstellung in Schritt 7, die Blätter auf Papier, Internetzugang für die Recherche der Switch-Befehle in Schritt 5. Vorzubereiten ist die Datei <code>netz-vorher.pkt</code> mit dem Netz aus Abb. 1 auf Arbeitsblatt 1 — sie bringt die Lehrkraft mit, der Skill liefert sie nicht. Ohne Simulation schreiben die Gruppen in Schritt 5 einen Konfigurationsplan auf Papier (VLANs und Ports je Switch); die Fremdkontrolle in Schritt 6 prüft ihn gegen dieselbe Prüfliste.</p>
+<h3>Ablaufplan</h3>
+<table class="table table-bordered">
+<thead>
+<tr><th>Nr.</th><th>Phase</th><th>Zeit (min)</th><th>Was passiert</th><th>Sozialform</th><th>Material</th></tr>
+</thead>
+<tbody>
+<tr><td>1</td><td>Informieren</td><td>15</td><td>Einstieg: Handlungssituation, Auftrag klären, offene Fragen sammeln</td><td>Plenum</td><td>Arbeitsblatt 1</td></tr>
+<tr><td>2</td><td>Informieren</td><td>20</td><td>VLAN-Grundlagen lesen, Verständnisaufgaben 1–2 auf Arbeitsblatt 1</td><td>Einzel</td><td>Infoblatt 1</td></tr>
+<tr><td>3</td><td>Planen</td><td>30</td><td>Aufteilung entwerfen: Welche Abteilung in welches VLAN, welche Ports, wo Trunks</td><td>Gruppe (3)</td><td>Arbeitsblatt 1, Hilfe zu Arbeitsblatt 1</td></tr>
+<tr><td>4</td><td>Entscheiden</td><td>15</td><td>Gruppen legen sich fest und schreiben die Begründung; Lehrkraft als „Betriebsleiter" stellt Rückfragen</td><td>Gruppe (3)</td><td>Arbeitsblatt 1</td></tr>
+<tr><td>5</td><td>Durchführen</td><td>50</td><td>Befehle recherchieren, Konfiguration in der Simulation nach eigenem Konzept</td><td>Gruppe (3)</td><td>Arbeitsblatt 2, Vertiefung zu Arbeitsblatt 2</td></tr>
+<tr><td>6</td><td>Kontrollieren</td><td>20</td><td>Fremdkontrolle: Gruppen tauschen und prüfen nach Prüfliste</td><td>Partner (Gruppentausch)</td><td>Arbeitsblatt 2</td></tr>
+<tr><td>7</td><td>Reflektieren</td><td>20</td><td>Kurzvorstellung je Gruppe (3 min), dann: Was war die schwerste Entscheidung?</td><td>Plenum</td><td>—</td></tr>
+<tr><td>8</td><td>—</td><td>10</td><td>Puffer</td><td>—</td><td>—</td></tr>
+<tr><td></td><td></td><td><strong>180</strong></td><td><strong>Summe</strong></td><td></td><td></td></tr>
+</tbody>
+</table>
+<h3>Die Schritte im Einzelnen</h3>
+<h4>Schritt 1: Einstieg mit der Handlungssituation</h4>
+<ul>
+<li><strong>Ziel:</strong> Alle kennen den Auftrag und wissen, was am Ende vorliegen soll.</li>
+<li><strong>Ablauf:</strong> Arbeitsblatt 1 austeilen. Eine Schülerin liest die Situation vor. Die Lehrkraft fragt: „Was will der Betriebsleiter eigentlich — und was sagt er nicht?" Antworten an der Tafel sammeln (er sagt nicht, wie; er sagt nicht, wie viele VLANs; er sagt nicht, ob Drucker geteilt werden).</li>
+<li><strong>Material:</strong> Arbeitsblatt 1, ab Beginn.</li>
+<li><strong>Worauf achten:</strong> Nicht in die Lösung einsteigen. Offene Fragen bleiben offen — sie sind der Stoff der Planungsphase.</li>
+</ul>
+<h4>Schritt 2: Grundlagen lesen</h4>
+<ul>
+<li><strong>Ziel:</strong> Begriffe VLAN, Access, Trunk, Tag sitzen so weit, dass geplant werden kann.</li>
+<li><strong>Ablauf:</strong> Infoblatt 1 austeilen, 12 min lesen, dann Aufgaben 1 und 2 auf Arbeitsblatt 1 in Einzelarbeit. Kurze Sicherung: zwei Antworten laut vorlesen lassen.</li>
+<li><strong>Material:</strong> Infoblatt 1 mit der Zeichnung des Netzes (Abb. 1 auf Infoblatt 1).</li>
+<li><strong>Worauf achten:</strong> Die Zeichnung zeigt den <em>Ist</em>-Zustand. Wer hier schon VLANs einzeichnet, ist zu schnell — die Zeichnung ist in Schritt 3 die Vorlage.</li>
+</ul>
+<h4>Schritt 3: Aufteilung planen</h4>
+<ul>
+<li><strong>Ziel:</strong> Jede Gruppe hat einen Entwurf: VLAN-Tabelle und Portzuordnung.</li>
+<li><strong>Ablauf:</strong> Dreiergruppen. Aufgabe 3 auf Arbeitsblatt 1. Die Lehrkraft geht herum und stellt nur Fragen („Wo hängt der Drucker der Buchhaltung? Wer druckt noch darauf?").</li>
+<li><strong>Material:</strong> Arbeitsblatt 1, Aufgabe 3.</li>
+<li><strong>Worauf achten:</strong> Der Drucker ist die eingebaute Entscheidung — er wird von zwei Abteilungen genutzt. Es gibt drei vertretbare Lösungen (eigenes Drucker-VLAN mit Routing, Drucker in die Buchhaltung mit Ausnahme, zwei Drucker). Keine ist „die richtige".</li>
+<li><strong>Differenzierung:</strong> Gruppen, die nach 15 min nichts auf dem Blatt haben, bekommen die Hilfe zu Arbeitsblatt 1 — eine vorstrukturierte Tabelle.</li>
+</ul>
+<h4>Schritt 4: Entscheiden und begründen</h4>
+<ul>
+<li><strong>Ziel:</strong> Jede Gruppe hat sich festgelegt und kann es in drei Sätzen begründen.</li>
+<li><strong>Ablauf:</strong> Aufgabe 4 auf Arbeitsblatt 1. Die Lehrkraft tritt als Betriebsleiter auf und stellt jeder Gruppe eine Rückfrage („Und wenn die Entwicklung einen zweiten Drucker will?").</li>
+<li><strong>Material:</strong> Arbeitsblatt 1, Aufgabe 4.</li>
+<li><strong>Worauf achten:</strong> Begründung muss auf das Anliegen zurückgehen (Trennung, Sicherheit), nicht auf Bequemlichkeit („weniger Arbeit").</li>
+</ul>
+<h4>Schritt 5: Konfiguration</h4>
+<ul>
+<li><strong>Ziel:</strong> Zwei Switches so konfiguriert, dass das eigene Konzept steht.</li>
+<li><strong>Ablauf:</strong> Arbeitsblatt 2 austeilen. Simulation öffnen (<code>netz-vorher.pkt</code>). Aufgaben 1–3. Die Befehle recherchieren die Gruppen selbst, in der Hilfe der Simulation oder im Netz; die Lehrkraft nennt sie nicht vor, sondern fragt, wo gesucht wurde. Wer fertig ist, bekommt die Vertiefung zu Arbeitsblatt 2 (Störung: ein Port ist im falschen VLAN — finden und beheben).</li>
+<li><strong>Material:</strong> Arbeitsblatt 2; Vertiefung zu Arbeitsblatt 2 ab min 35 für fertige Gruppen.</li>
+<li><strong>Worauf achten:</strong> Der Trunk zwischen den Switches ist der häufigste Fehler — vergessen oder nur auf einer Seite. Nicht vorsagen; die Fremdkontrolle findet es.</li>
+</ul>
+<h4>Schritt 6: Fremdkontrolle</h4>
+<ul>
+<li><strong>Ziel:</strong> Jede Konfiguration ist von einer anderen Gruppe gegen die Prüfliste geprüft.</li>
+<li><strong>Ablauf:</strong> Gruppen tauschen die Plätze. Aufgabe 4 auf Arbeitsblatt 2 (Prüfliste) ausfüllen, Befunde eintragen, zurückgeben, 5 min Nachbessern.</li>
+<li><strong>Material:</strong> Arbeitsblatt 2, Aufgabe 4.</li>
+<li><strong>Worauf achten:</strong> Die Prüfliste prüft <em>Anforderungen</em> (Buchhaltung erreicht Entwicklung nicht), nicht die Konfiguration Zeile für Zeile.</li>
+</ul>
+<h4>Schritt 7: Vorstellung und Reflexion</h4>
+<ul>
+<li><strong>Ziel:</strong> Jede Gruppe hat ihr Konzept einmal laut begründet; die Klasse hat gesehen, dass es mehrere Wege gab.</li>
+<li><strong>Ablauf:</strong> Je Gruppe 3 min am Beamer: Zeichnung, Entscheidung beim Drucker, ein Satz zur Begründung. Danach eine Runde: „Was war die schwerste Entscheidung, und würdet ihr sie wieder so treffen?"</li>
+<li><strong>Material:</strong> —</li>
+<li><strong>Worauf achten:</strong> Bei sechs Gruppen sind 3 min knapp; dann zwei Gruppen mit gleicher Lösung zusammen vorstellen lassen.</li>
+</ul>
+<h4>Schritt 8: Puffer</h4>
+<ul>
+<li><strong>Ziel:</strong> 10 min für Überzug in Schritt 5 oder eine längere Reflexion.</li>
+<li><strong>Ablauf:</strong> Wird er nicht gebraucht: Aufgabe 1 auf Vertiefung zu Arbeitsblatt 2 im Plenum lösen.</li>
+<li><strong>Material:</strong> —</li>
+<li><strong>Worauf achten:</strong> Puffer nicht vorab verplanen.</li>
+</ul>
+<h3>Materialübersicht</h3>
+<table class="table table-bordered">
+<thead>
+<tr><th>Blatt</th><th>Art</th><th>Einsatz in Schritt</th><th>Zweck</th></tr>
+</thead>
+<tbody>
+<tr><td>Arbeitsblatt 1: Der Auftrag — Abteilungsnetze für die Muster GmbH</td><td>Arbeitsblatt</td><td>1–4</td><td>Handlungssituation, Verständnis, Planung, Entscheidung</td></tr>
+<tr><td>Lösung zu Arbeitsblatt 1: Der Auftrag</td><td>Lösung</td><td>— (Lehrkraft)</td><td>Erwartungshorizont, drei vertretbare Aufteilungen</td></tr>
+<tr><td>Hilfe zu Arbeitsblatt 1: Die Aufteilung planen</td><td>Hilfe</td><td>3, bei Bedarf</td><td>vorstrukturierte Planungstabelle</td></tr>
+<tr><td>Lösung zur Hilfe zu Arbeitsblatt 1: Die Aufteilung planen</td><td>Lösung</td><td>— (Lehrkraft)</td><td></td></tr>
+<tr><td>Arbeitsblatt 2: Umsetzung und Prüfung</td><td>Arbeitsblatt</td><td>5–6</td><td>Konfiguration und Prüfliste</td></tr>
+<tr><td>Lösung zu Arbeitsblatt 2: Umsetzung und Prüfung</td><td>Lösung</td><td>— (Lehrkraft)</td><td>Musterkonfiguration</td></tr>
+<tr><td>Vertiefung zu Arbeitsblatt 2: Störungssuche</td><td>Vertiefung</td><td>5, ab min 35</td><td>Störungssuche</td></tr>
+<tr><td>Lösung zur Vertiefung zu Arbeitsblatt 2: Störungssuche</td><td>Lösung</td><td>— (Lehrkraft)</td><td></td></tr>
+<tr><td>Infoblatt 1: VLAN-Grundlagen</td><td>Infoblatt</td><td>2</td><td>Begriffe VLAN, Access, Trunk, Tag</td></tr>
+<tr><td>Abb. 1 auf Infoblatt 1</td><td>Zeichnung</td><td>2</td><td>Ist-Zustand des Netzes, dieselbe Zeichnung als Abb. 1 auf Arbeitsblatt 1</td></tr>
+</tbody>
+</table>
+<h3>Leistungsfeststellung und -bewertung</h3>
+<p>Bewertet wird das Handlungsprodukt der Gruppe, nicht jede Aufgabe einzeln:</p>
+<table class="table table-bordered">
+<thead>
+<tr><th>Was</th><th>Anteil</th><th>Woran</th></tr>
+</thead>
+<tbody>
+<tr><td>Konzept und Konfiguration</td><td>60 %</td><td>Die Anforderungen des Betriebsleiters sind erfüllt; Konzept (Arbeitsblatt 1) und Konfiguration stimmen überein</td></tr>
+<tr><td>Vorstellung mit Begründung</td><td>25 %</td><td>Aufteilung und Entscheidung beim Drucker nachvollziehbar begründet (Schritt 7)</td></tr>
+<tr><td>Fremdkontrolle</td><td>15 %</td><td>Prüfliste der anderen Gruppe vollständig, Befunde konkret, Empfehlung begründet</td></tr>
+</tbody>
+</table>
+<p>Fachlich zu personal etwa 70 : 30. Die Anforderungen stehen als Prüfliste auf Arbeitsblatt 2 (Aufgabe 4); die Gruppen sehen sie, bevor sie konfigurieren. Ob die Gewichtung zu den Grundsätzen der Leistungsbewertung der Fachgruppe passt, prüft die Lehrkraft.</p>
+<h3>Phasen der vollständigen Handlung</h3>
+<p>Alle sechs Phasen sind enthalten. Reflektieren ist mit 20 Minuten kurz und mit der Vorstellung zusammengelegt — bewusst, weil die Lernsituation Teil einer Reihe ist, deren ausführliche Reflexion nach der nächsten (Inter-VLAN-Routing) folgt.</p>
+<h3>Checkliste</h3>
+<table class="table table-bordered">
+<thead>
+<tr><th>Frage</th><th>Ja/Nein</th><th>Woran man es sieht</th></tr>
+</thead>
+<tbody>
+<tr><td>Gibt es eine realistische Handlungssituation?</td><td>Ja</td><td>Umzug in ein neues Gebäude mit dem Wunsch nach Trennung — so kommt es rein</td></tr>
+<tr><td>Gibt es eine konkrete Problemstellung?</td><td>Ja</td><td>Welche Abteilung in welches VLAN, und was ist mit dem geteilten Drucker</td></tr>
+<tr><td>Gibt es mehrere Lösungswege?</td><td>Ja</td><td>drei vertretbare Umgänge mit dem Drucker, siehe Lösung zu Arbeitsblatt 1</td></tr>
+<tr><td>Müssen Entscheidungen getroffen werden?</td><td>Ja</td><td>Schritt 4 verlangt Festlegung und Begründung gegenüber dem Betriebsleiter</td></tr>
+<tr><td>Werden alle Phasen der vollständigen Handlung durchlaufen?</td><td>Ja</td><td>Schritte 1–7 decken alle sechs Phasen ab</td></tr>
+<tr><td>Entsteht ein Handlungsergebnis?</td><td>Ja</td><td>Konzept, Konfiguration, Kurzvorstellung</td></tr>
+<tr><td>Werden Fach- und Personalkompetenzen gefördert?</td><td>Ja</td><td>Konfiguration und Begründung im Team; Rollenspiel mit dem Betriebsleiter</td></tr>
+<tr><td>Arbeiten die Lernenden selbstständig?</td><td>Ja</td><td>Lehrkraft stellt ab Schritt 3 nur Fragen</td></tr>
+<tr><td>Gibt es kooperative Lernanteile?</td><td>Ja</td><td>Dreiergruppen in Schritt 3–5, Gruppentausch in Schritt 6</td></tr>
+<tr><td>Gibt es eine Reflexionsphase?</td><td>Ja</td><td>Schritt 7, Frage nach der schwersten Entscheidung</td></tr>
+<tr><td>Dienen die Inhalte der Handlung?</td><td>Ja</td><td>Infoblatt 1 enthält nur, was für die Planung gebraucht wird; Inter-VLAN-Routing ist bewusst ausgeklammert</td></tr>
+<tr><td>Benennt die Handlungssituation den Rahmen?</td><td>Ja</td><td>Muster GmbH, Umzug der Verwaltung in ein neues Gebäude, Betriebsleiter als Auftraggeber</td></tr>
+<tr><td>Sind schulische Entscheidungen berücksichtigt?</td><td>Ja</td><td>Lernumgebung aus dem Rechnerraum; Bewertungsgrundsätze der Fachgruppe prüft die Lehrkraft</td></tr>
+</tbody>
+</table>

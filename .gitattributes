@@ -1,0 +1,8 @@
+# Zeilenenden: LF überall, außer in Batch-Dateien -- cmd liest Sprungmarken
+# und goto in Dateien mit LF nicht zuverlässig.
+* text=auto eol=lf
+*.bat text eol=crlf
+
+*.png binary
+*.ico binary
+*.skill binary

@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Genau das XML, das am 08.09.2026 im Testkurs den Import bestanden hat.
+     Es ist von Hand geschrieben, nicht aus einem Export kopiert - nur so zeigt
+     sich, ob das Muster in references/fragetypen.md vollstaendig ist.
+
+     Die vierte Frage ist der Nachweis, dass gapfill die richtigen Antworten
+     aus den eckigen Klammern selbst baut: Sie hat kein einziges <answer> und
+     kam mit "Strom" und "Ampere" als richtigen Antworten zurueck.
+
+     Wieder einspielen: in eine LEERE Probierkategorie importieren, die vier
+     Fragen in der Vorschau ansehen, danach loeschen. Nicht in eine Kategorie
+     mit echten Fragen - die Sachnummern zzimp-* sollen dort nicht auftauchen. -->
+<quiz>
+
+<question type="ddmatch">
+  <name><text>ZZIMP ddmatch</text></name>
+  <questiontext format="html"><text><![CDATA[<p>Ordne zu.</p>]]></text></questiontext>
+  <generalfeedback format="html"><text></text></generalfeedback>
+  <defaultgrade>3.0000000</defaultgrade>
+  <penalty>0.3333333</penalty>
+  <hidden>0</hidden>
+  <idnumber>zzimp-ddmatch</idnumber>
+  <shuffleanswers>true</shuffleanswers>
+  <subquestion format="html">
+    <text><![CDATA[<p>Leiter</p>]]></text>
+    <answer format="html"><text><![CDATA[<p>Kupfer</p>]]></text></answer>
+  </subquestion>
+  <subquestion format="html">
+    <text><![CDATA[<p>Nichtleiter</p>]]></text>
+    <answer format="html"><text><![CDATA[<p>Glas</p>]]></text></answer>
+  </subquestion>
+  <subquestion format="html">
+    <text><![CDATA[<p>Halbleiter</p>]]></text>
+    <answer format="html"><text><![CDATA[<p>Silizium</p>]]></text></answer>
+  </subquestion>
+</question>
+
+<question type="mtf">
+  <name><text>ZZIMP mtf</text></name>
+  <questiontext format="html"><text><![CDATA[<p>Wahr oder falsch?</p>]]></text></questiontext>
+  <generalfeedback format="html"><text></text></generalfeedback>
+  <defaultgrade>3.0000000</defaultgrade>
+  <penalty>0.3333333</penalty>
+  <hidden>0</hidden>
+  <idnumber>zzimp-mtf</idnumber>
+  <scoringmethod><text>subpoints</text></scoringmethod>
+  <shuffleanswers>true</shuffleanswers>
+  <numberofrows>3</numberofrows>
+  <numberofcolumns>2</numberofcolumns>
+  <answernumbering>none</answernumbering>
+  <deduction>0.000</deduction>
+  <row number="1">
+    <optiontext format="html"><text><![CDATA[<p>Kupfer leitet gut.</p>]]></text></optiontext>
+    <feedbacktext format="html"><text></text></feedbacktext>
+  </row>
+  <row number="2">
+    <optiontext format="html"><text><![CDATA[<p>Glas leitet gut.</p>]]></text></optiontext>
+    <feedbacktext format="html"><text></text></feedbacktext>
+  </row>
+  <row number="3">
+    <optiontext format="html"><text><![CDATA[<p>Silizium ist ein Halbleiter.</p>]]></text></optiontext>
+    <feedbacktext format="html"><text></text></feedbacktext>
+  </row>
+  <column number="1"><responsetext format="moodle_auto_format"><text>Wahr</text></responsetext></column>
+  <column number="2"><responsetext format="moodle_auto_format"><text>Falsch</text></responsetext></column>
+  <weight rownumber="1" columnnumber="1"><value>1.000</value></weight>
+  <weight rownumber="1" columnnumber="2"><value>0.000</value></weight>
+  <weight rownumber="2" columnnumber="1"><value>0.000</value></weight>
+  <weight rownumber="2" columnnumber="2"><value>1.000</value></weight>
+  <weight rownumber="3" columnnumber="1"><value>1.000</value></weight>
+  <weight rownumber="3" columnnumber="2"><value>0.000</value></weight>
+</question>
+
+<question type="gapfill">
+  <name><text>ZZIMP gapfill</text></name>
+  <questiontext format="html"><text><![CDATA[<p>Die [Spannung] wird in [Volt] gemessen.</p>]]></text></questiontext>
+  <generalfeedback format="html"><text></text></generalfeedback>
+  <defaultgrade>2.0000000</defaultgrade>
+  <penalty>0.3333333</penalty>
+  <hidden>0</hidden>
+  <idnumber>zzimp-gapfill</idnumber>
+  <answerdisplay>dragdrop</answerdisplay>
+  <delimitchars>[]</delimitchars>
+  <casesensitive>0</casesensitive>
+  <noduplicates>0</noduplicates>
+  <disableregex>1</disableregex>
+  <fixedgapsize>1</fixedgapsize>
+  <optionsaftertext>0</optionsaftertext>
+  <letterhints>0</letterhints>
+  <singleuse>0</singleuse>
+  <answer fraction="100" format="moodle_auto_format">
+    <text>Spannung</text>
+    <feedback format="moodle_auto_format"><text></text></feedback>
+  </answer>
+  <answer fraction="100" format="moodle_auto_format">
+    <text>Volt</text>
+    <feedback format="moodle_auto_format"><text></text></feedback>
+  </answer>
+  <answer fraction="0" format="moodle_auto_format">
+    <text>Ampere</text>
+    <feedback format="moodle_auto_format"><text></text></feedback>
+  </answer>
+</question>
+
+<question type="gapfill">
+  <name><text>ZZIMP gapfill ohne answer</text></name>
+  <questiontext format="html"><text><![CDATA[<p>Der [Strom] wird in [Ampere] gemessen.</p>]]></text></questiontext>
+  <generalfeedback format="html"><text></text></generalfeedback>
+  <defaultgrade>2.0000000</defaultgrade>
+  <penalty>0.3333333</penalty>
+  <hidden>0</hidden>
+  <idnumber>zzimp-gapfill-2</idnumber>
+  <answerdisplay>dragdrop</answerdisplay>
+  <delimitchars>[]</delimitchars>
+  <casesensitive>0</casesensitive>
+  <noduplicates>0</noduplicates>
+  <disableregex>1</disableregex>
+  <fixedgapsize>1</fixedgapsize>
+  <optionsaftertext>0</optionsaftertext>
+  <letterhints>0</letterhints>
+  <singleuse>0</singleuse>
+</question>
+
+</quiz>

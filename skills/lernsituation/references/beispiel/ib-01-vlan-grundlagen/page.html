@@ -1,0 +1,32 @@
+<p><strong>Lernsituation:</strong> Abteilungsnetze für die Muster GmbH · <strong>Gehört zu:</strong> Arbeitsblatt 1, Hilfe zu Arbeitsblatt 1, Arbeitsblatt 2 · <strong>Lesezeit:</strong> 12 min</p>
+<p>Dieses Blatt erklärt, was ein VLAN ist und wie ein Switch es umsetzt — so weit, wie du es brauchst, um das Netz der Muster GmbH in Abteilungsnetze aufzuteilen.</p>
+<h3>1. Was ein VLAN ist</h3>
+<p>→ für Arbeitsblatt 1, Aufgabe 1</p>
+<p>Ein Switch verbindet alle angeschlossenen Geräte zu einem Netz: Jedes Gerät kann jedes andere direkt erreichen. Ein <strong>VLAN</strong> (Virtual LAN) teilt diesen Switch logisch in mehrere getrennte Netze auf. Geräte in verschiedenen VLANs erreichen einander nicht — auch wenn sie am selben Gerät stecken. Sie könnten es nur über einen Router, und dort lässt sich regeln, wer wen darf.</p>
+<p>Jedes VLAN hat eine <strong>Nummer</strong> von 1 bis 4094 und sinnvollerweise einen Namen. VLAN 1 gibt es auf jedem Switch von Anfang an; alle Ports gehören zunächst dazu. Für produktive Netze verwendet man es nicht.</p>
+<h3>2. Access und Trunk</h3>
+<p>→ für Arbeitsblatt 1, Aufgaben 1 und 3, und Arbeitsblatt 2, Aufgabe 2</p>
+<p>Ein Switch-Port ist entweder das eine oder das andere:</p>
+<table class="table table-bordered">
+<thead>
+<tr><th></th><th>Access-Port</th><th>Trunk-Port</th></tr>
+</thead>
+<tbody>
+<tr><td>gehört zu</td><td>genau einem VLAN</td><td>mehreren VLANs</td></tr>
+<tr><td>daran hängt</td><td>ein Endgerät (PC, Drucker, Access Point)</td><td>ein anderer Switch oder ein Router</td></tr>
+<tr><td>die Pakete</td><td>tragen keine VLAN-Kennung</td><td>tragen ein <strong>Tag</strong> mit der VLAN-ID</td></tr>
+</tbody>
+</table>
+<p>Das Tag ist ein kleines Feld im Ethernet-Rahmen, festgelegt in der Norm <strong>IEEE 802.1Q</strong>. Der Trunk braucht es, damit der Switch am anderen Ende weiß, zu welchem VLAN ein ankommendes Paket gehört.</p>
+<h3>3. Das Netz der Muster GmbH heute</h3>
+<p>→ für Arbeitsblatt 1, Aufgaben 1 und 3, und Hilfe zu Arbeitsblatt 1, Aufgabe 1</p>
+<p><img src="@@PLUGINFILE@@/Z-01-netz-vorher.svg" alt="Netz der Muster GmbH vor der Umstellung: zwei Switches, alle Geräte in einem Segment" class="img-fluid"></p>
+<p><em>Abb. 1: Zwei Switches, verbunden über Gi0/1. Alle sieben Geräte sind in einem Segment; PC-B1 erreicht PC-E3 direkt.</em></p>
+<p>Sobald Geräte <strong>desselben</strong> VLANs an <strong>beiden</strong> Switches hängen, muss die Verbindung zwischen den Switches ein Trunk sein. Sonst kommt ein Paket von PC-B1 (Switch 1) nie bei einem Buchhaltungs-PC an Switch 2 an.</p>
+<h3>4. Was ein VLAN nicht ist</h3>
+<p>→ für Arbeitsblatt 1, Aufgabe 2</p>
+<p>Ein VLAN trennt Verkehr auf der Ebene der Switches. Es ist keine Firewall: Was der Router zwischen den VLANs durchlässt, entscheidet der Router. Und es ersetzt keine getrennten Subnetze — jedes VLAN bekommt in der Praxis sein eigenes IP-Subnetz. Wie die VLANs dann doch miteinander reden, ist Thema der nächsten Lernsituation.</p>
+<h3>Zum Nachschlagen</h3>
+<ul>
+<li>IEEE 802.1Q, Übersichtsseite der Norm — <a href="https://standards.ieee.org/ieee/802.1Q/10323/">https://standards.ieee.org/ieee/802.1Q/10323/</a> — nur, wenn du wissen willst, wie das Tag genau aufgebaut ist; für die Lernsituation nicht nötig.</li>
+</ul>
