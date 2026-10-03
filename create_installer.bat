@@ -1,6 +1,6 @@
 @echo off
 rem Baut den Installer: Skills, Prüfungen, App, dann NSIS. Ergebnis:
-rem installer\moocp_setup<Version>.exe, die Version aus pubspec.yaml.
+rem installer\moocp_setup_<Version>.exe, die Version aus pubspec.yaml.
 rem
 rem Voraussetzungen: Flutter mit Windows-Desktop, Python 3, NSIS 3 (makensis
 rem im Suchpfad oder unter %ProgramFiles(x86)%\NSIS).

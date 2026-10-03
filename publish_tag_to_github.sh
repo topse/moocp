@@ -101,8 +101,13 @@ echo "Lade ${TAG} nach ${REMOTE}/main …"
 # --force-with-lease: Hat jemand auf GitHub etwas an main geändert, das hier
 # nicht bekannt ist, bricht das Hochladen ab, statt es zu überschreiben.
 git push "${REMOTE}" "${ZWEIG}:refs/heads/main" --force-with-lease
+# Lokal heißt der Tag „github-v0.9.4“ (er zeigt auf den veröffentlichten
+# Commit, nicht auf den der Entwicklung), auf GitHub aber „v0.9.4“: Aus dem
+# Tag des Releases liest die Update-Prüfung der App die Fassung
+# (lib/update/update.dart), und dafür muss er dem Schema „v<version>“
+# folgen.
 git tag --force "github-${TAG}" "${NEU}"
-git push "${REMOTE}" "github-${TAG}" --force
+git push "${REMOTE}" "refs/tags/github-${TAG}:refs/tags/${TAG}" --force
 
 cat <<EOF
 
@@ -110,8 +115,14 @@ Veröffentlicht: ${TAG} auf ${REMOTE}
   Quelle:  ${QUELLE:0:12}
   Commit:  ${NEU:0:12}
   Zweig:   ${ZWEIG} -> ${REMOTE}/main
-  Tag:     github-${TAG}
+  Tag:     github-${TAG} (auf GitHub: ${TAG})
 
-Auf GitHub noch: aus dem Tag github-${TAG} ein Release machen
-und den Installer anhängen.
+Auf GitHub noch: aus dem Tag ${TAG} ein Release machen und den Installer
+anhängen. Beides muss stimmen, sonst findet die Update-Prüfung der App die
+Fassung nicht:
+
+  Tag des Releases:  ${TAG}
+  Name der Datei:    moocp_setup_${VERSION}.exe
+  kein Entwurf, keine Vorabfassung
+
 EOF

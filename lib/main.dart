@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:logging/logging.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
 import 'package:window_manager/window_manager.dart';
 
@@ -18,6 +19,7 @@ import 'arbeitsordner.dart';
 import 'einrichtung.dart';
 import 'einrichtung_dialog.dart';
 import 'einstellungen.dart';
+import 'einstellungen_dialog.dart';
 import 'freigabe.dart';
 import 'log.dart';
 import 'mcp/mcp_dienst.dart';
@@ -25,6 +27,8 @@ import 'moodle/moodle_zugang.dart';
 import 'moodle/zeilenvergleich.dart';
 import 'protokoll.dart';
 import 'ueber.dart';
+import 'update/update.dart';
+import 'update/update_dialoge.dart';
 
 Future<void> main(List<String> argumente) async {
   // Keine Ausgabe auf die Konsole, von niemandem: debugPrint schweigt -- auch
@@ -60,10 +64,14 @@ Future<void> main(List<String> argumente) async {
   await windowManager.setPreventClose(true);
   final moodle = MoodleZugang(protokoll);
   final freigaben = Freigaben(protokoll);
+  // Reste früherer Updates im Temp-Verzeichnis; der Installer, der die App
+  // gerade neu gestartet hat, läuft noch und bleibt bis zum nächsten Start.
+  resteWegraeumen();
   // Gestartet wird der MCP-Server erst, wenn die App eingerichtet und
   // angemeldet ist (_HauptseiteState._starten).
   final dienst = McpDienst(einstellungen, moodle, protokoll, freigaben, arbeitsordner.pfad);
-  runApp(MoocpApp(einstellungen, protokoll, moodle, dienst, freigaben, arbeitsordner));
+  runApp(MoocpApp(einstellungen, protokoll, moodle, dienst, freigaben, arbeitsordner,
+      updatefaehig: updateMoeglich(argumente, Platform.environment)));
 }
 
 /// Aufruf durch die Deinstallation (installer/moocp.nsi): die
@@ -95,6 +103,7 @@ class MoocpApp extends StatelessWidget {
     this.freigaben,
     this.arbeitsordner, {
     this.einrichtungsstand,
+    this.updatefaehig = false,
     super.key,
   });
   final Einstellungen einstellungen;
@@ -103,6 +112,10 @@ class MoocpApp extends StatelessWidget {
   final McpDienst dienst;
   final Freigaben freigaben;
   final Arbeitsordner arbeitsordner;
+
+  /// Ob diese App sich selbst aktualisieren kann (update.dart,
+  /// updateMoeglich). Nur dann wird geprüft und überhaupt gefragt.
+  final bool updatefaehig;
 
   /// Ersatz für die Prüfung der Einrichtung, nur für die README-Bilder
   /// (tool/bilder_test.dart): Die echte Prüfung sähe auf dem Rechner nach,
@@ -120,14 +133,14 @@ class MoocpApp extends StatelessWidget {
       supportedLocales: const [Locale('de')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       home: Hauptseite(einstellungen, protokoll, moodle, dienst, freigaben, arbeitsordner,
-          einrichtungsstand: einrichtungsstand),
+          einrichtungsstand: einrichtungsstand, updatefaehig: updatefaehig),
     );
   }
 }
 
 class Hauptseite extends StatefulWidget {
   const Hauptseite(this.einstellungen, this.protokoll, this.moodle, this.dienst, this.freigaben, this.arbeitsordner,
-      {this.einrichtungsstand, super.key});
+      {this.einrichtungsstand, this.updatefaehig = false, super.key});
   final Einstellungen einstellungen;
   final Protokoll protokoll;
   final MoodleZugang moodle;
@@ -135,6 +148,7 @@ class Hauptseite extends StatefulWidget {
   final Freigaben freigaben;
   final Arbeitsordner arbeitsordner;
   final Future<Einrichtungsstand> Function()? einrichtungsstand;
+  final bool updatefaehig;
 
   @override
   State<Hauptseite> createState() => _HauptseiteState();
@@ -161,6 +175,10 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
   /// Gesetzt, sobald _beenden läuft.
   bool _beendet = false;
 
+  /// Die laufende Fassung („0.9.4"), für die Update-Prüfung und die
+  /// Einstellungen; leer, wenn sie sich nicht lesen lässt.
+  String _fassung = '';
+
   // Anmeldestatus und Kopfzeile folgen dem Protokoll: Jede Neuanmeldung oder
   // jedes Verwerfen der Zugangsdaten schreibt dort einen Eintrag.
   void _aktualisieren() {
@@ -176,17 +194,75 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
     WidgetsBinding.instance.addPostFrameCallback((_) => _starten());
   }
 
-  /// Der Start in fester Reihenfolge: Claude einrichten, anmelden, dann der
-  /// MCP-Server (_mcpStarten). Eine Anmeldung, während der Dialog „Claude
-  /// einrichten" offen ist, wäre umsonst, wenn die Lehrkraft „Beenden" wählt.
-  /// Und Claude erreicht die Werkzeuge erst, wenn die Skills zur App passen
-  /// (E13) und die Sitzung bei Moodle steht -- dann findet schon der erste
-  /// Aufruf alles bereit.
+  /// Der Start in fester Reihenfolge: Updates, Claude einrichten, anmelden,
+  /// dann der MCP-Server (_mcpStarten). Eine Anmeldung, während der Dialog
+  /// „Claude einrichten" offen ist, wäre umsonst, wenn die Lehrkraft
+  /// „Beenden" wählt. Und Claude erreicht die Werkzeuge erst, wenn die
+  /// Skills zur App passen (E13) und die Sitzung bei Moodle steht -- dann
+  /// findet schon der erste Aufruf alles bereit.
+  ///
+  /// Die Update-Prüfung steht davor: Ein Update bringt auch neue Skills;
+  /// würde die App vorher einrichten, installierte sie die Fassung, die
+  /// gleich ersetzt wird. Und weil der MCP-Server zuletzt startet, hängt zu
+  /// diesem Zeitpunkt noch keine Claude-Sitzung an der App.
   Future<void> _starten() async {
+    _fassung = await _eigeneFassung();
+    if (_fassung.isNotEmpty) {
+      await updateStandMelden(widget.einstellungen, _fassung, widget.protokoll);
+      if (!mounted) return;
+      if (widget.updatefaehig) {
+        final beenden = await updateSchritt(
+          context,
+          einstellungen: widget.einstellungen,
+          protokoll: widget.protokoll,
+          eigene: _fassung,
+        );
+        if (beenden) {
+          await _beenden();
+          return;
+        }
+        if (!mounted) return;
+      }
+    }
     if (!await _einrichtungPruefen()) return;
     if (!mounted) return;
     setState(() => _eingerichtet = true);
     await _gespeichertAnmelden();
+  }
+
+  /// Ohne Fassung keine Update-Prüfung: Was sich mit nichts vergleichen
+  /// lässt, wird nicht angeboten.
+  Future<String> _eigeneFassung() async {
+    try {
+      return (await PackageInfo.fromPlatform()).version;
+    } catch (e) {
+      widget.protokoll.eintrag(Art.fehler, 'Version nicht lesbar (${e.runtimeType})');
+      return '';
+    }
+  }
+
+  /// Der Dialog „Einstellungen" über das Zahnrad in der Titelzeile.
+  Future<void> _einstellungenZeigen() async {
+    final ergebnis = await showDialog<EinstellungenErgebnis>(
+      context: context,
+      builder: (_) => EinstellungenDialog(
+        einstellungen: widget.einstellungen,
+        protokoll: widget.protokoll,
+        eigene: _fassung,
+        updateMoeglich: widget.updatefaehig,
+        sitzungLaeuft: widget.dienst.laeuft,
+      ),
+    );
+    if (!mounted) return;
+    switch (ergebnis) {
+      case EinstellungenErgebnis.beenden:
+        await _beenden();
+      case EinstellungenErgebnis.einrichten:
+        await _einrichtungPruefen(immer: true);
+      case EinstellungenErgebnis.fertig:
+      case null:
+        break;
+    }
   }
 
   /// Gespeichert heißt: gleich anmelden. Wer den Haken setzt, will sich
@@ -471,9 +547,9 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.extension_outlined),
-            tooltip: 'Claude einrichten: Verbindung und Skills',
-            onPressed: () => _einrichtungPruefen(immer: true),
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Einstellungen: Updates, Claude einrichten',
+            onPressed: _einstellungenZeigen,
           ),
           Padding(
             padding: const EdgeInsets.only(right: 8),

@@ -1,5 +1,5 @@
 // Einstellungen, die einen Neustart überleben: Moodle-Adresse, Port,
-// Zugangsschlüssel für Claude, die gewählten Skills.
+// Zugangsschlüssel für Claude, die gewählten Skills und die Update-Prüfung.
 //
 // Bewusst NICHT hier: Benutzername und Passwort. Die leben im Arbeitsspeicher,
 // solange die App läuft -- und nur mit Haken „Anmeldedaten speichern" auch
@@ -19,6 +19,9 @@ class Einstellungen {
     required this.port,
     required this.schluessel,
     this.wahlSkills,
+    this.updatePruefen,
+    this.updateZuletzt,
+    this.updateErwartet,
   });
 
   String moodleAdresse;
@@ -29,6 +32,21 @@ class Einstellungen {
   /// wahlSkills); null, solange im Dialog „Claude einrichten" noch nichts
   /// gewählt wurde -- dann gilt gewaehltVorgabe.
   Set<String>? wahlSkills;
+
+  /// Ob die App einmal täglich bei GitHub nach einer neuen Fassung sehen
+  /// darf; null, solange nicht gefragt wurde (update.dart). Ohne
+  /// ausdrückliches Ja fragt die App niemanden -- auch GitHub nicht.
+  bool? updatePruefen;
+
+  /// Tag der letzten Prüfung (`2026-10-03`), gesetzt auch nach einem
+  /// Fehlversuch: Sonst wartete jemand ohne Netz bei jedem Start erneut auf
+  /// die Zeitgrenze.
+  String? updateZuletzt;
+
+  /// Die Fassung, deren Installer gerade gestartet wurde; der nächste Start
+  /// vergleicht sie mit der eigenen und meldet Erfolg oder Fehlschlag. Die
+  /// App ist währenddessen beendet und sieht sonst nichts davon.
+  String? updateErwartet;
 
   static const int standardPort = 47811;
 
@@ -60,6 +78,9 @@ class Einstellungen {
           port: j['port'] as int? ?? standard.port,
           schluessel: j['schluessel'] as String? ?? standard.schluessel,
           wahlSkills: (j['wahlSkills'] as List?)?.whereType<String>().toSet(),
+          updatePruefen: j['updatePruefen'] as bool?,
+          updateZuletzt: j['updateZuletzt'] as String?,
+          updateErwartet: j['updateErwartet'] as String?,
         );
       }
     } catch (_) {
@@ -76,6 +97,9 @@ class Einstellungen {
       'port': port,
       'schluessel': schluessel,
       if (wahlSkills != null) 'wahlSkills': (wahlSkills!.toList()..sort()),
+      if (updatePruefen != null) 'updatePruefen': updatePruefen,
+      if (updateZuletzt != null) 'updateZuletzt': updateZuletzt,
+      if (updateErwartet != null) 'updateErwartet': updateErwartet,
     }));
   }
 }

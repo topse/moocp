@@ -22,4 +22,9 @@ sleep 2
 taskkill //IM moocp.exe //F >/dev/null 2>&1 || true
 sleep 1
 flutter build windows --release
-(cd build/windows/x64/runner/Release && cmd //c start "" moocp.exe)
+# Release, nicht Debug: Ausprobiert wird, was die Lehrkräfte bekommen --
+# dieselbe Protokollierung (E11), dieselbe Laufzeit, dasselbe Zeitverhalten
+# beim Beenden. Dass diese Fassung nicht im Installationsverzeichnis liegt,
+# schaltet die Update-Prüfung schon von selbst ab (lib/update/update.dart);
+# --kein-update sagt es noch einmal ausdrücklich.
+(cd build/windows/x64/runner/Release && cmd //c start "" moocp.exe --kein-update)

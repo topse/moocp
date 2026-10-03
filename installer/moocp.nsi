@@ -6,6 +6,11 @@
 ; Für den angemeldeten Benutzer, ohne Administratorrechte: Die Daten der App
 ; und die Einrichtung von Claude Code liegen ohnehin je Benutzer.
 ;
+; Mit dem Schalter /UPDATE startet die App diesen Installer selbst, nachdem
+; sie ihn von GitHub geholt hat: Dann wartet er still, bis die App zu ist,
+; und lässt die Lizenzseite aus. Sichtbar bleibt er trotzdem -- wer ein
+; Update installiert, soll sehen, was läuft.
+;
 ; Die Datei ist UTF-8 mit BOM; ohne BOM liest makensis sie in der
 ; ANSI-Codepage, und die Umlaute gingen verloren.
 
@@ -29,12 +34,26 @@ SetCompressor /SOLID lzma
 ; So trägt der Installer immer die Version dessen, was er einpackt.
 !getdllversion "${QUELLE}\${EXE}" V_
 !define VERSION "${V_1}.${V_2}.${V_3}+${V_4}"
+; Für den Dateinamen ohne Buildnummer: Die Update-Prüfung der App sucht im
+; Release genau diese Datei, und ein „+" müsste in einer Adresse „%2B"
+; heißen (lib/update/update.dart).
+!define VERSION3 "${V_1}.${V_2}.${V_3}"
 
 Name "${NAME}"
-OutFile "moocp_setup${VERSION}.exe"
+OutFile "moocp_setup_${VERSION3}.exe"
 InstallDir "$LOCALAPPDATA\Programs\${NAME}"
 InstallDirRegKey HKCU "${UNINST_KEY}" "InstallLocation"
 RequestExecutionLevel user
+
+; 1, wenn die App diesen Installer selbst gestartet hat (Schalter /UPDATE,
+; lib/update/update.dart). Dann beendet sie sich gerade: AppBeendet wartet
+; still auf das Freiwerden der exe, statt sofort zu fragen, und die
+; Lizenzseite entfällt -- beim Update ist sie nur Lärm, die Fassung davor
+; stand unter derselben Lizenz.
+Var Update
+
+; Halbe Sekunden, die AppBeendet im Update-Fall schon gewartet hat.
+Var Gewartet
 
 ;--------------------------------
 ; Seiten
@@ -47,6 +66,7 @@ RequestExecutionLevel user
 ; Kenntnis, mit „Weiter" statt „Annehmen".
 !define MUI_LICENSEPAGE_BUTTON "$(^NextBtn)"
 !define MUI_LICENSEPAGE_TEXT_BOTTOM "moocp steht unter der MIT-Lizenz: Sie dürfen die App frei benutzen, weitergeben und verändern. Eine Zustimmung ist nicht nötig."
+!define MUI_PAGE_CUSTOMFUNCTION_PRE LizenzSeite
 !insertmacro MUI_PAGE_LICENSE "..\LICENSE.md"
 !insertmacro MUI_PAGE_INSTFILES
 !define MUI_FINISHPAGE_RUN "$INSTDIR\${EXE}"
@@ -69,13 +89,37 @@ VIAddVersionKey /LANG=${LANG_GERMAN} "CompanyName" "${HERAUSGEBER}"
 VIAddVersionKey /LANG=${LANG_GERMAN} "LegalCopyright" "© 2026 ${HERAUSGEBER}, MIT-Lizenz"
 
 ;--------------------------------
+; Aufruf durch die App (Update)
+
+Function .onInit
+  ${GetParameters} $0
+  ClearErrors
+  ${GetOptions} $0 "/UPDATE" $1
+  ${IfNot} ${Errors}
+    StrCpy $Update 1
+  ${EndIf}
+FunctionEnd
+
+Function LizenzSeite
+  ${If} $Update == 1
+    Abort ; überspringt die Seite, nicht die Installation
+  ${EndIf}
+FunctionEnd
+
+;--------------------------------
 ; Gemeinsam für Installieren und Deinstallieren
 
 ; Läuft die App, ist die exe gesperrt: Öffnen zum Schreiben scheitert. Die
 ; App nicht beenden, sondern darum bitten -- nur beim regulären Schließen
 ; leert sie ihren Arbeitsordner (lib/main.dart).
+;
+; Beim Update hat die App den Installer selbst gestartet und schließt sich
+; in diesem Augenblick. Da ist Fragen sinnlos: bis zu 30 Sekunden still
+; warten, bis die exe frei ist. Erst wenn sie dann noch hängt, kommt die
+; Frage wie sonst auch.
 !macro AppBeendet UN
 Function ${UN}AppBeendet
+  StrCpy $Gewartet 0
   ${Do}
     ${IfNot} ${FileExists} "$INSTDIR\${EXE}"
       ${Break}
@@ -85,6 +129,12 @@ Function ${UN}AppBeendet
     ${IfNot} ${Errors}
       FileClose $0
       ${Break}
+    ${EndIf}
+    ${If} $Update == 1
+    ${AndIf} $Gewartet < 60
+      IntOp $Gewartet $Gewartet + 1
+      Sleep 500
+      ${Continue}
     ${EndIf}
     MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "${NAME} läuft noch. Bitte die App schließen und dann „Wiederholen“ wählen." /SD IDCANCEL IDRETRY nochmal
     Abort

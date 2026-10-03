@@ -25,6 +25,7 @@ import 'package:moocp/mcp/mcp_dienst.dart';
 import 'package:moocp/moodle/moodle_zugang.dart';
 import 'package:moocp/moodle/zeilenvergleich.dart';
 import 'package:moocp/protokoll.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -73,6 +74,16 @@ void main() {
     // Ein Test, nur eben unter tool/ (siehe oben) -- das weiß der Analyzer nicht.
     // ignore: invalid_use_of_visible_for_testing_member
     SharedPreferences.setMockInitialValues({'anmeldung.merken': true, 'anmeldung.benutzer': 'e.mustermann'});
+    // Sonst stünde „Version nicht lesbar" im Protokoll des Bildes: Die App
+    // liest ihre Fassung beim Start (Update-Prüfung), und im Test gibt es
+    // das Plugin dafür nicht.
+    // ignore: invalid_use_of_visible_for_testing_member
+    PackageInfo.setMockInitialValues(
+        appName: 'moocp',
+        packageName: 'moocp',
+        version: '0.9.4',
+        buildNumber: '1',
+        buildSignature: '');
   });
 
   testWidgets('Hauptfenster und Freigabe', (tester) async {

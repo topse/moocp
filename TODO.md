@@ -1,6 +1,6 @@
 # Features
-- "Sitzung verwerfen (Test)" Button entfernen
 - Wissenspeicher STACK untersuchen und integrieren
+- "Sitzung verwerfen (Test)" Button entfernen
 - Fragensammlung verbergen, verschieben und duplizieren: geht nicht, weil `qbank` nicht in der Kursstruktur steht. Löschen hat einen eigenen Weg über die Sammlungsliste; die drei bräuchten denselben.
 - Wartende Freigabe sichtbar machen: Zähler im Dialog („1 weitere Anfrage wartet") und eine Protokollzeile, wenn eine Anfrage sich einreiht.
 - Aktivität "Lernpfad" vollständig unterstützen inkl. didaktischer und pädagogischer Ideen, Hilfestellungen und Regeln, wie die gut einzusetzen sind, auch unter Regeln der Gamification
@@ -40,6 +40,23 @@
   Knöpfe neu auf.
 - STACK: einen vorhandenen Fragetest ändern, löschen oder ergänzen. Er steht auf einer eigenen Seite (`questiontestedit.php`, nicht auf der Positivliste); bisher hilft nur, die Frage neu anzulegen.
 
+## Anonyme Aufgabenbewertung
+
+Im Kurs die Teilnehmerliste lesen und substitutionen aufbauen und als Tabelle merken, die Schüler S1, S2, S3, usw. nennen. Auf der MCP-Seite werden nur die ersetzten Kürzel übertragen - in beide Richtungen.
+
+Die Tabelle wird pro Kurs aufgebaut, wenn ein Schüler in zwei Kursen vorkommt, die im laufe einer Session bearbeitet wurden, bekommt er korrespondierent zu seinen posititionen in der Teilnehmerliste pro Kurs unterschiedliche Abkürzungen.
+
+Wenn eine Aufgabe gelesen wird, müssen nicht nur Metadaten, sondern auch Daten anynymisiert werden:
+ - In PDF und Office Dokumenten müssen wir scannen, ob ein Name eines Kursteilnehmer (nicht nur des Erstellers) vorkommen und durch Zufallsnamen wie Meyer, Müller, Peter und Hugo ersetzen (Selber name immer selbe ersetzung), damit wir notfalls rücksubstituieren können, falls das Modell in seiner Antwort einen Namen verwendet. Die Namen müssen vollständig aus den Daten entfernt werden, die ans modell geschickt werden - also Office und PDF Dateien entsprechend manipulieren
+ - Bei Bildern muss Schrifterkennung auch von Handschrift durchgeführt werden und entsprechende Bereiche der Bilder zuverlässig vor Übertragung zum Modell gelöscht werden. Solange wir keine zuverlässige Handschrifterkennung haben, müssen wir die Weitergabe von Bilddateien ans Modell ablehnen
+ - Bei allen anderen Dateien müssen wir binär scannen, ob ein Name vorkommt, zum Beispiel gibt es Dateien von Spezialprogrammen, die den Ersteller speichern - die finden wir durch dekomprimieren und evtl. binär suchen
+
+ Bei allen Suchvorgängen nach Namen müssen wir im Hinterkopf behalten, dass Schüler sich manchmal vertippen. Auch bei Tippfehlern müssen wir die zuverlässig Namen erkennen.
+
+ Ein Name der an das Modell durchrutscht, wäre der schlimmste Fehler, der uns passieren kann. Daher immer defensiv vorgehen.
+
+ Wir legen nach und nach fest, welche Dateitypen überhaupt erlaubt sind. Office und PDF sind vermutlich die ersten. Alle weiteren Dateitypen müssen wir nach und nach testen und Freigeben, wie gesagt beispiel Bilddateien - die gehen erst, wenn wir zuverlässig Handschrift erkennen können oder Dateien von Spezialanwendungen müssen wir Stück für Stück immer prüfen, ob Erstellernamen im Projekt enthalten sein können.
+
 # Bugs
 - Einstellungen mit Optionsfeldern: Die Zeilen der Abschlussverfolgung
   lesen sich missverständlich („Keine = nein").
@@ -49,6 +66,22 @@
 
 # Durchspielen
 Umgesetzt, aber noch nicht als Ganzes auf einer Instanz gelaufen.
+- Updates: Voraussetzung ist ein echtes Release (Tag `v0.9.4`, Datei
+  `moocp_setup_0.9.4.exe`). Dann eine 0.9.3 bauen, installieren und
+  durchspielen: Frage beim ersten Start (beide Antworten), Angebot,
+  „Jetzt nicht" und am nächsten Tag wieder, Download mit Fortschritt,
+  Abbrechen mittendrin, sichtbarer Installer, Neustart der App, Meldung
+  „auf Fassung … aktualisiert" im Protokoll. Dazu die Wege ohne Netz
+  (Start wartet höchstens zehn Sekunden und läuft weiter) und die Suche
+  aus den Einstellungen heraus.
+- Updates, Wettlauf mit dem Installer: Der Installer wartet mit `/UPDATE`
+  bis zu 30 Sekunden still darauf, dass die App ihre exe freigibt. Dass das
+  Fenster in dieser Zeit nicht wie hängengeblieben aussieht und die Frage
+  „moocp läuft noch" wirklich erst danach kommt, ist nur am laufenden
+  System zu sehen.
+- Updates auf einem verwalteten Schulrechner: Schlägt der Virenschutz an,
+  wenn die App ein unsigniertes Setup lädt und startet? Dieselbe Sorge wie
+  bei der Fernsteuerung des Browsers.
 - Installer: Installieren, Update über eine ältere Fassung, Deinstallieren
   samt Einrichtung in Claude Code, auf einem frischen Windows ohne Visual
   Studio – dort zeigt sich auch, ob die mitgelieferte VC++-Laufzeit reicht.

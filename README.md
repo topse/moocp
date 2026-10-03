@@ -117,6 +117,8 @@ Welche Werkzeuge Claude hat und welche davon Ihre Freigabe brauchen, steht im Be
 - Ihr Passwort an Claude geben oder in ein Protokoll schreiben.
 - Beliebige Adressen aufrufen oder beliebigen Code ausführen – es gibt nur
   ihre Werkzeuge.
+- Ohne Ihr Ja einen anderen Rechner als Ihr Moodle anfragen. Die einzige
+  Ausnahme ist die Suche nach Updates, und die fragt Sie beim ersten Start.
 - Bestehendes ändern, verschieben, sichtbar schalten oder löschen, ohne dass
   Sie zustimmen.
 - Fragen löschen, ohne dass Sie zustimmen – und dann mit allen Versionen, nie nur eine.
@@ -143,15 +145,15 @@ Moodle™ ist eine eingetragene Marke von Moodle Pty Ltd, Claude eine Marke von 
 
 ### Installation
 
-1. **Installieren.** Den Installer `moocp_setup<Version>.exe` ausführen, zu finden unter „Releases" dieses Repositorys; selbst bauen geht auch, siehe Entwicklerhandbuch. Es gibt einen Installer für alle Schulen, welche Skills dazukommen, wählen Sie in Schritt 2. Administratorrechte braucht er nicht: Die App kommt nach `%LOCALAPPDATA%\Programs\moocp`, mit Verknüpfungen im Startmenü und auf dem Desktop. Weil der Installer nicht signiert ist, warnt Windows beim ersten Mal („Der Computer wurde durch Windows geschützt"); „Weitere Informationen", dann „Trotzdem ausführen". Eine neue Fassung wird genauso installiert; Einstellungen und gespeicherte Anmeldedaten bleiben.
-2. **Claude einrichten.** Beim Start prüft die App, ob Claude Code sie kennt und ob ihre Skills in dem Stand installiert sind, der zu dieser App gehört. Passt etwas nicht, erscheint der Dialog „Claude einrichten" mit je einer Zeile für die Verbindung und jeden Skill. `moodle` und `moodle-fragen` sind immer dabei; `lernsituation` ist für berufsbildende Schulen und kommt nur mit Haken dazu. „Installieren" richtet alles ein, was fehlt, und entfernt einen abgewählten Skill wieder. Später öffnet der Knopf mit dem Puzzlestück oben rechts denselben Dialog, etwa um `lernsituation` dazuzunehmen. Schlägt dabei etwas fehl, steht es in der Zeile, und „Nochmal versuchen" versucht es erneut. Überspringen lässt sich die Einrichtung nicht, denn ohne sie kann Claude nicht mit der App arbeiten: „Beenden" schließt die App, und beim nächsten Start fragt sie wieder. Nach dem Installieren eine **neue Claude-Sitzung** starten – eine laufende sieht die Änderungen nicht.
+1. **Installieren.** Den Installer `moocp_setup_<Version>.exe` ausführen, zu finden unter „Releases" dieses Repositorys; selbst bauen geht auch, siehe Entwicklerhandbuch. Es gibt einen Installer für alle Schulen, welche Skills dazukommen, wählen Sie in Schritt 2. Administratorrechte braucht er nicht: Die App kommt nach `%LOCALAPPDATA%\Programs\moocp`, mit Verknüpfungen im Startmenü und auf dem Desktop. Weil der Installer nicht signiert ist, warnt Windows beim ersten Mal („Der Computer wurde durch Windows geschützt"); „Weitere Informationen", dann „Trotzdem ausführen". Eine neue Fassung wird genauso installiert; Einstellungen und gespeicherte Anmeldedaten bleiben. Auf Wunsch sucht die App selbst nach neuen Fassungen, siehe [Updates](#updates).
+2. **Claude einrichten.** Beim Start prüft die App, ob Claude Code sie kennt und ob ihre Skills in dem Stand installiert sind, der zu dieser App gehört. Passt etwas nicht, erscheint der Dialog „Claude einrichten" mit je einer Zeile für die Verbindung und jeden Skill. `moodle` und `moodle-fragen` sind immer dabei; `lernsituation` ist für berufsbildende Schulen und kommt nur mit Haken dazu. „Installieren" richtet alles ein, was fehlt, und entfernt einen abgewählten Skill wieder. Später öffnet „Verbindung und Skills prüfen" in den Einstellungen (Zahnrad oben rechts) denselben Dialog, etwa um `lernsituation` dazuzunehmen. Schlägt dabei etwas fehl, steht es in der Zeile, und „Nochmal versuchen" versucht es erneut. Überspringen lässt sich die Einrichtung nicht, denn ohne sie kann Claude nicht mit der App arbeiten: „Beenden" schließt die App, und beim nächsten Start fragt sie wieder. Nach dem Installieren eine **neue Claude-Sitzung** starten – eine laufende sieht die Änderungen nicht.
 
    Voraussetzung ist **Claude Desktop**, in dem der Bereich „Code" einmal geöffnet wurde; erst dann liegt Claude Code auf dem Rechner. Die App findet es selbst, auch dort, wo Windows es bei der Store-Fassung hinlegt (`%LOCALAPPDATA%\Packages\Claude_…\LocalCache\Roaming\Claude\claude-code\` – der Pfad `%APPDATA%\Claude\…`, den Claude Desktop selbst anzeigt, ist für andere Programme umgeleitet). Findet sie es nicht, sagt der Dialog es; nach der Installation von Claude Desktop genügt „Nochmal prüfen".
 3. **Bei Moodle anmelden.** Nach dem Einrichten in der App Moodle-Adresse, Benutzername und Passwort eingeben, „Anmelden". Oben rechts steht dann „bei Moodle angemeldet" und daneben „MCP auf 127.0.0.1:…": Erst jetzt nimmt die App Anfragen von Claude an, damit schon die erste alles bereit findet. Eine Claude-Sitzung, die vorher gestartet wurde, findet die App nicht; dort mit `/mcp` neu verbinden oder eine neue Sitzung starten.
 
 ### Einrichten
 
-Links im Hauptfenster melden Sie sich bei Moodle an. Mit Haken „Anmeldedaten speichern" merkt sich die App Benutzername und Passwort nach einer erfolgreichen Anmeldung (das Passwort mit Windows verschlüsselt, siehe unten) und meldet sich beim nächsten Start selbst an. Ohne Haken melden Sie sich nach jedem Start neu an. Welche Skills installiert sind, wählen Sie im Dialog „Claude einrichten" (Puzzlestück oben rechts); weitere Einstellungen gibt es nicht.
+Links im Hauptfenster melden Sie sich bei Moodle an. Mit Haken „Anmeldedaten speichern" merkt sich die App Benutzername und Passwort nach einer erfolgreichen Anmeldung (das Passwort mit Windows verschlüsselt, siehe unten) und meldet sich beim nächsten Start selbst an. Ohne Haken melden Sie sich nach jedem Start neu an. Welche Skills installiert sind, wählen Sie im Dialog „Claude einrichten"; ihn und die Suche nach Updates finden Sie unter dem Zahnrad oben rechts. Weitere Einstellungen gibt es nicht.
 
 Die App darf in jedem Kurs, in dem Ihr Konto Bearbeitungsrechte hat, genau
 das, was Sie dort dürfen. Damit nicht versehentlich der falsche Kurs oder das
@@ -221,6 +223,10 @@ Der Arbeitsordner lebt so lange wie die App: Beim Start und beim Beenden leert s
   Protokoll. Nur MathJax, das die Formeln setzt, lädt er selbst, von der
   Adresse, die Ihre Moodle-Instanz dafür eingestellt hat. Nach jedem Bild
   wird er beendet und sein Profil gelöscht.
+- Außer Ihrem Moodle fragt die App nur eine einzige Stelle an: GitHub, für
+  die **Suche nach Updates** – und das nur, wenn Sie beim ersten Start
+  zugestimmt haben. Was dabei übertragen wird, steht unter
+  [Updates](#updates).
 
 ### Die Werkzeuge: was Claude tun kann
 
@@ -355,6 +361,20 @@ Dazu entfernt die App beim Lesen von Formularen Felder wie Autor, Ersteller, Nam
 
 Für den Browser der **Bildschirmfotos** gilt eine eigene, noch engere Liste ([lib/moodle/browserliste.dart](lib/moodle/browserliste.dart)): Als Seite lädt er nur die eine, die aufgenommen wird, dazu Stylesheets, Schriften, Bilder und einige Dienste für Vorlagen und Sprachtexte, alles über die App und hinter der Sperrliste.
 
+Die **Suche nach Updates** geht an GitHub statt an Moodle und hat deshalb ihre eigene Liste ([lib/update/updateliste.dart](lib/update/updateliste.dart)): erlaubt sind genau die Auskunft über das neueste Release dieses Repositorys und die Installationsdatei daraus, jeweils nur über `https` und samt jedem Umleitungsziel. Die Verbindung ist eine andere als die zu Moodle, Ihre Moodle-Sitzung geht also nicht mit.
+
+### Updates
+
+Beim ersten Start fragt die App, ob sie einmal täglich bei GitHub nach einer neuen Fassung sehen darf. Ohne Ihr Ja nimmt sie keinen Kontakt zu GitHub auf; ändern können Sie die Antwort jederzeit in den Einstellungen (Zahnrad oben rechts), und dort finden Sie auch „Jetzt nach Updates suchen".
+
+Ist die Suche eingeschaltet, läuft sie beim Start der App, bevor etwas anderes passiert – noch vor dem Einrichten und der Anmeldung. Dauert die Abfrage länger als einen Augenblick, erscheint „Prüfe auf Updates" mit „Abbrechen"; nach zehn Sekunden bricht die App von selbst ab. Ohne Netz, hinter einem Schulproxy oder wenn GitHub nicht antwortet, startet die App einfach weiter; im Protokoll steht eine Zeile. Gesucht wird höchstens einmal am Tag, auch wenn Sie die App mehrmals starten.
+
+Gibt es eine neue Fassung, zeigt die App, was sich ändert, und fragt: „Herunterladen und installieren" oder „Jetzt nicht". Bei „Jetzt nicht" passiert nichts weiter; am nächsten Tag fragt sie wieder. Sonst lädt sie den Installer – Sie sehen den Fortschritt – und startet ihn sichtbar. moocp schließt sich dafür und startet nach der Installation wieder; Einstellungen, gespeicherte Anmeldedaten und die Einrichtung in Claude Code bleiben erhalten. Eine laufende Claude-Sitzung verliert dabei die Verbindung und muss neu gestartet werden. Lief etwas schief, sagt es die App beim nächsten Start im Protokoll und nennt den Pfad der geladenen Datei.
+
+Was GitHub dabei erfährt: Ihre IP-Adresse und den Zeitpunkt der Anfrage, wie bei jedem Aufruf einer Webseite. Nichts aus Moodle wird übertragen, kein Benutzername, kein Passwort – die Suche benutzt eine eigene Verbindung ohne Ihre Moodle-Sitzung und darf nur zwei Adressen anfragen: die Auskunft über die neueste Fassung und die Installationsdatei des Releases ([lib/update/updateliste.dart](lib/update/updateliste.dart)). Jede Anfrage steht mit ihrem Ergebnis im Protokoll.
+
+Sucht die App nicht nach Updates, schauen Sie von Zeit zu Zeit selbst unter „Releases" nach. Nicht gesucht wird außerdem, wenn die App nicht aus `%LOCALAPPDATA%\Programs\moocp` läuft – dann würde ein Update sie gar nicht ersetzen – oder wenn sie mit `--kein-update` gestartet wird; so lässt sich die Suche auch über die Verknüpfung abschalten.
+
 ### Deinstallieren
 
 In den Windows-Einstellungen unter „Apps", „Installierte Apps", bei moocp „Deinstallieren". Das entfernt alles, was die App auf den Rechner gebracht hat: die App selbst, Einstellungen mit Zugangsschlüssel, Protokoll, gespeicherte Anmeldedaten, den Arbeitsordner und in Claude Code die Verbindung „moodle" und ihre Skills. Läuft die App noch, bittet die Deinstallation, sie zu schließen. Lässt sich etwas nicht entfernen, etwa weil Claude Code nicht gefunden wird, sagt sie, was von Hand zu tun ist.
@@ -419,6 +439,8 @@ skills/  (Wissen: Didaktik, Regeln,        moocp (Flutter, Windows)
 | `lib/moodle/zeilenvergleich.dart` | Zeilenvergleich für den Freigabedialog |
 | `lib/freigabe.dart` | Freigaben mit Frist |
 | `lib/einrichtung.dart`, `einrichtung_dialog.dart` | Claude einrichten: `claude.exe` finden, MCP-Eintrag prüfen und setzen, Skills vergleichen und installieren; beim Deinstallieren beides entfernen |
+| `lib/update/update.dart`, `updateliste.dart`, `update_dialoge.dart` | Suche nach Updates bei GitHub: Fassung vergleichen, Installer holen und starten; die Adressen, die dabei erlaubt sind |
+| `lib/einstellungen_dialog.dart` | Dialog „Einstellungen": Updates, Weg zu „Claude einrichten" |
 | `lib/ueber.dart` | Dialog „Über moocp": Version, Lizenz, Lizenzen der Pakete |
 | `lib/anmeldedaten.dart`, `lib/einstellungen.dart` | gespeicherte Anmeldedaten (DPAPI), Einstellungen |
 | `lib/protokoll.dart`, `lib/log.dart` | Protokoll, Logging ohne Inhalte |
@@ -475,7 +497,7 @@ Zusätzlich nötig: [NSIS 3](https://nsis.sourceforge.io) und Python 3.
 create_installer.bat
 ```
 
-Das baut die Skills, prüft (`flutter analyze`, `flutter test`), baut die App und daraus `installer\moocp_setup<Version>.exe`. Die Version steht nur in `pubspec.yaml` (`version: 1.2.0+3`); Flutter schreibt sie in die exe, und der Installer übernimmt sie von dort. Was der Installer tut und warum, steht in `installer/moocp.nsi`.
+Das baut die Skills, prüft (`flutter analyze`, `flutter test`), baut die App und daraus `installer\moocp_setup_<Version>.exe` (Version ohne Buildnummer – unter diesem Namen sucht die Update-Prüfung die Datei im Release). Die Version steht nur in `pubspec.yaml` (`version: 1.2.0+3`); Flutter schreibt sie in die exe, und der Installer übernimmt sie von dort. Was der Installer tut und warum, steht in `installer/moocp.nsi`.
 
 ### Lizenzen der Abhängigkeiten
 
@@ -544,7 +566,9 @@ git tag v0.9.0
 bash publish_tag_to_github.sh v0.9.0
 ```
 
-Das Skript erwartet ein Remote `github` und nimmt die Commit-Nachricht aus dem Abschnitt der Fassung in `CHANGELOG.md`. Der Installer kommt als Datei an das Release auf GitHub.
+Das Skript erwartet ein Remote `github` und nimmt die Commit-Nachricht aus dem Abschnitt der Fassung in `CHANGELOG.md`. Den Tag legt es auf GitHub unter dem Namen `v<Version>` ab (lokal heißt er `github-v<Version>` und zeigt auf den veröffentlichten Commit).
+
+Das Release wird danach auf GitHub von Hand aus diesem Tag erzeugt, mit dem Installer als Datei. Beides muss dem Schema folgen, sonst findet die Update-Prüfung der App die Fassung nicht: Tag `v0.9.5`, Datei `moocp_setup_0.9.5.exe`, kein Entwurf und keine Vorabfassung. Das Skript nennt beides am Ende noch einmal.
 
 ### Mitwirken
 
