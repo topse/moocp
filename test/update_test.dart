@@ -1,4 +1,4 @@
-// Die Update-Prüfung ohne Netz: Tag lesen, Fassungen vergleichen, die
+// Die Update-Prüfung ohne Netz: Tag lesen, Versionen vergleichen, die
 // Datei im Release finden, und die Grenzen, innerhalb derer überhaupt
 // geprüft wird.
 
@@ -11,46 +11,46 @@ import 'package:moocp/update/update.dart';
 void main() {
   group('Tag eines Releases', () {
     test('das Schema von publish_tag_to_github.sh', () {
-      expect(fassungAusTag('v0.9.4'), '0.9.4');
-      expect(fassungAusTag('0.9.4'), '0.9.4');
-      expect(fassungAusTag(' v1.2.3 '), '1.2.3');
-      expect(fassungAusTag('v1.0'), '1.0');
+      expect(versionAusTag('v0.9.4'), '0.9.4');
+      expect(versionAusTag('0.9.4'), '0.9.4');
+      expect(versionAusTag(' v1.2.3 '), '1.2.3');
+      expect(versionAusTag('v1.0'), '1.0');
     });
 
-    test('die alte Form der ersten Fassungen wird geduldet', () {
-      expect(fassungAusTag('github-v0.9.2'), '0.9.2');
+    test('die alte Form der ersten Versionen wird geduldet', () {
+      expect(versionAusTag('github-v0.9.2'), '0.9.2');
     });
 
     test('was nicht passt, wird nicht geraten', () {
-      expect(fassungAusTag('Release 2'), isNull);
-      expect(fassungAusTag('v0.9.4-beta'), isNull);
-      expect(fassungAusTag(''), isNull);
+      expect(versionAusTag('Release 2'), isNull);
+      expect(versionAusTag('v0.9.4-beta'), isNull);
+      expect(versionAusTag(''), isNull);
     });
   });
 
-  group('Fassungen vergleichen', () {
+  group('Versionen vergleichen', () {
     test('kleiner, gleich, größer', () {
-      expect(fassungVergleich('0.9.4', '0.9.5'), -1);
-      expect(fassungVergleich('0.9.5', '0.9.4'), 1);
-      expect(fassungVergleich('0.9.4', '0.9.4'), 0);
+      expect(versionVergleich('0.9.4', '0.9.5'), -1);
+      expect(versionVergleich('0.9.5', '0.9.4'), 1);
+      expect(versionVergleich('0.9.4', '0.9.4'), 0);
     });
 
     test('zählt Zahlen, nicht Zeichen', () {
-      expect(fassungVergleich('0.10.0', '0.9.9'), 1);
-      expect(fassungVergleich('1.0.0', '0.99.99'), 1);
+      expect(versionVergleich('0.10.0', '0.9.9'), 1);
+      expect(versionVergleich('1.0.0', '0.99.99'), 1);
     });
 
     test('fehlende Stellen sind 0, die Buildnummer zählt nicht', () {
-      expect(fassungVergleich('1.0', '1.0.0'), 0);
-      expect(fassungVergleich('1.0.1', '1.0'), 1);
-      expect(fassungVergleich('0.9.4+7', '0.9.4+1'), 0);
+      expect(versionVergleich('1.0', '1.0.0'), 0);
+      expect(versionVergleich('1.0.1', '1.0'), 1);
+      expect(versionVergleich('0.9.4+7', '0.9.4+1'), 0);
     });
   });
 
   group('Datei im Release', () {
     Map<String, dynamic> anhang(String name) => {'name': name, 'browser_download_url': 'https://x/$name'};
 
-    test('die zur Fassung passende Datei', () {
+    test('die zur Version passende Datei', () {
       final gefunden = releaseDatei([
         anhang('quelltext.zip'),
         anhang('moocp_setup_0.9.4.exe'),

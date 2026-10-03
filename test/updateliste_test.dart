@@ -8,7 +8,7 @@ void main() {
   String? sperre(String adresse, {bool download = false}) =>
       updateGesperrt(Uri.parse(adresse), download: download);
 
-  group('Abfrage der Fassung', () {
+  group('Abfrage der Version', () {
     test('genau die eine Adresse ist erlaubt', () {
       expect(updateGesperrt(releaseAbfrage, download: false), isNull);
       expect(releaseAbfrage.toString(), 'https://api.github.com/repos/topse/moocp/releases/latest');

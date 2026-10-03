@@ -2,7 +2,7 @@
 //
 // Damit Claude mit der App arbeitet, braucht Claude Code zweierlei: einen
 // MCP-Eintrag „moodle" mit Adresse und Schlüssel dieser App, und die Skills in
-// genau der Fassung, die zu dieser App gehört -- ändert sich ein Werkzeug,
+// genau der Version, die zu dieser App gehört -- ändert sich ein Werkzeug,
 // ändert sich der Skill mit. Beides prüft die App beim Start; geschrieben wird
 // erst nach einem Klick im Dialog „Claude einrichten", wie bei den Freigaben.
 // Beim Deinstallieren entfernt die App beides wieder ([einrichtungEntfernen]).
@@ -49,7 +49,7 @@ Set<String> gewaehltVorgabe(ClaudeOrte orte) => {
 // Der Paketname leitet sich aus Anthropics Signatur ab und ist auf allen
 // Rechnern gleich; bewusst kein Platzhalter „Claude_*", der auch ein fremdes
 // Paket träfe. Darunter liegt je Version ein Ordner (2.1.280, 2.1.281 …) --
-// Claude Desktop lädt Claude Code nach und behält ältere Fassungen.
+// Claude Desktop lädt Claude Code nach und behält ältere Versionen.
 const _claudeDesktopPaket = 'Claude_pzs8sxrjxfjjc';
 
 /// Sucht die claude.exe: Claude Desktop (MSIX, dann klassischer Installer),
@@ -282,7 +282,7 @@ SkillStand skillVergleichen(SkillPaket paket, Directory ziel) {
 /// Installiert einen Skill so, wie ihn das Paket enthält. Datei für Datei
 /// statt den Ordner zu löschen: Ein laufendes Claude Code hält den
 /// Skill-Ordner offen, Löschen scheitert dann (WinError 32). Dateien, die
-/// nicht zum Paket gehören (etwa aus der alten Browser-Fassung), werden
+/// nicht zum Paket gehören (etwa aus der alten Browser-Version), werden
 /// einzeln entfernt, leer gewordene Unterordner danach. Liefert die Pfade,
 /// die sich nicht entfernen ließen.
 List<String> skillInstallieren(SkillPaket paket, Directory ziel) {

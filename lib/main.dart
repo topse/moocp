@@ -175,9 +175,9 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
   /// Gesetzt, sobald _beenden läuft.
   bool _beendet = false;
 
-  /// Die laufende Fassung („0.9.4"), für die Update-Prüfung und die
+  /// Die laufende Version („0.9.4"), für die Update-Prüfung und die
   /// Einstellungen; leer, wenn sie sich nicht lesen lässt.
-  String _fassung = '';
+  String _version = '';
 
   // Anmeldestatus und Kopfzeile folgen dem Protokoll: Jede Neuanmeldung oder
   // jedes Verwerfen der Zugangsdaten schreibt dort einen Eintrag.
@@ -202,20 +202,20 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
   /// findet schon der erste Aufruf alles bereit.
   ///
   /// Die Update-Prüfung steht davor: Ein Update bringt auch neue Skills;
-  /// würde die App vorher einrichten, installierte sie die Fassung, die
+  /// würde die App vorher einrichten, installierte sie die Version, die
   /// gleich ersetzt wird. Und weil der MCP-Server zuletzt startet, hängt zu
   /// diesem Zeitpunkt noch keine Claude-Sitzung an der App.
   Future<void> _starten() async {
-    _fassung = await _eigeneFassung();
-    if (_fassung.isNotEmpty) {
-      await updateStandMelden(widget.einstellungen, _fassung, widget.protokoll);
+    _version = await _eigeneVersion();
+    if (_version.isNotEmpty) {
+      await updateStandMelden(widget.einstellungen, _version, widget.protokoll);
       if (!mounted) return;
       if (widget.updatefaehig) {
         final beenden = await updateSchritt(
           context,
           einstellungen: widget.einstellungen,
           protokoll: widget.protokoll,
-          eigene: _fassung,
+          eigene: _version,
         );
         if (beenden) {
           await _beenden();
@@ -230,9 +230,9 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
     await _gespeichertAnmelden();
   }
 
-  /// Ohne Fassung keine Update-Prüfung: Was sich mit nichts vergleichen
+  /// Ohne Version keine Update-Prüfung: Was sich mit nichts vergleichen
   /// lässt, wird nicht angeboten.
-  Future<String> _eigeneFassung() async {
+  Future<String> _eigeneVersion() async {
     try {
       return (await PackageInfo.fromPlatform()).version;
     } catch (e) {
@@ -248,7 +248,7 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
       builder: (_) => EinstellungenDialog(
         einstellungen: widget.einstellungen,
         protokoll: widget.protokoll,
-        eigene: _fassung,
+        eigene: _version,
         updateMoeglich: widget.updatefaehig,
         sitzungLaeuft: widget.dienst.laeuft,
       ),

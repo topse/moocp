@@ -26,7 +26,7 @@ SetCompressor /SOLID lzma
 !define HERAUSGEBER "Tobias Steinmann"
 !define QUELLE "..\build\windows\x64\runner\Release"
 ; Der Eintrag unter „Installierte Apps". Der Name bleibt über alle Versionen
-; gleich, damit eine neue Fassung die alte ersetzt.
+; gleich, damit eine neue Version die alte ersetzt.
 !define UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\moocp"
 
 ; Die Version steht in pubspec.yaml („1.0.0+1"); Flutter schreibt sie beim
@@ -48,7 +48,7 @@ RequestExecutionLevel user
 ; 1, wenn die App diesen Installer selbst gestartet hat (Schalter /UPDATE,
 ; lib/update/update.dart). Dann beendet sie sich gerade: AppBeendet wartet
 ; still auf das Freiwerden der exe, statt sofort zu fragen, und die
-; Lizenzseite entfällt -- beim Update ist sie nur Lärm, die Fassung davor
+; Lizenzseite entfällt -- beim Update ist sie nur Lärm, die Version davor
 ; stand unter derselben Lizenz.
 Var Update
 
@@ -148,7 +148,7 @@ FunctionEnd
 ; Genau das, was der Installer hinlegt (der Inhalt von Release), nie den
 ; Ordner als Ganzes: Über /D= ließe sich ein beliebiger Ordner als Ziel
 ; angeben. Flutter baut data\ bei jedem Bau ganz neu; mitgelöscht, bleibt
-; von einer älteren Fassung nichts liegen.
+; von einer älteren Version nichts liegen.
 !macro ProgrammEntfernen
   Delete "$INSTDIR\${EXE}"
   Delete "$INSTDIR\*.dll"
@@ -157,9 +157,9 @@ FunctionEnd
 !macroend
 
 ;--------------------------------
-; Installieren. Über eine ältere Fassung: Deren Programmdateien werden
+; Installieren. Über eine ältere Version: Deren Programmdateien werden
 ; ersetzt; Einstellungen, Anmeldedaten und die Einrichtung von Claude Code
-; bleiben. Ob die Skills zur neuen Fassung passen, prüft die App beim Start.
+; bleiben. Ob die Skills zur neuen Version passen, prüft die App beim Start.
 
 Section
   Call AppBeendet

@@ -16,21 +16,21 @@ void main() {
     final protokoll = Protokoll();
     final update = Update(protokoll);
 
-    // Eine Fassung, die es sicher nicht mehr gibt: Dann meldet die Prüfung
+    // Eine Version, die es sicher nicht mehr gibt: Dann meldet die Prüfung
     // das neueste Release als neu.
     final neu = await update.pruefen('0.0.1');
     expect(neu, isNotNull, reason: 'GitHub hat kein neueres Release gemeldet');
     // ignore: avoid_print
     print('\n--- gefunden ---\n'
-        'Fassung:    ${neu!.fassung}\n'
+        'Version:    ${neu!.version}\n'
         'Datei:      ${neu.dateiname}\n'
         'Adresse:    ${neu.datei}\n'
         'Größe:      ${neu.groesse}\n'
         'Prüfsumme:  ${neu.pruefsumme}\n'
         'Beschreibung (Anfang): ${neu.beschreibung.split("\n").first}');
 
-    // Dieselbe Fassung darf nicht als Update gelten.
-    expect(await update.pruefen(neu.fassung), isNull);
+    // Dieselbe Version darf nicht als Update gelten.
+    expect(await update.pruefen(neu.version), isNull);
     // Eine höhere auch nicht.
     expect(await update.pruefen('99.0.0'), isNull);
 

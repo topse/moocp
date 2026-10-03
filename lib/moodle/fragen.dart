@@ -7,7 +7,7 @@
 // IMMER neu an -- es gibt keinen Weg, ein XML als neue Version einer
 // vorhandenen Frage einzuspielen. Speichern im Formular erzeugt eine neue
 // Version mit NEUER questionid; die alte Nummer zeigt danach auf die alte
-// Fassung. Stabil ist die Sachnummer (idnumber): Sie hängt am
+// Version. Stabil ist die Sachnummer (idnumber): Sie hängt am
 // Fragenbank-Eintrag, nicht an der Version. Tests ziehen standardmäßig die
 // neueste Version -- eine Änderung wirkt sofort in jedem Test, der die Frage
 // benutzt.

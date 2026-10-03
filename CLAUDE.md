@@ -2,8 +2,6 @@
 
 Keine git Aktionen durchführen - das macht ausschließlich der Benutzer. Wenn Du während der Arbeit Fehler, Probleme oder sonstige Ungenauigkeiten findest, beseitige Sie entweder sofort oder nimm einen Punkt ins TODO.md auf.
 
-Schreibe Changelog kurz und präzise und aus Sicht des Nutzers.
-
 ## Regeln für die Dokumentation (zuerst lesen, immer einhalten)
 
 1. **README.md ist für Menschen, CLAUDE.md für die KI.** Was ein Mensch
@@ -18,16 +16,23 @@ Schreibe Changelog kurz und präzise und aus Sicht des Nutzers.
    nie auf CLAUDE.md.
 4. **Kein Verlaufsprotokoll.** Weder hier noch in der README steht, wie etwas
    entstanden ist, was wann gemessen oder welcher Fehler wann behoben wurde.
-   Es steht da, was gilt und warum. Die eine Ausnahme ist
-   [CHANGELOG.md](CHANGELOG.md): je Fassung die wichtigsten Änderungen, so
-   wie Nutzerinnen und Nutzer sie merken.
+   Es steht da, was gilt und warum. Die eine Ausnahme ist [CHANGELOG.md](CHANGELOG.md). Der Maßstab dort, aus dem sich alles Übrige ergibt: **Jede Zeile ist eine Überschrift – der Bereich und was sich geändert hat, aus der Sicht dessen, der es merkt.** Also:
+
+   - *Überschrift, kein Absatz:* „Neu: automatische Updates über GitHub.", „STACK: Problem mit Testeingaben behoben." Wie etwas funktioniert und wie man es benutzt, steht in der README; wie der Fehler aussah und woran es lag, in den Commits.
+   - *Blickrichtung:* „Was ist für mich jetzt anders?", nicht, was die App dafür tut. „Freigaben: Eine Freigabe wirkt nicht mehr, wenn sich das Objekt inzwischen geändert hat" – nicht „Freigaben werden vor dem Schreiben erneut geprüft".
+   - *Bündeln:* Was zusammengehört, steht in einer Zeile mit den betroffenen Bereichen, nicht in dreien mit je einem Fall.
+   - *Genau bleiben:* Lieber den Bereich weiter fassen als etwas benennen, das so gar nicht kaputt war.
+   - *Nie hinein:* Ursache und Hergang, Dateinamen, Bezeichner, Entscheidungen (E…).
 5. **Implementierungsdetails gehören als Kommentar an den Quelltext**, nicht
    in README oder CLAUDE.md: Moodle-Eigenheiten, Parameter, Formate,
    Fallstricke. Die Begründung steht dort, wo sie jemand braucht, der den Code
    ändern will.
-6. Deutsch mit echten Umlauten in Texten, Kommentaren und Meldungen.
-   Bezeichner ohne Umlaute (`pruefeStand`), Moodle-Bezeichner englisch
-   (`introeditor`, `duedate`). Ausnahme: CHANGELOG.md ist englisch.
+6. Deutsch mit echten Umlauten in Texten, Kommentaren und Meldungen, auch
+   in CHANGELOG.md: Die Zielgruppe sind deutsche Lehrkräfte, und die App
+   zeigt den Text eines Releases im Update-Dialog selbst an. Bezeichner ohne
+   Umlaute (`pruefeStand`), Moodle-Bezeichner englisch (`introeditor`,
+   `duedate`). Kein künstliches Eindeutschen: Was im Deutschen so heißt,
+   heißt so – **Version**, nicht „Fassung"; Release, Installer, Skill.
 
 7. **Eine CLAUDE.md je Bereich, keine große:** diese hier für die App und
    das ganze Projekt, [skills/CLAUDE.md](skills/CLAUDE.md) für die Pflege der
@@ -183,7 +188,7 @@ Verworfen: eine Liste freigegebener „Schreibkurse" – die Lehrkraft soll in
 allen eigenen Kursen arbeiten können; die Sicherheit kommt aus Freigabe und
 Namensprüfung.
 
-**E5 Große Ergebnisse als Dateien.** Gelesenes landet vollständig im Arbeitsordner; zurück an die KI geht eine Übersicht mit Auswertung und Befunden, damit für einen Auftrag nur geöffnet wird, was er betrifft. Der Arbeitsordner ist keine Einstellung: fester Ort im Temp-Verzeichnis, beim Start und beim Beenden geleert, damit keine Kursinhalte liegen bleiben. Fest statt je Start neu, weil eine Claude-Sitzung einen Neustart der App überdauern kann – ein alter Pfad würde sonst als „außerhalb" gesperrt, was sich wie die Datensperre liest. Weil der Ort fest ist, läuft die App je Windows-Sitzung nur einmal, auch über installierte App und Entwicklerfassung hinweg; ein zweiter Start holt die laufende nach vorn.
+**E5 Große Ergebnisse als Dateien.** Gelesenes landet vollständig im Arbeitsordner; zurück an die KI geht eine Übersicht mit Auswertung und Befunden, damit für einen Auftrag nur geöffnet wird, was er betrifft. Der Arbeitsordner ist keine Einstellung: fester Ort im Temp-Verzeichnis, beim Start und beim Beenden geleert, damit keine Kursinhalte liegen bleiben. Fest statt je Start neu, weil eine Claude-Sitzung einen Neustart der App überdauern kann – ein alter Pfad würde sonst als „außerhalb" gesperrt, was sich wie die Datensperre liest. Weil der Ort fest ist, läuft die App je Windows-Sitzung nur einmal, auch über installierte App und Entwicklerversion hinweg; ein zweiter Start holt die laufende nach vorn.
 
 **E6 Nur lokal.** MCP über Streamable HTTP auf `127.0.0.1`, Zugangsschlüssel
 als Bearer-Token, Host- und Origin-Prüfung. Dass der Schlüssel im Klartext in
@@ -230,18 +235,18 @@ Berufliches Gymnasium als Ausnahme; beide im Skill `lernsituation`); die Vorlage
 Konsole; `debugPrint` ist stumm; Fehler erscheinen nur mit Typ (bei
 Dateifehlern mit Pfad), nie mit ihrem Text.
 
-**E12 Git; auf GitHub ein Stand je Fassung.** Entwickelt wird in einem
-eigenen Repository. Auf GitHub erscheint je Fassung ein Commit mit dem Stand
+**E12 Git; auf GitHub ein Stand je Version.** Entwickelt wird in einem
+eigenen Repository. Auf GitHub erscheint je Version ein Commit mit dem Stand
 des Tags (`publish_tag_to_github.sh`), die Nachricht aus
 CHANGELOG.md. Pull Requests auf GitHub werden deshalb nicht zusammengeführt,
 sondern von Hand übernommen. Zeilenenden LF, nur Batch-Dateien CRLF
 (`.gitattributes`).
 
-**E13 Die App richtet Claude Code ein, nach Rückfrage.** Beim Start prüft sie den MCP-Eintrag „moodle" und die Skills; passt etwas nicht, zeigt sie den Dialog „Claude einrichten" mit je einer Zeile, geschrieben wird erst nach „Installieren". Über einen Knopf in der Titelzeile öffnet er sich jederzeit. Die Skills bringt die App als Assets mit (`skills/dist/`), so gehören App und Skills immer zur selben Fassung – ändert sich ein Werkzeug, kommt der passende Skill mit. Eingetragen wird nur über die Kommandozeile von Claude Code, nie durch Schreiben in `.claude.json`; ebenso ausgetragen, wenn die Deinstallation die App mit `--claude-entfernen` aufruft (E15). Die App läuft nur eingerichtet: Der Dialog hat „Installieren", „Nochmal versuchen" oder „Nochmal prüfen" und „Beenden", kein „Abbrechen" – einen Zustand „die App läuft, aber Claude kann nicht mit ihr arbeiten" gibt es nicht. Deshalb die feste Reihenfolge beim Start: einrichten, anmelden, dann erst der MCP-Server – Claude erreicht die Werkzeuge erst, wenn Skills und Sitzung stehen. Einmal gestartet, bleibt er an, auch nach dem Abmelden; ein Stopp risse laufenden Claude-Sitzungen die Verbindung ab. Haken gibt es nur bei wählbaren Skills (`wahlSkills` in `lib/einrichtung.dart`, derzeit `lernsituation`): voreingestellt aus, außer der Skill ist schon installiert; Abgewähltes entfernt „Installieren". Verworfen: je Schulform oder Schule ein eigener Installer (welchen man braucht, sieht am Dateinamen niemand); stilles Installieren beim Start (überschriebe beim Entwickeln halbfertige Stände ungefragt), ein „nie wieder fragen" oder Weiterlaufen ohne Einrichtung (ein Skill, der nicht zur App passt, ruft Werkzeuge falsch auf), ein Befehl zum Kopieren oder `build.py --installieren` als zweiter Weg daneben.
+**E13 Die App richtet Claude Code ein, nach Rückfrage.** Beim Start prüft sie den MCP-Eintrag „moodle" und die Skills; passt etwas nicht, zeigt sie den Dialog „Claude einrichten" mit je einer Zeile, geschrieben wird erst nach „Installieren". Über einen Knopf in der Titelzeile öffnet er sich jederzeit. Die Skills bringt die App als Assets mit (`skills/dist/`), so gehören App und Skills immer zur selben Version – ändert sich ein Werkzeug, kommt der passende Skill mit. Eingetragen wird nur über die Kommandozeile von Claude Code, nie durch Schreiben in `.claude.json`; ebenso ausgetragen, wenn die Deinstallation die App mit `--claude-entfernen` aufruft (E15). Die App läuft nur eingerichtet: Der Dialog hat „Installieren", „Nochmal versuchen" oder „Nochmal prüfen" und „Beenden", kein „Abbrechen" – einen Zustand „die App läuft, aber Claude kann nicht mit ihr arbeiten" gibt es nicht. Deshalb die feste Reihenfolge beim Start: einrichten, anmelden, dann erst der MCP-Server – Claude erreicht die Werkzeuge erst, wenn Skills und Sitzung stehen. Einmal gestartet, bleibt er an, auch nach dem Abmelden; ein Stopp risse laufenden Claude-Sitzungen die Verbindung ab. Haken gibt es nur bei wählbaren Skills (`wahlSkills` in `lib/einrichtung.dart`, derzeit `lernsituation`): voreingestellt aus, außer der Skill ist schon installiert; Abgewähltes entfernt „Installieren". Verworfen: je Schulform oder Schule ein eigener Installer (welchen man braucht, sieht am Dateinamen niemand); stilles Installieren beim Start (überschriebe beim Entwickeln halbfertige Stände ungefragt), ein „nie wieder fragen" oder Weiterlaufen ohne Einrichtung (ein Skill, der nicht zur App passt, ruft Werkzeuge falsch auf), ein Befehl zum Kopieren oder `build.py --installieren` als zweiter Weg daneben.
 
 **E14 MIT-Lizenz, nur freizügige Abhängigkeiten.** Die App steht unter MIT (`LICENSE.md`, Tobias Steinmann). Jedes Paket, auch jedes indirekte in `pubspec.lock`, braucht eine freizügige Lizenz (MIT, BSD, Apache 2.0) – vor dem Hinzufügen die LICENSE-Datei im Pub-Cache ansehen; GPL oder LGPL würde die Lizenz der App bestimmen. Die Pflicht, die Hinweise mit der App weiterzugeben, erfüllt Flutters Lizenzseite im Dialog „Über".
 
-**E15 Installer mit NSIS, je Benutzer, Deinstallieren räumt alles ab.** Ohne Administratorrechte nach `%LOCALAPPDATA%\Programs\moocp`, weil Daten und Claude-Einrichtung ohnehin je Benutzer liegen. Die VC++-Laufzeit liegt neben der exe statt `vc_redist` (bräuchte Administratorrechte). Die Version steht nur in `pubspec.yaml`; der Installer liest sie aus der gebauten exe. Deinstallieren entfernt Programm, Einstellungen mit Schlüssel, Protokoll, gespeicherte Anmeldedaten, Arbeitsordner und die Einrichtung in Claude Code, damit nichts von der Lehrkraft zurückbleibt; ein Update behält Daten und Einrichtung. Eine laufende App wird nie beendet, sondern die Lehrkraft gebeten, sie zu schließen – nur das reguläre Beenden leert den Arbeitsordner. Den Installer auf dem Entwicklungsrechner nicht deinstallieren, ohne zu fragen: Er teilt die Datenordner mit der Entwicklerfassung.
+**E15 Installer mit NSIS, je Benutzer, Deinstallieren räumt alles ab.** Ohne Administratorrechte nach `%LOCALAPPDATA%\Programs\moocp`, weil Daten und Claude-Einrichtung ohnehin je Benutzer liegen. Die VC++-Laufzeit liegt neben der exe statt `vc_redist` (bräuchte Administratorrechte). Die Version steht nur in `pubspec.yaml`; der Installer liest sie aus der gebauten exe. Deinstallieren entfernt Programm, Einstellungen mit Schlüssel, Protokoll, gespeicherte Anmeldedaten, Arbeitsordner und die Einrichtung in Claude Code, damit nichts von der Lehrkraft zurückbleibt; ein Update behält Daten und Einrichtung. Eine laufende App wird nie beendet, sondern die Lehrkraft gebeten, sie zu schließen – nur das reguläre Beenden leert den Arbeitsordner. Den Installer auf dem Entwicklungsrechner nicht deinstallieren, ohne zu fragen: Er teilt die Datenordner mit der Entwicklerversion.
 
 **E16 Die Druckaufbereitung wird erkannt, nicht eingestellt.** Ob eine Instanz die Druckaufbereitung „Aufgabenblatt-Druck" hat (Skript unter „Zusätzliches HTML", CSS im Theme), sieht die App beim Anmelden am Quelltext der Anmeldeseite, ohne eigene Anfrage; `status` meldet es, und der Skill `moodle` richtet sich danach (`references/drucken.md`). Das Wissen darüber steht anonymisiert im Skill und bleibt ungenutzt, wo es die Druckaufbereitung nicht gibt. Verworfen: ein Haken in der App (A9: ermitteln statt voraussetzen) und private Profile, die Dateien über die Skills legen (Doppelungen, die niemand mitpflegt).
 
@@ -254,6 +259,7 @@ sondern von Hand übernommen. Zeilenenden LF, nur Batch-Dateien CRLF
 ## Arbeitsregeln für die KI
 
 - **Hier entsteht die Infrastruktur, nicht der Kursinhalt.** Dieses Projekt stellt App, Skills, Vorlagen und Prüfskripte bereit. Kursinhalte ändert hier niemand – weder in Moodle-Kursen noch in Entwürfen anderer Sitzungen; das tun Lehrkräfte in ihren eigenen Sitzungen. Zum Debuggen darf nach Rückfrage gelesen werden, über die App oder im Arbeitsordner. Befunde darin werden gemeldet, nicht behoben. Geschrieben wird in Moodle nur zum Testen im Testkurs (A10).
+- **`create_installer.bat` nie mit `sed -i` oder einem anderen Werkzeug bearbeiten, das Zeilenenden normalisiert.** Sie braucht CRLF (cmd liest Sprungmarken in Dateien mit LF nicht zuverlässig und setzt mitten in Zeilen auf). Weil `.gitattributes` Batch-Dateien normalisiert, zeigt `git status` den Schaden nicht an – er fällt erst beim Ausführen auf. Nach jeder Änderung daran prüfen: `tr -cd '\r' < create_installer.bat | wc -c` muss so viele CR zählen, wie die Datei Zeilen hat. Sie ist aus einer echten Eingabeaufforderung zu starten (PowerShell), nicht aus Git Bash: Dort erbt sie den Unix-`find` und bricht ab.
 - **Durchspielen ohne Claude-Sitzung:** `bash tool/neustart.sh [profilordner]`
   (prüfen, bauen, neu starten), `bash tool/mcp_aufruf.sh <werkzeug> '<json>'` (ein
   Werkzeug der laufenden App aufrufen). Aus Git Bash, nicht aus Python – warum,
@@ -268,7 +274,7 @@ sondern von Hand übernommen. Zeilenenden LF, nur Batch-Dateien CRLF
   startet nach der Anmeldung), nicht um Bescheid bitten. Dasselbe beim Warten auf eine Freigabe. Geduldig:
   bis 30 Minuten, im Hintergrund, nicht nach wenigen Minuten aufgeben.
 - **Änderungen, die Nutzerinnen und Nutzer merken**, bekommen eine Zeile
-  unter der kommenden Fassung in CHANGELOG.md.
+  unter der kommenden Version in CHANGELOG.md.
 - **Die Übersicht „Unterstützte Aktivitäten und Fragetypen" (README, Teil 1) muss immer stimmen.** Sie gibt `schreibbareModule` (`lib/moodle/moodle_zugang.dart`) und `kernAnlegbar`, `zusatzAnlegbar`, `nurLesen` (`lib/moodle/fragen_xml.dart`) wieder, dazu die Werkzeuge je Art. Wer eine dieser Mengen ändert oder einer Art ein Werkzeug gibt oder nimmt, zieht die Übersicht im selben Zug nach.
 - **Die Werkzeugtabellen und die Listen im Benutzerhandbuch (README, Teil 2) müssen immer stimmen**, vor allem die Spalte „Freigabe": Wer ein Werkzeug hinzufügt oder entfernt, seine Wirkung ändert oder ändert, wann es eine Freigabe verlangt, zieht die Tabelle im selben Zug nach; ebenso die Zusammenfassung „Sperrliste und Positivliste", wenn sich `sperrliste.dart`, die Positivliste in `moodle_zugang.dart` oder `browserliste.dart` ändern. Eine zweite Werkzeugliste an anderer Stelle gibt es nicht.
 - **Skills**: Ein neues oder geändertes Werkzeug zieht den Skill nach, der es

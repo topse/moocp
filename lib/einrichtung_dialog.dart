@@ -274,7 +274,7 @@ class _EinrichtungDialogState extends State<EinrichtungDialog> {
         child: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Text('Damit Claude mit dieser App arbeiten kann, braucht Claude Code die Verbindung '
-                'zur App und die Skills in der Fassung, die zu dieser App gehört. Wählbare Skills '
+                'zur App und die Skills in der Version, die zu dieser App gehört. Wählbare Skills '
                 'installiert die App nur mit Haken.'),
             const SizedBox(height: 8),
             if (s != null) ...[

@@ -6,7 +6,7 @@
 Installiert werden die Pakete von der App: Sie bringt skills/dist/ als Assets
 mit, vergleicht beim Start mit ~/.claude/skills/ und bietet die Installation an
 (lib/einrichtung.dart); welche der wählbaren Skills dazugehören, entscheidet
-die Lehrkraft dort. So gehören App und Skills immer zur selben Fassung.
+die Lehrkraft dort. So gehören App und Skills immer zur selben Version.
 skills/dist/ ist Bauergebnis und nicht versioniert.
 
 Ablauf je Skill:

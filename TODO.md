@@ -66,23 +66,7 @@ Wenn eine Aufgabe gelesen wird, müssen nicht nur Metadaten, sondern auch Daten 
 
 # Durchspielen
 Umgesetzt, aber noch nicht als Ganzes auf einer Instanz gelaufen.
-- Updates: Voraussetzung ist ein echtes Release (Tag `v0.9.4`, Datei
-  `moocp_setup_0.9.4.exe`). Dann eine 0.9.3 bauen, installieren und
-  durchspielen: Frage beim ersten Start (beide Antworten), Angebot,
-  „Jetzt nicht" und am nächsten Tag wieder, Download mit Fortschritt,
-  Abbrechen mittendrin, sichtbarer Installer, Neustart der App, Meldung
-  „auf Fassung … aktualisiert" im Protokoll. Dazu die Wege ohne Netz
-  (Start wartet höchstens zehn Sekunden und läuft weiter) und die Suche
-  aus den Einstellungen heraus.
-- Updates, Wettlauf mit dem Installer: Der Installer wartet mit `/UPDATE`
-  bis zu 30 Sekunden still darauf, dass die App ihre exe freigibt. Dass das
-  Fenster in dieser Zeit nicht wie hängengeblieben aussieht und die Frage
-  „moocp läuft noch" wirklich erst danach kommt, ist nur am laufenden
-  System zu sehen.
-- Updates auf einem verwalteten Schulrechner: Schlägt der Virenschutz an,
-  wenn die App ein unsigniertes Setup lädt und startet? Dieselbe Sorge wie
-  bei der Fernsteuerung des Browsers.
-- Installer: Installieren, Update über eine ältere Fassung, Deinstallieren
+- Installer: Installieren, Update über eine ältere Version, Deinstallieren
   samt Einrichtung in Claude Code, auf einem frischen Windows ohne Visual
   Studio – dort zeigt sich auch, ob die mitgelieferte VC++-Laufzeit reicht.
   Gebaut und übersetzt ist er; das Entfernen der Einrichtung
@@ -90,7 +74,7 @@ Umgesetzt, aber noch nicht als Ganzes auf einer Instanz gelaufen.
 - Wählbare Skills: im Dialog „Claude einrichten" `lernsituation` anhaken
   und installieren, später über das Puzzlestück in der Titelzeile abwählen
   und prüfen, dass der Ordner unter `~/.claude/skills` verschwindet; ein
-  Update über eine Fassung, in der `lernsituation` schon installiert war,
+  Update über eine Version, in der `lernsituation` schon installiert war,
   darf ihn nicht entfernen.
 - Druckaufbereitung: Karofeld auf echtem Papier (Grauwert `#c0c0c0`,
   0,4 pt hell genug und trotzdem sichtbar?); ob erzeugte Inhalte sauber

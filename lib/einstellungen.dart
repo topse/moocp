@@ -33,7 +33,7 @@ class Einstellungen {
   /// gewählt wurde -- dann gilt gewaehltVorgabe.
   Set<String>? wahlSkills;
 
-  /// Ob die App einmal täglich bei GitHub nach einer neuen Fassung sehen
+  /// Ob die App einmal täglich bei GitHub nach einer neuen Version sehen
   /// darf; null, solange nicht gefragt wurde (update.dart). Ohne
   /// ausdrückliches Ja fragt die App niemanden -- auch GitHub nicht.
   bool? updatePruefen;
@@ -43,7 +43,7 @@ class Einstellungen {
   /// die Zeitgrenze.
   String? updateZuletzt;
 
-  /// Die Fassung, deren Installer gerade gestartet wurde; der nächste Start
+  /// Die Version, deren Installer gerade gestartet wurde; der nächste Start
   /// vergleicht sie mit der eigenen und meldet Erfolg oder Fehlschlag. Die
   /// App ist währenddessen beendet und sieht sonst nichts davon.
   String? updateErwartet;

@@ -135,7 +135,7 @@ Welche Werkzeuge Claude hat und welche davon Ihre Freigabe brauchen, steht im Be
 
 ### Lizenz und Marken
 
-moocp steht unter der [MIT-Lizenz](LICENSE.md): Sie dürfen die App frei benutzen, weitergeben und verändern. Die Lizenzen aller eingebundenen Pakete zeigt die App über ⓘ oben rechts, „Lizenzen ansehen". Was sich von Fassung zu Fassung ändert, steht in [CHANGELOG.md](CHANGELOG.md).
+moocp steht unter der [MIT-Lizenz](LICENSE.md): Sie dürfen die App frei benutzen, weitergeben und verändern. Die Lizenzen aller eingebundenen Pakete zeigt die App über ⓘ oben rechts, „Lizenzen ansehen". Was sich von Version zu Version ändert, steht in [CHANGELOG.md](CHANGELOG.md).
 
 Moodle™ ist eine eingetragene Marke von Moodle Pty Ltd, Claude eine Marke von Anthropic PBC. moocp ist ein unabhängiges Projekt und mit keinem der beiden verbunden.
 
@@ -145,10 +145,10 @@ Moodle™ ist eine eingetragene Marke von Moodle Pty Ltd, Claude eine Marke von 
 
 ### Installation
 
-1. **Installieren.** Den Installer `moocp_setup_<Version>.exe` ausführen, zu finden unter „Releases" dieses Repositorys; selbst bauen geht auch, siehe Entwicklerhandbuch. Es gibt einen Installer für alle Schulen, welche Skills dazukommen, wählen Sie in Schritt 2. Administratorrechte braucht er nicht: Die App kommt nach `%LOCALAPPDATA%\Programs\moocp`, mit Verknüpfungen im Startmenü und auf dem Desktop. Weil der Installer nicht signiert ist, warnt Windows beim ersten Mal („Der Computer wurde durch Windows geschützt"); „Weitere Informationen", dann „Trotzdem ausführen". Eine neue Fassung wird genauso installiert; Einstellungen und gespeicherte Anmeldedaten bleiben. Auf Wunsch sucht die App selbst nach neuen Fassungen, siehe [Updates](#updates).
+1. **Installieren.** Den Installer `moocp_setup_<Version>.exe` ausführen, zu finden unter „Releases" dieses Repositorys; selbst bauen geht auch, siehe Entwicklerhandbuch. Es gibt einen Installer für alle Schulen, welche Skills dazukommen, wählen Sie in Schritt 2. Administratorrechte braucht er nicht: Die App kommt nach `%LOCALAPPDATA%\Programs\moocp`, mit Verknüpfungen im Startmenü und auf dem Desktop. Weil der Installer nicht signiert ist, warnt Windows beim ersten Mal („Der Computer wurde durch Windows geschützt"); „Weitere Informationen", dann „Trotzdem ausführen". Eine neue Version wird genauso installiert; Einstellungen und gespeicherte Anmeldedaten bleiben. Auf Wunsch sucht die App selbst nach neuen Versionen, siehe [Updates](#updates).
 2. **Claude einrichten.** Beim Start prüft die App, ob Claude Code sie kennt und ob ihre Skills in dem Stand installiert sind, der zu dieser App gehört. Passt etwas nicht, erscheint der Dialog „Claude einrichten" mit je einer Zeile für die Verbindung und jeden Skill. `moodle` und `moodle-fragen` sind immer dabei; `lernsituation` ist für berufsbildende Schulen und kommt nur mit Haken dazu. „Installieren" richtet alles ein, was fehlt, und entfernt einen abgewählten Skill wieder. Später öffnet „Verbindung und Skills prüfen" in den Einstellungen (Zahnrad oben rechts) denselben Dialog, etwa um `lernsituation` dazuzunehmen. Schlägt dabei etwas fehl, steht es in der Zeile, und „Nochmal versuchen" versucht es erneut. Überspringen lässt sich die Einrichtung nicht, denn ohne sie kann Claude nicht mit der App arbeiten: „Beenden" schließt die App, und beim nächsten Start fragt sie wieder. Nach dem Installieren eine **neue Claude-Sitzung** starten – eine laufende sieht die Änderungen nicht.
 
-   Voraussetzung ist **Claude Desktop**, in dem der Bereich „Code" einmal geöffnet wurde; erst dann liegt Claude Code auf dem Rechner. Die App findet es selbst, auch dort, wo Windows es bei der Store-Fassung hinlegt (`%LOCALAPPDATA%\Packages\Claude_…\LocalCache\Roaming\Claude\claude-code\` – der Pfad `%APPDATA%\Claude\…`, den Claude Desktop selbst anzeigt, ist für andere Programme umgeleitet). Findet sie es nicht, sagt der Dialog es; nach der Installation von Claude Desktop genügt „Nochmal prüfen".
+   Voraussetzung ist **Claude Desktop**, in dem der Bereich „Code" einmal geöffnet wurde; erst dann liegt Claude Code auf dem Rechner. Die App findet es selbst, auch dort, wo Windows es bei der Store-Version hinlegt (`%LOCALAPPDATA%\Packages\Claude_…\LocalCache\Roaming\Claude\claude-code\` – der Pfad `%APPDATA%\Claude\…`, den Claude Desktop selbst anzeigt, ist für andere Programme umgeleitet). Findet sie es nicht, sagt der Dialog es; nach der Installation von Claude Desktop genügt „Nochmal prüfen".
 3. **Bei Moodle anmelden.** Nach dem Einrichten in der App Moodle-Adresse, Benutzername und Passwort eingeben, „Anmelden". Oben rechts steht dann „bei Moodle angemeldet" und daneben „MCP auf 127.0.0.1:…": Erst jetzt nimmt die App Anfragen von Claude an, damit schon die erste alles bereit findet. Eine Claude-Sitzung, die vorher gestartet wurde, findet die App nicht; dort mit `/mcp` neu verbinden oder eine neue Sitzung starten.
 
 ### Einrichten
@@ -365,13 +365,13 @@ Die **Suche nach Updates** geht an GitHub statt an Moodle und hat deshalb ihre e
 
 ### Updates
 
-Beim ersten Start fragt die App, ob sie einmal täglich bei GitHub nach einer neuen Fassung sehen darf. Ohne Ihr Ja nimmt sie keinen Kontakt zu GitHub auf; ändern können Sie die Antwort jederzeit in den Einstellungen (Zahnrad oben rechts), und dort finden Sie auch „Jetzt nach Updates suchen".
+Beim ersten Start fragt die App, ob sie einmal täglich bei GitHub nach einer neuen Version sehen darf. Ohne Ihr Ja nimmt sie keinen Kontakt zu GitHub auf; ändern können Sie die Antwort jederzeit in den Einstellungen (Zahnrad oben rechts), und dort finden Sie auch „Jetzt nach Updates suchen".
 
 Ist die Suche eingeschaltet, läuft sie beim Start der App, bevor etwas anderes passiert – noch vor dem Einrichten und der Anmeldung. Dauert die Abfrage länger als einen Augenblick, erscheint „Prüfe auf Updates" mit „Abbrechen"; nach zehn Sekunden bricht die App von selbst ab. Ohne Netz, hinter einem Schulproxy oder wenn GitHub nicht antwortet, startet die App einfach weiter; im Protokoll steht eine Zeile. Gesucht wird höchstens einmal am Tag, auch wenn Sie die App mehrmals starten.
 
-Gibt es eine neue Fassung, zeigt die App, was sich ändert, und fragt: „Herunterladen und installieren" oder „Jetzt nicht". Bei „Jetzt nicht" passiert nichts weiter; am nächsten Tag fragt sie wieder. Sonst lädt sie den Installer – Sie sehen den Fortschritt – und startet ihn sichtbar. moocp schließt sich dafür und startet nach der Installation wieder; Einstellungen, gespeicherte Anmeldedaten und die Einrichtung in Claude Code bleiben erhalten. Eine laufende Claude-Sitzung verliert dabei die Verbindung und muss neu gestartet werden. Lief etwas schief, sagt es die App beim nächsten Start im Protokoll und nennt den Pfad der geladenen Datei.
+Gibt es eine neue Version, zeigt die App, was sich ändert, und fragt: „Herunterladen und installieren" oder „Jetzt nicht". Bei „Jetzt nicht" passiert nichts weiter; am nächsten Tag fragt sie wieder. Sonst lädt sie den Installer – Sie sehen den Fortschritt – und startet ihn sichtbar. moocp schließt sich dafür und startet nach der Installation wieder; Einstellungen, gespeicherte Anmeldedaten und die Einrichtung in Claude Code bleiben erhalten. Eine laufende Claude-Sitzung verliert dabei die Verbindung und muss neu gestartet werden. Lief etwas schief, sagt es die App beim nächsten Start im Protokoll und nennt den Pfad der geladenen Datei.
 
-Was GitHub dabei erfährt: Ihre IP-Adresse und den Zeitpunkt der Anfrage, wie bei jedem Aufruf einer Webseite. Nichts aus Moodle wird übertragen, kein Benutzername, kein Passwort – die Suche benutzt eine eigene Verbindung ohne Ihre Moodle-Sitzung und darf nur zwei Adressen anfragen: die Auskunft über die neueste Fassung und die Installationsdatei des Releases ([lib/update/updateliste.dart](lib/update/updateliste.dart)). Jede Anfrage steht mit ihrem Ergebnis im Protokoll.
+Was GitHub dabei erfährt: Ihre IP-Adresse und den Zeitpunkt der Anfrage, wie bei jedem Aufruf einer Webseite. Nichts aus Moodle wird übertragen, kein Benutzername, kein Passwort – die Suche benutzt eine eigene Verbindung ohne Ihre Moodle-Sitzung und darf nur zwei Adressen anfragen: die Auskunft über die neueste Version und die Installationsdatei des Releases ([lib/update/updateliste.dart](lib/update/updateliste.dart)). Jede Anfrage steht mit ihrem Ergebnis im Protokoll.
 
 Sucht die App nicht nach Updates, schauen Sie von Zeit zu Zeit selbst unter „Releases" nach. Nicht gesucht wird außerdem, wenn die App nicht aus `%LOCALAPPDATA%\Programs\moocp` läuft – dann würde ein Update sie gar nicht ersetzen – oder wenn sie mit `--kein-update` gestartet wird; so lässt sich die Suche auch über die Verknüpfung abschalten.
 
@@ -439,18 +439,18 @@ skills/  (Wissen: Didaktik, Regeln,        moocp (Flutter, Windows)
 | `lib/moodle/zeilenvergleich.dart` | Zeilenvergleich für den Freigabedialog |
 | `lib/freigabe.dart` | Freigaben mit Frist |
 | `lib/einrichtung.dart`, `einrichtung_dialog.dart` | Claude einrichten: `claude.exe` finden, MCP-Eintrag prüfen und setzen, Skills vergleichen und installieren; beim Deinstallieren beides entfernen |
-| `lib/update/update.dart`, `updateliste.dart`, `update_dialoge.dart` | Suche nach Updates bei GitHub: Fassung vergleichen, Installer holen und starten; die Adressen, die dabei erlaubt sind |
+| `lib/update/update.dart`, `updateliste.dart`, `update_dialoge.dart` | Suche nach Updates bei GitHub: Version vergleichen, Installer holen und starten; die Adressen, die dabei erlaubt sind |
 | `lib/einstellungen_dialog.dart` | Dialog „Einstellungen": Updates, Weg zu „Claude einrichten" |
 | `lib/ueber.dart` | Dialog „Über moocp": Version, Lizenz, Lizenzen der Pakete |
 | `lib/anmeldedaten.dart`, `lib/einstellungen.dart` | gespeicherte Anmeldedaten (DPAPI), Einstellungen |
 | `lib/protokoll.dart`, `lib/log.dart` | Protokoll, Logging ohne Inhalte |
-| `test/` | Prüfungen ohne Moodle: Positiv- und Sperrliste, Formulare, Auswertung, Kurs, Fragen, Tests; in `test/daten/fragen/` die gemessenen Beispielfragen je Fragetyp |
-| `tool/` | `neustart.sh` (prüfen, bauen, neu starten), `mcp_aufruf.sh` (ein Werkzeug der laufenden App aufrufen), Auswertung und Einstellungen an einem gelesenen Ordner ausprobieren, Entwicklerfassung mit Hot Reload, die Bilder dieser README erzeugen |
+| `test/` | Prüfungen ohne Moodle: Positiv- und Sperrliste, Formulare, Auswertung, Kurs, Fragen, Tests, Zeilenenden; in `test/daten/fragen/` die gemessenen Beispielfragen je Fragetyp |
+| `tool/` | `neustart.sh` (prüfen, bauen, neu starten), `mcp_aufruf.sh` (ein Werkzeug der laufenden App aufrufen), Auswertung und Einstellungen an einem gelesenen Ordner ausprobieren, Entwicklerversion mit Hot Reload, die Bilder dieser README erzeugen, die Update-Abfrage gegen das echte GitHub prüfen (`update_probe.dart`) |
 | `skills/` | die Skills, ihre Gleichanteile, Bau- und Prüfskripte |
 | `installer/`, `create_installer.bat` | der Installer (NSIS) und das Skript, das ihn baut |
 | `docs/bilder/`, `docs/icon/` | Bilder dieser README; das Symbol der App als SVG |
-| `CHANGELOG.md` | was sich je Fassung geändert hat |
-| `publish_tag_to_github.sh` | eine Fassung auf GitHub bringen (siehe „Veröffentlichen") |
+| `CHANGELOG.md` | was sich je Version geändert hat |
+| `publish_tag_to_github.sh` | eine Version auf GitHub bringen (siehe „Veröffentlichen") |
 
 Wie etwas im Einzelnen funktioniert und warum – Moodle-Eigenheiten,
 Parameter, Fallstricke –, steht als Kommentar im Quelltext.
@@ -536,7 +536,7 @@ flutter test tool/bilder_test.dart --update-goldens
 | `skills/moodle-fragen/` | Fragensammlungen, Fragetypen, STACK, CodeRunner, Tests |
 | `skills/lernsituation/` | Lernsituationen im Arbeitsordner entwerfen und prüfen, bevor `moodle` sie in den Kurs bringt; Kursabschnitte beurteilen; wählbar, für berufsbildende Schulen (`wahlSkills` in `lib/einrichtung.dart`) |
 | `skills/gemeinsam/` | Gleichanteile: Abschnitte, die in mehreren Skills gleich stehen (Plan, Lücken, Datenschutzbefund, erfundene Namen, Urheberrecht, HTML-Regeln, Hausstil für Zeichnungen …) |
-| `skills/build.py` | setzt die Gleichanteile ein, schnürt die Pakete einer Fassung nach `skills/dist/`, prüft sie aus dem fertigen Paket |
+| `skills/build.py` | setzt die Gleichanteile ein, schnürt die Pakete einer Version nach `skills/dist/`, prüft sie aus dem fertigen Paket |
 | `skills/dist/` | die fertigen Pakete (`*.skill`), Bauergebnis und nicht versioniert; die App bringt sie als Assets mit und installiert sie nach Rückfrage (`lib/einrichtung.dart`) |
 | `skills/pruefung/` | Prüfskripte: Umlaute statt Ersatzschreibweisen, das Prüfskript der Lernsituationen |
 | `skills/umlaute.py` | stellt Ersatzschreibweisen auf Umlaute um |
@@ -555,20 +555,20 @@ python skills\pruefung\pruefe-lernsituation-skript.py
 
 Auf den eigenen Rechner kommen die Skills über die App: `tool/neustart.sh`
 baut sie vor der App, und beim Start bietet der Dialog „Claude einrichten"
-an, die neue Fassung zu installieren.
+an, die neue Version zu installieren.
 
 ### Veröffentlichen
 
-Die Versionsnummer steht in `pubspec.yaml`, die Änderungen je Fassung in `CHANGELOG.md`. Auf GitHub erscheint je Fassung ein einzelner Commit mit dem Stand des Tags; die Entwicklung dazwischen bleibt im eigenen Repository.
+Die Versionsnummer steht in `pubspec.yaml`, die Änderungen je Version in `CHANGELOG.md`. Auf GitHub erscheint je Version ein einzelner Commit mit dem Stand des Tags; die Entwicklung dazwischen bleibt im eigenen Repository.
 
 ```bash
 git tag v0.9.0
 bash publish_tag_to_github.sh v0.9.0
 ```
 
-Das Skript erwartet ein Remote `github` und nimmt die Commit-Nachricht aus dem Abschnitt der Fassung in `CHANGELOG.md`. Den Tag legt es auf GitHub unter dem Namen `v<Version>` ab (lokal heißt er `github-v<Version>` und zeigt auf den veröffentlichten Commit).
+Das Skript erwartet ein Remote `github` und nimmt die Commit-Nachricht aus dem Abschnitt der Version in `CHANGELOG.md`. Den Tag legt es auf GitHub unter dem Namen `v<Version>` ab (lokal heißt er `github-v<Version>` und zeigt auf den veröffentlichten Commit).
 
-Das Release wird danach auf GitHub von Hand aus diesem Tag erzeugt, mit dem Installer als Datei. Beides muss dem Schema folgen, sonst findet die Update-Prüfung der App die Fassung nicht: Tag `v0.9.5`, Datei `moocp_setup_0.9.5.exe`, kein Entwurf und keine Vorabfassung. Das Skript nennt beides am Ende noch einmal.
+Das Release wird danach auf GitHub von Hand aus diesem Tag erzeugt, mit dem Installer als Datei. Beides muss dem Schema folgen, sonst findet die Update-Prüfung der App die Version nicht: Tag `v0.9.5`, Datei `moocp_setup_0.9.5.exe`, kein Entwurf und keine Vorabversion. Das Skript nennt beides am Ende noch einmal.
 
 ### Mitwirken
 

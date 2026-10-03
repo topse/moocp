@@ -11,7 +11,7 @@
 set -e
 cd "$(dirname "$0")/.."
 # Die Skills zuerst: Die App bringt skills/dist/ als Assets mit und bietet
-# beim Start an, genau diese Fassung zu installieren.
+# beim Start an, genau diese Version zu installieren.
 python skills/build.py
 flutter analyze
 flutter test
@@ -24,7 +24,7 @@ sleep 1
 flutter build windows --release
 # Release, nicht Debug: Ausprobiert wird, was die Lehrkräfte bekommen --
 # dieselbe Protokollierung (E11), dieselbe Laufzeit, dasselbe Zeitverhalten
-# beim Beenden. Dass diese Fassung nicht im Installationsverzeichnis liegt,
+# beim Beenden. Dass diese Version nicht im Installationsverzeichnis liegt,
 # schaltet die Update-Prüfung schon von selbst ab (lib/update/update.dart);
 # --kein-update sagt es noch einmal ausdrücklich.
 (cd build/windows/x64/runner/Release && cmd //c start "" moocp.exe --kein-update)

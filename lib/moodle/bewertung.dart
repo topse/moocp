@@ -81,7 +81,7 @@ class Schema {
   String text() => _schemaText(name, methode, alsJson(), optionenWerte, optionenLabels);
 }
 
-/// Die lesbare Fassung für Übersicht und Freigabe; [kriterien] im Aufbau von
+/// Die lesbare Version für Übersicht und Freigabe; [kriterien] im Aufbau von
 /// `bewertung-<cmid>.json`, neue ohne id.
 String _schemaText(String name, String methode, List<Map> kriterien, Map<String, String> optionen,
         Map<String, String> labels) =>

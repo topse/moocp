@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Bringt eine Fassung auf GitHub: den Stand eines Tags als einen einzigen
-# Commit auf dem lokalen Zweig „github-release". Jede Fassung hat die vorige
-# als Eltern; GitHub sieht so eine gerade Folge von Fassungen, ohne die
+# Bringt eine Version auf GitHub: den Stand eines Tags als einen einzigen
+# Commit auf dem lokalen Zweig „github-release". Jede Version hat die vorige
+# als Eltern; GitHub sieht so eine gerade Folge von Versionen, ohne die
 # Entwicklung dazwischen.
 #
 #   bash publish_tag_to_github.sh <tag>        etwa v0.9.0
@@ -49,8 +49,8 @@ git remote get-url "${REMOTE}" &>/dev/null \
 readonly QUELLE=$(git rev-parse "${TAG}^{commit}")
 readonly BAUM=$(git rev-parse "${TAG}^{tree}")
 
-# Der Abschnitt der Fassung aus CHANGELOG.md, bis zur nächsten Überschrift
-# „## ". Ohne Abschnitt keine Veröffentlichung: Wer die Fassung auf GitHub
+# Der Abschnitt der Version aus CHANGELOG.md, bis zur nächsten Überschrift
+# „## ". Ohne Abschnitt keine Veröffentlichung: Wer die Version auf GitHub
 # sieht, soll lesen können, was sie bringt.
 CHANGELOG=$(git show "${TAG}:CHANGELOG.md" 2>/dev/null) || true
 ABSCHNITT=$(awk -v v="${VERSION}" '
@@ -72,7 +72,7 @@ export GIT_COMMITTER_NAME="${NAME}" GIT_COMMITTER_EMAIL="${EMAIL}"
 # ── Zweig für die Veröffentlichung ──────────────────────────────────────
 
 if ! git show-ref --verify --quiet "refs/heads/${ZWEIG}"; then
-    # Lokal fehlt der Zweig: nachsehen, ob GitHub schon Fassungen hat.
+    # Lokal fehlt der Zweig: nachsehen, ob GitHub schon Versionen hat.
     echo "Zweig „${ZWEIG}“ fehlt lokal, hole ${REMOTE}/main …"
     git fetch "${REMOTE}" main 2>/dev/null || true
     if git show-ref --verify --quiet "refs/remotes/${REMOTE}/main"; then
@@ -88,7 +88,7 @@ if git show-ref --verify --quiet "refs/heads/${ZWEIG}"; then
         || abbruch "Der Stand von ${TAG} ist schon veröffentlicht (gleich ${ZWEIG})."
     readonly NEU=$(git commit-tree "${BAUM}" -p "${ELTERN}" -m "${NACHRICHT}")
 else
-    echo "Lege „${ZWEIG}“ an (erste Fassung) …"
+    echo "Lege „${ZWEIG}“ an (erste Version) …"
     readonly NEU=$(git commit-tree "${BAUM}" -m "${NACHRICHT}")
 fi
 
@@ -103,7 +103,7 @@ echo "Lade ${TAG} nach ${REMOTE}/main …"
 git push "${REMOTE}" "${ZWEIG}:refs/heads/main" --force-with-lease
 # Lokal heißt der Tag „github-v0.9.4“ (er zeigt auf den veröffentlichten
 # Commit, nicht auf den der Entwicklung), auf GitHub aber „v0.9.4“: Aus dem
-# Tag des Releases liest die Update-Prüfung der App die Fassung
+# Tag des Releases liest die Update-Prüfung der App die Version
 # (lib/update/update.dart), und dafür muss er dem Schema „v<version>“
 # folgen.
 git tag --force "github-${TAG}" "${NEU}"
@@ -119,10 +119,10 @@ Veröffentlicht: ${TAG} auf ${REMOTE}
 
 Auf GitHub noch: aus dem Tag ${TAG} ein Release machen und den Installer
 anhängen. Beides muss stimmen, sonst findet die Update-Prüfung der App die
-Fassung nicht:
+Version nicht:
 
   Tag des Releases:  ${TAG}
   Name der Datei:    moocp_setup_${VERSION}.exe
-  kein Entwurf, keine Vorabfassung
+  kein Entwurf, keine Vorabversion
 
 EOF

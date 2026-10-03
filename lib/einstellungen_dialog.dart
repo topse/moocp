@@ -39,7 +39,7 @@ class EinstellungenDialog extends StatefulWidget {
   final Einstellungen einstellungen;
   final Protokoll protokoll;
 
-  /// Die laufende Fassung, etwa „0.9.4".
+  /// Die laufende Version, etwa „0.9.4".
   final String eigene;
 
   /// Ob sich diese App überhaupt selbst aktualisieren kann (update.dart).
@@ -101,7 +101,7 @@ class _EinstellungenDialogState extends State<EinstellungenDialog> {
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
-                    'Diese Fassung kann sich nicht selbst aktualisieren: Sie läuft nicht aus '
+                    'Diese Version kann sich nicht selbst aktualisieren: Sie läuft nicht aus '
                     'dem Installationsverzeichnis, oder die Prüfung ist über die Kommandozeile '
                     'abgeschaltet ($keinUpdateSchalter).',
                     style: klein),
@@ -113,7 +113,7 @@ class _EinstellungenDialogState extends State<EinstellungenDialog> {
                 controlAffinity: ListTileControlAffinity.leading,
                 value: an,
                 onChanged: _sucht ? null : (v) => _umschalten(v ?? false),
-                title: const Text('Einmal täglich bei GitHub nach einer neuen Fassung sehen'),
+                title: const Text('Einmal täglich bei GitHub nach einer neuen Version sehen'),
                 subtitle: Text(
                     'GitHub erfährt dabei Ihre IP-Adresse und den Zeitpunkt. Nichts aus '
                     'Moodle wird übertragen.',
@@ -141,7 +141,7 @@ class _EinstellungenDialogState extends State<EinstellungenDialog> {
               padding: const EdgeInsets.only(top: 8),
               child: Text(
                   'Claude Code braucht die Verbindung zu dieser App und die Skills in der '
-                  'Fassung, die zu ihr gehört.',
+                  'Version, die zu ihr gehört.',
                   style: klein),
             ),
             Padding(

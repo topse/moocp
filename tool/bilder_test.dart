@@ -75,7 +75,7 @@ void main() {
     // ignore: invalid_use_of_visible_for_testing_member
     SharedPreferences.setMockInitialValues({'anmeldung.merken': true, 'anmeldung.benutzer': 'e.mustermann'});
     // Sonst stünde „Version nicht lesbar" im Protokoll des Bildes: Die App
-    // liest ihre Fassung beim Start (Update-Prüfung), und im Test gibt es
+    // liest ihre Version beim Start (Update-Prüfung), und im Test gibt es
     // das Plugin dafür nicht.
     // ignore: invalid_use_of_visible_for_testing_member
     PackageInfo.setMockInitialValues(

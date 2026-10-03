@@ -4,7 +4,7 @@
 //
 // Gelesen wird das Bearbeitungsformular, nicht die Ansichtsseite. Nur dort
 // steht der GESPEICHERTE Quelltext -- genau der, der beim Bearbeiten
-// zurückgeschrieben wird. Die Ansichtsseite zeigt die aufbereitete Fassung
+// zurückgeschrieben wird. Die Ansichtsseite zeigt die aufbereitete Version
 // (Filter angewendet, Adressen umgeschrieben); wer die zurückspeichert,
 // verändert die Seite unbemerkt.
 //
