@@ -26,7 +26,7 @@ import 'formeln.dart';
 import 'moodle_zugang.dart';
 
 // kernAnlegbar, zusatzAnlegbar und nurLesen gibt die Übersicht „Unterstützte
-// Aktivitäten und Fragetypen" in README.md (Teil 1) wieder; dort im selben Zug
+// Aktivitäten und Fragetypen" in README.md (Teil 2) wieder; dort im selben Zug
 // nachziehen.
 
 /// Kern-Fragetypen, die angelegt werden können.

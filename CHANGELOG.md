@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.9.7
+- Add Quickstart
+
 ## 0.9.6
 - Kleinere Korrekturen an der Update-Suche.
 

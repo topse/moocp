@@ -179,7 +179,7 @@ class MoodleZugang {
   /// Aktivitätstypen, deren Formular die App kennt: anlegen und ändern.
   /// Ein Typ kommt erst hinein, wenn sein Formular im Testkurs gemessen ist.
   /// Die Übersicht „Unterstützte Aktivitäten und Fragetypen" in README.md
-  /// (Teil 1) im selben Zug nachziehen.
+  /// (Teil 2) im selben Zug nachziehen.
   static const Set<String> schreibbareModule = {
     'page', 'label', 'assign', 'folder', 'subsection', 'book', 'quiz', 'qbank', //
     'checklist', 'wiki', 'board', 'kanban', 'url', 'resource',

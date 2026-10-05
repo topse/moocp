@@ -9,9 +9,12 @@ Keine git Aktionen durchführen - das macht ausschließlich der Benutzer. Wenn D
    weiterzuentwickeln, steht in der README – auch die Architektur. Hier
    steht nur, was die KI bei der Arbeit an diesem Projekt braucht:
    Anforderungen, Entscheidungen, Arbeitsregeln.
-2. **Die README hat drei Teile, in dieser Reihenfolge:** 1. Vorstellung (was
-   das System kann, mit Bildern, damit Interessierte wissen, woran sie sind),
-   2. Benutzerhandbuch (beginnt mit der Installation), 3. Entwicklerhandbuch.
+2. **Die README hat vier Teile, in dieser Reihenfolge:** 1. Quickstart (der
+   kürzeste Weg zum ersten Ergebnis, nur Schritte und ein Beispiel – keine
+   Begründungen, keine Sonderfälle; alles Ausführliche steht im
+   Benutzerhandbuch), 2. Vorstellung (was das System kann, mit Bildern, damit
+   Interessierte wissen, woran sie sind), 3. Benutzerhandbuch (beginnt mit der
+   Installation), 4. Entwicklerhandbuch.
 3. **Nichts doppelt.** CLAUDE.md darf auf die README verweisen, die README
    nie auf CLAUDE.md.
 4. **Kein Verlaufsprotokoll.** Weder hier noch in der README steht, wie etwas
@@ -45,7 +48,7 @@ Keine git Aktionen durchführen - das macht ausschließlich der Benutzer. Wenn D
    fliegt dort heraus.
 
 Architektur, Aufbau, Werkzeuge, Bauen und Prüfen: [README.md](README.md),
-Teil 3.
+Teil 4.
 
 ## Anforderungen
 
@@ -275,8 +278,8 @@ sondern von Hand übernommen. Zeilenenden LF, nur Batch-Dateien CRLF
   bis 30 Minuten, im Hintergrund, nicht nach wenigen Minuten aufgeben.
 - **Änderungen, die Nutzerinnen und Nutzer merken**, bekommen eine Zeile
   unter der kommenden Version in CHANGELOG.md.
-- **Die Übersicht „Unterstützte Aktivitäten und Fragetypen" (README, Teil 1) muss immer stimmen.** Sie gibt `schreibbareModule` (`lib/moodle/moodle_zugang.dart`) und `kernAnlegbar`, `zusatzAnlegbar`, `nurLesen` (`lib/moodle/fragen_xml.dart`) wieder, dazu die Werkzeuge je Art. Wer eine dieser Mengen ändert oder einer Art ein Werkzeug gibt oder nimmt, zieht die Übersicht im selben Zug nach.
-- **Die Werkzeugtabellen und die Listen im Benutzerhandbuch (README, Teil 2) müssen immer stimmen**, vor allem die Spalte „Freigabe": Wer ein Werkzeug hinzufügt oder entfernt, seine Wirkung ändert oder ändert, wann es eine Freigabe verlangt, zieht die Tabelle im selben Zug nach; ebenso die Zusammenfassung „Sperrliste und Positivliste", wenn sich `sperrliste.dart`, die Positivliste in `moodle_zugang.dart` oder `browserliste.dart` ändern. Eine zweite Werkzeugliste an anderer Stelle gibt es nicht.
+- **Die Übersicht „Unterstützte Aktivitäten und Fragetypen" (README, Teil 2) muss immer stimmen.** Sie gibt `schreibbareModule` (`lib/moodle/moodle_zugang.dart`) und `kernAnlegbar`, `zusatzAnlegbar`, `nurLesen` (`lib/moodle/fragen_xml.dart`) wieder, dazu die Werkzeuge je Art. Wer eine dieser Mengen ändert oder einer Art ein Werkzeug gibt oder nimmt, zieht die Übersicht im selben Zug nach.
+- **Die Werkzeugtabellen und die Listen im Benutzerhandbuch (README, Teil 3) müssen immer stimmen**, vor allem die Spalte „Freigabe": Wer ein Werkzeug hinzufügt oder entfernt, seine Wirkung ändert oder ändert, wann es eine Freigabe verlangt, zieht die Tabelle im selben Zug nach; ebenso die Zusammenfassung „Sperrliste und Positivliste", wenn sich `sperrliste.dart`, die Positivliste in `moodle_zugang.dart` oder `browserliste.dart` ändern. Eine zweite Werkzeugliste an anderer Stelle gibt es nicht.
 - **Skills**: Ein neues oder geändertes Werkzeug zieht den Skill nach, der es
   benutzt (A8 bewahren); alles Weitere in [skills/CLAUDE.md](skills/CLAUDE.md).
   Größere Umbauten der Skills vorher mit dem Nutzer besprechen.

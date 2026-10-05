@@ -13,13 +13,34 @@ Claude als Kollege im Moodle-Kurs – über eine kleine Windows-App, die genau d
 >
 > Die Datensperre soll verhindern, dass personenbezogene Daten überhaupt angefragt werden. Gewährleistet ist das nicht: Ein Moodle-Update oder ein Zusatzmodul kann auf Seiten, die die App lesen darf, Personendaten zeigen, die dort vorher nicht standen. Namen und andere personenbezogene Daten, die im Kurstext selbst stehen, erkennt sie grundsätzlich nicht; sie können an die KI gelangen.
 
-- [1. Vorstellung](#1-vorstellung)
-- [2. Benutzerhandbuch](#2-benutzerhandbuch)
-- [3. Entwicklerhandbuch](#3-entwicklerhandbuch)
+- [1. Quickstart](#1-quickstart)
+- [2. Vorstellung](#2-vorstellung)
+- [3. Benutzerhandbuch](#3-benutzerhandbuch)
+- [4. Entwicklerhandbuch](#4-entwicklerhandbuch)
 
 ---
 
-## 1. Vorstellung
+## 1. Quickstart
+
+Der kürzeste Weg zum ersten Ergebnis; ausführlich steht alles im [Benutzerhandbuch](#3-benutzerhandbuch).
+
+1. **Claude Desktop installieren** ([claude.com/download](https://claude.com/download)), anmelden und einmal den Reiter „Code" öffnen – erst dann liegt Claude Code auf dem Rechner, und genau das braucht moocp.
+2. **moocp installieren**: `moocp_setup_<Version>.exe` unter „Releases" dieses Repositorys herunterladen und ausführen; Windows 10 oder 11, Administratorrechte braucht es nicht. Beim ersten Mal warnt Windows, weil der Installer nicht signiert ist: „Weitere Informationen", dann „Trotzdem ausführen".
+3. **Claude einrichten**: Beim ersten Start fragt die App, ob sie nach Updates sehen darf, und zeigt dann den Dialog „Claude einrichten" – dort „Installieren". Wer an einer berufsbildenden Schule unterrichtet, setzt vorher den Haken bei `lernsituation`.
+4. **Bei Moodle anmelden**: Adresse, Benutzername und Passwort in die App eingeben. Oben rechts steht danach „bei Moodle angemeldet" und „MCP auf 127.0.0.1:…".
+5. **Neue Claude-Sitzung starten** – eine, die vorher lief, kennt die App noch nicht – und im Reiter „Code" loslegen, am besten in einem Testkurs. Sagen Sie Claude einfach, was Sie brauchen, und kopieren Sie die Adresse aus der Adresszeile des Browsers dazu – Kurs, Abschnitt oder Seite, Claude liest heraus, was es braucht:
+
+   > Was steht alles in Abschnitt 2 von https://moodle.schule.example/course/view.php?id=12
+
+   > Leg dort eine Textseite „Ohmsches Gesetz" an: kurze Erklärung, zwei Rechenbeispiele, drei Übungsaufgaben mit Lösungen.
+
+   Claude legt erst einen Plan vor und wartet auf Ihr Ja. Neu Angelegtes ist verborgen, bis Sie es sichtbar schalten; alles, was Bestehendes ändert, fragt vorher in der App nach Ihrer Freigabe.
+
+Viel Spaß – und fangen Sie in einem Testkurs an, nicht im laufenden Kurs.
+
+---
+
+## 2. Vorstellung
 
 ### Worum es geht
 
@@ -141,7 +162,7 @@ Moodle™ ist eine eingetragene Marke von Moodle Pty Ltd, Claude eine Marke von 
 
 ---
 
-## 2. Benutzerhandbuch
+## 3. Benutzerhandbuch
 
 ### Installation
 
@@ -381,7 +402,7 @@ In den Windows-Einstellungen unter „Apps", „Installierte Apps", bei moocp �
 
 ---
 
-## 3. Entwicklerhandbuch
+## 4. Entwicklerhandbuch
 
 ### Architektur
 
@@ -526,7 +547,7 @@ flutter test tool/bilder_test.dart --update-goldens
 4. **Durchspielen** im Testkurs, danach aufräumen. Befunde über Moodle als
    Kommentar an den Code.
 5. **Skill** ergänzen, der das Werkzeug benutzt; README und `CHANGELOG.md`
-   ergänzen, wenn sich für Benutzerinnen und Benutzer etwas ändert. Kommt eine Aktivität oder ein Fragetyp dazu oder ändert sich, was damit geht, immer auch die Übersicht „Unterstützte Aktivitäten und Fragetypen" in Teil 1 nachziehen – sie muss stets dem Code entsprechen. Ebenso die Werkzeugtabellen in Teil 2: Neues Werkzeug, geänderte Beschreibung oder geändertes Freigabeverhalten (Spalte „Freigabe"), und bei jeder Änderung an Sperrliste, Positivliste oder Browserliste die Zusammenfassung unter „Sperrliste und Positivliste".
+   ergänzen, wenn sich für Benutzerinnen und Benutzer etwas ändert. Kommt eine Aktivität oder ein Fragetyp dazu oder ändert sich, was damit geht, immer auch die Übersicht „Unterstützte Aktivitäten und Fragetypen" in Teil 2 nachziehen – sie muss stets dem Code entsprechen. Ebenso die Werkzeugtabellen in Teil 3: Neues Werkzeug, geänderte Beschreibung oder geändertes Freigabeverhalten (Spalte „Freigabe"), und bei jeder Änderung an Sperrliste, Positivliste oder Browserliste die Zusammenfassung unter „Sperrliste und Positivliste".
 
 ### Die Skills
 
