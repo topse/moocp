@@ -1,8 +1,11 @@
 // Offline prüfbar: Einstellungen aus einem Moodle-Formular lesen und setzen,
 // an einem nachgebauten Formular im Aufbau von Moodle 4.
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:moocp/moodle/formular.dart';
+import 'package:moocp/moodle/formular_schreiben.dart';
 import 'package:moocp/moodle/moodle_zugang.dart';
 
 String optionen(int von, int bis, int gewaehlt) =>
@@ -86,5 +89,25 @@ void main() {
         throwsA(predicate((e) => e is MoodleFehler && e.meldung.contains('Nein | Ja'))));
     expect(() => einstellungenSetzen(form, f, {'duedate': '5.10.2026'}), throwsA(isA<MoodleFehler>()));
     expect(() => einstellungenSetzen(form, f, {'submissionplugins': 'ja'}), throwsA(isA<MoodleFehler>()));
+  });
+
+  group('Welche Datei eines Dateibereichs zeilenweise verglichen wird', () {
+    // Die Freigabe zeigt bei einer geänderten Textdatei die Zeilen, bei allem
+    // anderen Name und Größe. Falsch entschieden heißt: eine Lehrkraft sieht
+    // Kauderwelsch statt eines Vergleichs -- oder gar nichts, wo sie etwas
+    // sehen müsste.
+    test('UTF-8 mit Umlauten ist Text, Zeilenenden werden angeglichen', () {
+      expect(alsText(utf8.encode('# Größen\r\nzwei Zeilen\n')), '# Größen\nzwei Zeilen\n');
+    });
+    test('Eine PNG-Datei ist kein Text (Nullbyte im Kopf)', () {
+      expect(alsText(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D]), isNull);
+    });
+    test('Kein gültiges UTF-8 ist kein Text', () {
+      expect(alsText(const [0xFF, 0xFE, 0x41, 0x42]), isNull);
+    });
+    test('Zu groß wird nicht verglichen', () {
+      expect(alsText(utf8.encode('x' * (256 * 1024 + 1))), isNull);
+      expect(alsText(utf8.encode('x' * (256 * 1024))), isNotNull);
+    });
   });
 }

@@ -120,11 +120,37 @@ void main() {
     expect(weg('GET', 'https://andere.schule.example/theme/styles.php/boost/1/all'), BrowserWeg.gesperrt);
   });
 
+  test('Was nicht geladen ist, zählt nur, wenn es das Bild verändern kann', () {
+    expect(veraendertBild('Datenschutz-Sperre (Regel 3)', 'Script'), isTrue);
+    expect(veraendertBild('fremder Rechner', 'Stylesheet'), isTrue, reason: 'Schriften, fremde Bilder');
+    expect(veraendertBild('nicht die aufgenommene Seite', 'Document'), isTrue, reason: 'ein Rahmen im Inhalt');
+    for (final art in ['Stylesheet', 'Image', 'Font', 'Media']) {
+      expect(veraendertBild(nichtAufDerListe, art), isTrue, reason: art);
+    }
+    for (final art in ['Script', 'XHR', 'Fetch', 'Other', null]) {
+      expect(veraendertBild(nichtAufDerListe, art), isFalse, reason: '$art: Kopfzeile und Plugins');
+    }
+    final (_, grund) = browserPruefen('GET', Uri.parse('https://moodle.schule.example/local/beispiel/build/app.js'),
+        basis: Uri.parse('https://moodle.schule.example/'), seiten: const {});
+    expect(grund, nichtAufDerListe);
+  });
+
   test('Grund: Pflicht, ein Satz', () {
     expect(grundPruefen('  Prüfen, ob die Formeln\n auf Infoblatt 2 gesetzt werden  '),
         'Prüfen, ob die Formeln auf Infoblatt 2 gesetzt werden');
     for (final g in [null, '', '   ', 'Formeln', 'x' * 201]) {
       expect(() => grundPruefen(g), throwsA(isA<MoodleFehler>()), reason: '$g');
     }
+    String meldung(String? g) {
+      try {
+        grundPruefen(g);
+      } on MoodleFehler catch (f) {
+        return f.toString();
+      }
+      return '';
+    }
+
+    expect(meldung('  '), contains('Ohne Grund'));
+    expect(meldung('Testlauf'), allOf(contains('„Testlauf" ist zu knapp'), isNot(contains('Ohne Grund'))));
   });
 }

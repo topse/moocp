@@ -5,7 +5,7 @@
 // ersetzt auch die Skills, und würde die App vorher einrichten, installierte
 // sie die Version, die gleich überschrieben wird (E13). Weil der MCP-Server
 // zuletzt startet, reißt ein Update zu diesem Zeitpunkt auch keiner
-// Claude-Sitzung die Verbindung ab.
+// Sitzung eines KI-Werkzeugs die Verbindung ab.
 //
 // Die Anzeige „Prüfe auf Updates" erscheint erst nach einer kurzen Weile:
 // Bei flottem Netz ist die Prüfung vorher durch, und niemand soll bei jedem
@@ -305,7 +305,7 @@ class _AngebotDialogState extends State<_AngebotDialog> {
           Text(
               'Der Installer wird von GitHub geladen und läuft sichtbar ab. moocp schließt '
               'sich dafür und startet danach wieder. Einstellungen, gespeicherte Anmeldedaten '
-              'und die Einrichtung in Claude Code bleiben erhalten.',
+              'und die Einrichtung der KI-Werkzeuge bleiben erhalten.',
               style: klein),
           if (widget.sitzungLaeuft) ...[
             const SizedBox(height: 8),
@@ -314,7 +314,7 @@ class _AngebotDialogState extends State<_AngebotDialog> {
               const SizedBox(width: 8),
               Expanded(
                   child: Text(
-                      'Eine laufende Claude-Sitzung verliert dabei die Verbindung zur App und '
+                      'Eine laufende Sitzung im KI-Werkzeug verliert dabei die Verbindung zur App und '
                       'muss neu gestartet werden.',
                       style: klein)),
             ]),

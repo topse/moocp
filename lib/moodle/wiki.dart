@@ -73,11 +73,19 @@ const String _persoenlich = 'Das ist ein persönliches Wiki: Jede Seite gehört 
     'schreibt dort nichts -- nur die Einstellungen (aktivitaet_lesen).';
 const String _gruppen = 'Das Wiki ist nach Gruppen getrennt: Jede Gruppe hat eigene Seiten, die ihre Mitglieder '
     'schreiben. Die App liest und schreibt dort nichts -- nur die Einstellungen (aktivitaet_lesen).';
+const String _gruppenmodus = 'Das Wiki steht im Gruppenmodus: Hat der Kurs Gruppen, hat jede Gruppe eigene Seiten, '
+    'die ihre Mitglieder schreiben. Die App liest und schreibt dort nichts -- nur die Einstellungen '
+    '(aktivitaet_lesen). Arbeiten lässt sich daran erst, wenn der Gruppenmodus auf „Keine Gruppen" steht.';
 
-/// Erste Stelle: der Typ aus dem Einstellungsformular (modedit). Moodle zeigt
-/// ihn nach dem Anlegen als gesperrte Auswahl (disabled, mod/wiki/mod_form.php);
-/// gesendet wird sie nicht, deshalb steht der Wert nur im DOM. Gilt
-/// unabhängig von Gruppen und Rechten -- anders als die Auswahl in der Ansicht.
+/// Erste Stelle: Typ und Gruppenmodus aus dem Einstellungsformular (modedit).
+/// Den Typ zeigt Moodle nach dem Anlegen als gesperrte Auswahl (disabled,
+/// mod/wiki/mod_form.php); gesendet wird sie nicht, deshalb steht der Wert
+/// nur im DOM. Gilt unabhängig von Gruppen und Rechten -- anders als die
+/// Auswahl in der Ansicht. Der Gruppenmodus sperrt hier schon, auch in einem
+/// Kurs ohne Gruppen: Ist das Wiki noch leer, zeigt view.php das
+/// Anlegeformular statt der Auswahl über dem Wiki, [wikiAnsichtSperre] sieht
+/// dann nichts, und die erste Seite landete bei einer Gruppe (gemessen).
+/// Erzwingt der Kurs den Gruppenmodus, steht er als verstecktes Feld da.
 void wikiTypPruefen(Formular einstellungen, int cmid) {
   if (einstellungen.modul != 'wiki') throw MoodleFehler('cmid $cmid ist kein Wiki.');
   final typ = einstellungen.form.querySelector('select[name="wikimode"] option[selected]')?.attributes['value'];
@@ -86,14 +94,17 @@ void wikiTypPruefen(Formular einstellungen, int cmid) {
     throw MoodleFehler('Der Typ des Wikis cmid $cmid ist nicht zu erkennen -- die App fasst nur ein gemeinsames '
         'Wiki an.');
   }
+  final gruppen = einstellungen.form.querySelector('select[name="groupmode"] option[selected]')?.attributes['value'] ??
+      einstellungen.form.querySelector('input[name="groupmode"]')?.attributes['value'];
+  if (gruppen != null && gruppen != '0') throw MoodleFehler(_gruppenmodus);
 }
 
-/// Zweite Stelle: die Auswahl, die Moodle über einem Wiki zeigt
-/// (mod/wiki/renderer.php, wiki_print_subwiki_selector): eine Person (uid,
-/// mit Gruppen groupanduser) oder eine Gruppe (group). Moodle zeigt sie nur,
-/// wenn es Gruppen gibt bzw. das Konto alle Wikis verwalten darf; ein
-/// gemeinsames Wiki im Gruppenmodus OHNE Gruppen hat keine und ist ein
-/// gewöhnliches gemeinsames Wiki. Gibt die Meldung zurück oder null.
+/// Zweite Stelle, als zweite Sicherung: die Auswahl, die Moodle über einem
+/// Wiki zeigt (mod/wiki/renderer.php, wiki_print_subwiki_selector): eine
+/// Person (uid, mit Gruppen groupanduser) oder eine Gruppe (group). Moodle
+/// zeigt sie nur, wenn es Gruppen gibt bzw. das Konto alle Wikis verwalten
+/// darf, und nicht über dem Anlegeformular eines leeren Wikis. Gibt die
+/// Meldung zurück oder null.
 String? wikiAnsichtSperre(dom.Document ansicht) {
   if (ansicht.querySelector('#region-main select[name="uid"], #region-main select[name="groupanduser"]') != null) {
     return _persoenlich;
@@ -219,10 +230,12 @@ Future<bool> _speichern(MoodleZugang moodle, int pageid, String html) async {
 
 Future<String> wikiseiteSchreiben(MoodleZugang moodle, Freigaben freigaben,
     {required int cmid, required String titel, required String datei, required String arbeitsordner}) async {
-  final html = await File(imArbeitsordner(datei, arbeitsordner)).readAsString(encoding: utf8);
-  formelnPruefen({p.basenameWithoutExtension(datei): html});
+  // Erst das Wiki prüfen, dann die Datei: Ein persönliches Wiki oder eines
+  // im Gruppenmodus sperrt, ehe etwas anderes zählt.
   final f0 = await formularHolen(moodle, '/course/modedit.php?update=$cmid');
   final w = await _wiki(moodle, cmid, mitInhalt: true, einstellungen: f0);
+  final html = await dateiAusArbeitsordner(datei, arbeitsordner);
+  formelnPruefen({p.basenameWithoutExtension(datei): html});
   final vorhanden = w.seiten.where((s) => s.titel == titel.trim()).firstOrNull;
   final kurs = f0.kurs;
   final wo = 'Wiki „${f0.name}" (cmid $cmid${kurs == null ? '' : ', ${await kursBezeichnung(moodle, kurs)}'})';
@@ -247,15 +260,23 @@ Future<String> wikiseiteSchreiben(MoodleZugang moodle, Freigaben freigaben,
   if (w.startId == null && w.startTitel != null && w.startTitel != titel.trim()) {
     throw MoodleFehler('Die erste Seite muss „${w.startTitel}" heißen -- der Startseitentitel aus den Einstellungen.');
   }
-  if (sichtbar) {
-    final ja = await freigaben.anfragen(FreigabeAnfrage(
-      titel: 'Wikiseite anlegen?',
-      punkte: ['Neue Seite „$titel" in $wo', 'Das Wiki ist für Lernende sichtbar -- die Seite erscheint SOFORT.'],
-      vergleich: const [],
-      knopf: 'Anlegen',
-    ));
-    if (!ja) return 'Nicht angelegt: in der App abgelehnt oder nicht rechtzeitig freigegeben.';
-  }
+  // Sichtbares Wiki: Die Seite erscheint sofort, Freigabe ab „mittel". In
+  // einem verborgenen Wiki sieht sie niemand -- Freigabe erst bei „alle".
+  final ja = await freigaben.anfragen(FreigabeAnfrage(
+    titel: 'Wikiseite anlegen?',
+    punkte: [
+      'Neue Seite „$titel" in $wo',
+      sichtbar
+          ? 'Das Wiki ist für Lernende sichtbar -- die Seite erscheint SOFORT.'
+          : 'Das Wiki ist für Lernende verborgen.',
+      '${html.length} Zeichen HTML.',
+    ],
+    vergleich: const [],
+    knopf: 'Anlegen',
+    ohneEntscheidung: 'wird nichts angelegt',
+    ab: sichtbar ? Bestaetigungen.mittel : Bestaetigungen.alle,
+  ));
+  if (!ja) return 'Nicht angelegt: in der App abgelehnt oder nicht rechtzeitig freigegeben.';
   final adresse = w.startId == null
       ? '/mod/wiki/view.php?id=$cmid'
       : '/mod/wiki/create.php?swid=${w.swid}&title=${Uri.encodeQueryComponent(titel.trim())}&action=new';

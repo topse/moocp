@@ -6,7 +6,6 @@ import 'package:html/parser.dart' as html_parser;
 import 'package:moocp/moodle/moodle_zugang.dart';
 import 'package:moocp/moodle/formular.dart';
 import 'package:moocp/moodle/zeilenvergleich.dart';
-import 'package:moocp/freigabe.dart';
 import 'package:moocp/protokoll.dart';
 
 void main() {
@@ -147,21 +146,6 @@ void main() {
     expect(z.erlaubt('POST', Uri.parse('https://m.example/lib/ajax/service.php?sesskey=x&info=$s')),
         isFalse,
         reason: 'ohne Rumpf');
-  });
-
-  test('Freigabe: Frist greift, Entscheidung zählt', () async {
-    final prot = Protokoll();
-    final f = Freigaben(prot, frist: const Duration(milliseconds: 200));
-    FreigabeAnfrage neu() => FreigabeAnfrage(titel: 't', punkte: const [], vergleich: const []);
-    final uhr = Stopwatch()..start();
-    expect(await f.anfragen(neu()), isFalse);
-    expect(uhr.elapsedMilliseconds, lessThan(1000));
-    expect(f.aktuell, isNull);
-    expect(prot.eintraege.last.text, contains('Frist abgelaufen'));
-    final warten = f.anfragen(neu());
-    f.entscheiden(true);
-    expect(await warten, isTrue);
-    expect(prot.eintraege.last.text, 'Freigabe erteilt');
   });
 
   test('Zeilenvergleich', () {

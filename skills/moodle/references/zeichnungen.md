@@ -22,7 +22,7 @@ Sache von PNG oder JPG, die der Nutzer liefert.
 
 ## Der Weg
 
-1. Die SVG mit dem Write-Werkzeug nach `<ordner>\dateien\ablauf-messung.svg`
+1. Die SVG mit dem Datei-Werkzeug nach `<ordner>\dateien\ablauf-messung.svg`
    schreiben — Dateiname aus Kleinbuchstaben, Ziffern und Bindestrichen.
 2. Im Text einbinden:
 

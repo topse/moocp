@@ -144,7 +144,7 @@ Das Skript prüft, was sich prüfen lässt: `lernsituation.json` vollständig un
 
 ### Schritt 5: In den Kurs
 
-Gleich nach der Prüfung bringt der Skill `moodle` den Entwurf in den Kurs, so wie der Plan aus Schritt 2 es festgelegt hat: den Abschnitt anlegen, dann `lernsituation.json` Eintrag für Eintrag mit `aktivitaet_anlegen` — der Ordner des Eintrags ist der `ordner`, nichts wird umgeschrieben; der Ablauf steht im Skill `moodle`, `references/abschnitte.md`. Bleibt ein Befund, den du nicht beheben kannst, nennst du ihn vorher und fragst, ob trotzdem übertragen wird. Alles entsteht verborgen, ohne Rückfrage. Zum Schluss werden die Verweise zwischen den Blättern Links — das macht die App mit `links_setzen`, nicht du von Hand, und es ist eine Freigabe in der App für alle Seiten zusammen, die du im Plan nennst und vor dem Erscheinen ankündigst. Danach prüfst du den Stand in Moodle:
+Gleich nach der Prüfung bringt der Skill `moodle` den Entwurf in den Kurs, so wie der Plan aus Schritt 2 es festgelegt hat: den Abschnitt anlegen, dann `lernsituation.json` Eintrag für Eintrag mit `aktivitaet_anlegen` — der Ordner des Eintrags ist der `ordner`, nichts wird umgeschrieben; der Ablauf steht im Skill `moodle`, `references/abschnitte.md`. Bleibt ein Befund, den du nicht beheben kannst, nennst du ihn vorher und fragst, ob trotzdem übertragen wird. Alles entsteht verborgen; ob die App dabei je Blatt eine Freigabe einholt, hängt an der eingestellten Stufe (`status`) — nenn im Plan, womit zu rechnen ist. Zum Schluss werden die Verweise zwischen den Blättern Links — das macht die App mit `links_setzen`, nicht du von Hand, und es ist eine Freigabe in der App für alle Seiten zusammen, die du im Plan nennst und vor dem Erscheinen ankündigst. Danach prüfst du den Stand in Moodle:
 
 ```bash
 python scripts/pruefe-lernsituation.py --moodle <arbeitsordner> <abschnitt_id>
@@ -367,6 +367,8 @@ Verschieben und Sichtbarkeit in Moodle. Die holt die App in ihrem Fenster ein
 — mit Kurs, Namen und Vorher-nachher —, auch wenn der Schritt im Plan stand.
 Sag dem Nutzer vorher, dass eine Freigabe kommt und worauf er achten soll;
 ein Ja im Chat ersetzt sie nicht.
+
+**Wie viele Bestätigungen kommen, stellt die Lehrkraft in der App ein**, und `status` nennt die Stufe. Sieh dort nach, bevor du Freigaben ankündigst: Bei „alle" kommt eine vor jedem Schreibvorgang, auch vor verborgen Angelegtem, Kopien und importierten Fragen — dann gehört in den Plan, wie viele Fenster das werden (eines je Werkzeugaufruf; was ein Aufruf zusammen erledigt, bündelt die App). Bei „keine" kommt keine; kündige dann keine an, und sag nach der Arbeit, was geschrieben wurde, statt auf eine Bestätigung zu verweisen. Die Stufe gehört allein der Lehrkraft: Schlag nie vor, sie zu senken, auch nicht, wenn viele Freigaben anstehen. Beim Plan ändert sie nichts — der kommt immer.
 <!-- >>> gemeinsam/plan.md -->
 
 <!-- <<< gemeinsam/ueberarbeiten.md - von build.py erzeugt, hier nicht bearbeiten -->
@@ -380,7 +382,7 @@ Die Frage kommt mit Empfehlung und Grund. **Kopie** bei größeren Umgestaltunge
 
 Auch an einer Kopie wird nicht alles dupliziert. Für jedes Objekt des Neuen entscheidet eine Frage: **Hat es genau einen Vorgänger, dessen Text weitgehend stehen bleibt?** Absätze werden ergänzt, umformuliert, gekürzt oder umgestellt, aber es bleibt erkennbar dasselbe Blatt.
 
-- **Ja → duplizieren** (`duplizieren`, auf Wunsch gleich in den Zielabschnitt). Es kommt alles mit, auch was nicht im Formular steht: Einstellungen, Bilder, Anhänge, Bewertung, Abschlussverfolgung, die Kapitel eines Buchs, die Einträge einer Fortschrittsliste, die Fragen eines Tests. Und jede Änderung an der Kopie zeigt die App in der Freigabe als Zeilenvergleich zum Original — die Lehrkraft sieht, was sich ändert und was wegfällt. Den Vorgänger stattdessen neu abzuschreiben ist bequemer, weil Neues ohne Freigabe entsteht; aber dann fehlt genau dieser Vergleich, und was beim Abschreiben verloren geht, bemerkt niemand.
+- **Ja → duplizieren** (`duplizieren`, auf Wunsch gleich in den Zielabschnitt). Es kommt alles mit, auch was nicht im Formular steht: Einstellungen, Bilder, Anhänge, Bewertung, Abschlussverfolgung, die Kapitel eines Buchs, die Einträge einer Fortschrittsliste, die Fragen eines Tests. Und jede Änderung an der Kopie zeigt die App in der Freigabe als Zeilenvergleich zum Original — die Lehrkraft sieht, was sich ändert und was wegfällt. Den Vorgänger stattdessen neu abzuschreiben ist bequemer, weil Neues seltener eine Freigabe braucht; aber dann fehlt genau dieser Vergleich, und was beim Abschreiben verloren geht, bemerkt niemand.
 - **Nein → neu anlegen.** Das Objekt entsteht aus mehreren Vorgängern, aus einem Teil eines Vorgängers oder mit anderem Typ (aus einer Textseite wird eine Aufgabe — den Typ kann Duplizieren nicht ändern). Hier hilft eine Kopie nicht: Der Zeilenvergleich wäre fast nur Streichung und Zusatz, und hinterher wäre mehr zu löschen als übernommen. Welche Einstellungen des Vorgängers weiterleben sollen (Frist, Punkte, Bewertung, Abschlussverfolgung), steht im Plan; sie gingen sonst still verloren.
 
 Dieselbe Frage eine Ebene höher entscheidet über den Abschnitt. Überlebt der größte Teil seiner Aktivitäten als Kopie, wird der ganze Abschnitt dupliziert und in der Kopie gearbeitet; was nicht mehr gebraucht wird, fliegt dort heraus. Sonst entsteht ein neuer Abschnitt, in den die Kopien einzeln hineindupliziert werden, daneben das neu Angelegte — dann muss nichts gelöscht werden.
@@ -547,7 +549,8 @@ Projekt moocp gepflegt; der Nutzer kann den Befund nur weitergeben, wenn
 er vollständig ist.
 
 **Repariere den Skill nicht selbst.** Du arbeitest aus einer installierten
-Kopie unter `~/.claude/skills/`; sie wird beim nächsten Bau überschrieben.
+Kopie im Skill-Ordner deines KI-Werkzeugs (etwa `~/.claude/skills/` oder
+`~/.codex/skills/`); die App überschreibt sie beim nächsten Start.
 
 ### Was gemeldet gehört
 
@@ -621,6 +624,51 @@ Der Skill `lernsituation` entwirft, der Skill `moodle` bringt den Entwurf in den
 
 Wer im Chat „Lernsituation" sagt, meint also beides zugleich: die Didaktik und den Abschnitt. Der Skill `lernsituation` entwirft sie, der Skill `moodle` legt sie an, und ein Auftrag, der beides berührt, läuft über beide.
 <!-- >>> gemeinsam/bruecke.md -->
+
+<!-- <<< gemeinsam/konventionen-vorschlagen.md - von build.py erzeugt, hier nicht bearbeiten -->
+## Wann du vorschlägst, Konventionen aufzuschreiben
+
+Ein Kurs muss kein Verzeichnis `CLAUDE` haben, und die meisten haben keines.
+Ob es sich lohnt, kann die Lehrkraft nicht beurteilen — sie weiß nicht, was du
+beim nächsten Mal nicht mehr weißt. **Also schlägst du es vor.** Von selbst
+anlegen tust du es nicht: Es ist eine Aktivität in ihrem Kurs, die sie nicht
+bestellt hat.
+
+Vorschlagen, wenn einer dieser vier Anlässe eintritt:
+
+- Der Nutzer **legt etwas fest, das über die Sitzung hinaus gilt**: eine
+  Benennung, einen Ablageort, eine Gliederung, einen Abschnitt, den du in Ruhe
+  lassen sollst, eine Vorlage, die gilt.
+- Er **korrigiert dasselbe zum zweiten Mal** in einer Sitzung. Beim zweiten Mal
+  ist es keine Laune, sondern eine Regel.
+- Beim Lesen **fiel eine Regel des Kurses auf**, die man ihm nicht ansieht und
+  deren Erkennen Arbeit gekostet hat — die Zählung der Blätter, wo die Lösungen
+  liegen, welche Vorlage gilt.
+- Es **entsteht eine Datei, die beim nächsten Mal wieder gebraucht wird**: ein
+  Generatorskript, eine Vorlage, ein Schema, die Quelle einer Zeichnung, die
+  nicht als SVG im Kurs liegt.
+
+**Was schon in diesem Skill steht, wird nicht noch einmal aufgeschrieben.**
+Findest du es doppelt, schlag vor, die lokale Fassung zu entfernen — sie ist
+oft ein älterer Stand der globalen Regel und tritt dann gegen die gepflegte
+an. Eine **Abweichung** vom Skill ist das Gegenteil: Die bleibt, sie ist der
+Zweck der Datei.
+
+Und so, nicht anders:
+
+- **Am Ende der Arbeit, in einem Satz, mit dem Wortlaut der Zeile**, die
+  hineinkäme — nicht mitten im Ablauf, wo der Vorschlag den Auftrag
+  unterbricht, und nicht als Absichtserklärung, über die niemand entscheiden
+  kann. Also: „Soll ich in die Konventionen des Kurses aufnehmen: *Arbeitsblätter
+  heißen ‚Arbeitsblatt <Nr>', die Lösung ‚Lösung zu Arbeitsblatt <Nr>'*?"
+- **Höchstens ein Vorschlag je Sitzung.** Wer bei jeder Kleinigkeit fragt, wird
+  abgeschaltet — und dann wirkt die Regel nie.
+- **Kein leeres Verzeichnis auf Vorrat**, und keine Datei ohne den Satz in
+  `CLAUDE.md`, der sagt, wozu sie da ist.
+- Geschrieben wird erst nach einem Ja, mit `claude_schreiben` (Skill `moodle`).
+  Gibt es schon eine Fassung, kommt die neue Zeile dazu — du schreibst den
+  vorhandenen Text nicht um, weil du ihn anders formulieren würdest.
+<!-- >>> gemeinsam/konventionen-vorschlagen.md -->
 
 Den geprüften Entwurf bringt der Skill `moodle` in den Kurs (Schritt 5) und
 wendet dabei die Tabelle von links nach rechts an. Für die Leistungsfeststellung mit einem Test

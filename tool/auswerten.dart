@@ -24,7 +24,7 @@ void main(List<String> args) {
   }
   final felder = [
     for (final f in Directory(ordner).listSync().whereType<File>())
-      if (f.path.endsWith('.html') && !f.path.endsWith('.vorschau.html'))
+      if (f.path.endsWith('.html'))
         feldAuswerten(p.basenameWithoutExtension(f.path), f.readAsStringSync(), host: args[1])
   ];
   stdout.write(uebersichtText(felder, dateien));

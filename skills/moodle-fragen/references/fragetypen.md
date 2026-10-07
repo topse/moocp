@@ -49,7 +49,7 @@ Regeln, die man einhalten muss:
 - `fraction` an einer Antwort ist der **Prozentanteil** (`100`, `50`, `0`,
   auch `-25`). Bei genau einer richtigen Antwort muss eine `100` dabei sein.
 - Umlaute sind erlaubt, solange die Datei wirklich UTF-8 ist. Schreib das XML
-  deshalb mit dem Write-Werkzeug, nicht per Bash-Heredoc: Der kostet hier
+  deshalb mit dem Datei-Werkzeug, nicht per Heredoc in der Shell: Der kostet hier
   gemessen eine Ebene Backslash-Maskierung, und dass er an deutschem Text
   scheitert, ist gemeldet. Ersatzschreibweisen wie „Uebertragung“ sind kein
   Ausweg — sie stehen hinterher so in der Frage.

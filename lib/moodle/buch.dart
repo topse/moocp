@@ -131,22 +131,30 @@ Future<String> buchkapitelAnlegen(MoodleZugang moodle, Freigaben freigaben,
   if (unterkapitel && pagenum == 0) {
     throw MoodleFehler('Das erste Kapitel eines Buchs kann kein Unterkapitel sein.');
   }
-  // Ein neues Kapitel in einem Buch, das Lernende sehen, ist sofort sichtbar.
+  // Ein neues Kapitel in einem Buch, das Lernende sehen, ist sofort sichtbar:
+  // Dann fragt die App ab „mittel", sonst erst bei „alle".
   final probe0 = await formularHolen(moodle, '/mod/book/edit.php?cmid=$cmid&pagenum=$pagenum');
   final kurs = probe0.kurs;
   final buch = kurs == null ? null : (await kursLesen(moodle, kurs)).nachCmid[cmid];
-  if (buch != null && buch.sichtbarkeit != Sichtbarkeit.verborgen) {
-    final ja = await freigaben.anfragen(FreigabeAnfrage(
-      titel: 'Kapitel in sichtbarem Buch anlegen?',
-      punkte: [
-        '${unterkapitel ? 'Unterkapitel' : 'Kapitel'} „$titel" im Buch „${buch.name}" (${await kursBezeichnung(moodle, kurs!)})',
-        'Das Buch ist für Lernende ${buch.sichtbarkeit.text} -- das Kapitel erscheint SOFORT.',
-      ],
-      vergleich: const [],
-      knopf: 'Anlegen',
-    ));
-    if (!ja) return 'Nicht angelegt: in der App abgelehnt oder nicht rechtzeitig freigegeben.';
-  }
+  final sofort = buch != null && buch.sichtbarkeit != Sichtbarkeit.verborgen;
+  final wo = 'Buch „${buch?.name ?? probe0.name}" (cmid $cmid'
+      '${kurs == null ? '' : ', ${await kursBezeichnung(moodle, kurs)}'})';
+  final ja = await freigaben.anfragen(FreigabeAnfrage(
+    titel: sofort ? 'Kapitel in sichtbarem Buch anlegen?' : 'Buchkapitel anlegen?',
+    punkte: [
+      '${unterkapitel ? 'Unterkapitel' : 'Kapitel'} „$titel" im $wo',
+      sofort
+          ? 'Das Buch ist für Lernende ${buch.sichtbarkeit.text} -- das Kapitel erscheint SOFORT.'
+          : buch == null
+              ? 'Ob das Buch für Lernende sichtbar ist, ließ sich nicht ermitteln.'
+              : 'Das Buch ist für Lernende verborgen -- das Kapitel sieht niemand außer der Lehrkraft.',
+    ],
+    vergleich: const [],
+    knopf: 'Anlegen',
+    ohneEntscheidung: 'wird nichts angelegt',
+    ab: sofort ? Bestaetigungen.mittel : Bestaetigungen.alle,
+  ));
+  if (!ja) return 'Nicht angelegt: in der App abgelehnt oder nicht rechtzeitig freigegeben.';
 
   Future<(Map<String, String>, List<Gesetzt>)> versuch() async {
     final f = await formularHolen(moodle, '/mod/book/edit.php?cmid=$cmid&pagenum=$pagenum');

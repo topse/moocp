@@ -11,7 +11,6 @@
 // Ergebnis im Arbeitsordner, Unterordner je nach Ziel (cm-<cmid>,
 // abschnitt-<id>, buch-<cmid>/kapitel-<id>, frage-<id>):
 //   <feld>.html           der gespeicherte Quelltext, unverändert
-//   <feld>.vorschau.html  dasselbe mit lokalen Bildpfaden, zum Ansehen
 //   dateien/<name>        jede referenzierte Datei, Byte für Byte
 //   bereiche/<feld>/      die Dateien jedes Dateibereichs, mit Unterordnern
 //                         (Zusätzliche Dateien einer Aufgabe, Inhalt eines
@@ -224,7 +223,7 @@ class FormularGelesen {
     for (final h in hinweise) {
       b.writeln('Hinweis: $h');
     }
-    b.writeln('\nQuelltext unverändert in <feld>.html; zum Ansehen <feld>.vorschau.html. '
+    b.writeln('\nQuelltext unverändert in <feld>.html. '
         'Zum Ändern <feld>.html, dateien/ und bereiche/ bearbeiten -- neue Bilder in dateien/ '
         'ablegen und als src="@@PLUGINFILE@@/<name>" einbinden --, dann aendern(ordner). '
         '.stand/ nicht anfassen.');
@@ -511,16 +510,6 @@ Future<FormularGelesen> formularLesen(MoodleZugang moodle, Formularziel ziel, St
   for (final f in felder) {
     await File(p.join(ziel0.path, '${f.feld}.html')).writeAsString(f.html, encoding: utf8);
     await File(p.join(ziel0.path, '.stand', '${f.feld}.html')).writeAsString(f.html, encoding: utf8);
-    final vorschau = f.html.replaceAllMapped(attr, (m) {
-      final roh = m.group(2)!.replaceAll('&amp;', '&');
-      final lokal = namenFuer[roh];
-      if (lokal == null) return m.group(0)!;
-      return m.group(0)!.replaceFirst(m.group(2)!, 'dateien/${Uri.encodeComponent(lokal)}');
-    });
-    await File(p.join(ziel0.path, '${f.feld}.vorschau.html')).writeAsString(
-        '<!DOCTYPE html><html lang="de"><head><meta charset="utf-8">'
-        '<title>Vorschau ${ziel.bezeichnung}, ${f.feld}</title></head><body>\n$vorschau\n</body></html>\n',
-        encoding: utf8);
   }
 
   // Auswerten: Quelltext jedes Felds, Titel der verlinkten Aktivitäten.

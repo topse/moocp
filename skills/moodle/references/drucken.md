@@ -19,6 +19,26 @@ Der Umbruch misst die Höhe jedes Blocks und entscheidet, was auf eine Seite pas
 - **Rahmenlinien** an Tabellenzellen, die `references/html.md` erlaubt, stören die Messung nicht und kommen so in den Druck, wie sie am Bildschirm stehen (gemessen 25.09.2026).
 - **Formeln** (`references/html.md`, „Formeln") kommen gesetzt in den Druck. Eine abgesetzte Formel ist ein Absatz und wird umbrochen wie einer; gemessen an einer Seite mit 13 abgesetzten Formeln auf vier Druckseiten, keine stand zerschnitten am Umbruch (01.10.2026).
 
+## Querformat für eine breite Zeichnung
+
+Eine Zeichnung, die deutlich breiter als hoch ist, wird auf einer hochkanten Seite auf die Breite des Satzspiegels gestaucht und im Druck zu klein. Dagegen gibt es einen Marker: Steht im Inhalt einer Seite ein leeres
+
+```html
+<div class="ab-quer"></div>
+```
+
+dann baut die Druckaufbereitung die Blätter quer — 25,6 × 17 cm statt 17 × 25,6 — und dreht auch das Papier. Kopfzeile, Fußzeile und „Seite x/y" bleiben wie gewohnt (gemessen 05.10.2026).
+
+Drei Dinge gehören dazu:
+
+- **Der Marker gilt für die ganze Seite**, einerlei wo er steht. Hochkant und quer in einer Seite zu mischen geht nicht.
+- **Gefragt wird vor dem Druck, nicht im Druckdialog.** Das Druckersymbol und Strg+P zeigen vorher eine kurze Frage „Hochkant oder Quer?"; vorgeschlagen ist, was der Marker sagt, und die Eingabetaste bleibt dabei. Im Druckdialog des Browsers lässt sich die Ausrichtung dagegen nicht mehr umstellen: Die Blattmaße stehen im CSS, nicht im Papier, und der Inhalt ist zu dem Zeitpunkt schon auf Blätter verteilt. Wer aus dem Browsermenü druckt, bekommt ohne Frage das, was der Marker sagt. Der Marker ist also die Aussage der Seite, der Dialog die Ausnahme im Einzelfall — und wenn nichts gefragt wird, hat die Instanz eine ältere Fassung, dann entscheidet allein der Marker.
+- **Immer ein leeres `div`**, nie ein `span`, aus demselben Grund wie beim Karofeld: TinyMCE räumt leere `span` weg.
+
+Eine breite Zeichnung gehört als Bild oder eingebettete SVG in die Seite; beides verkleinert die Druckaufbereitung so, dass es auf ein Blatt passt. Ein **Absatz** oder eine **Tabellenzeile**, die höher ist als ein Blatt, lässt sich dagegen nicht verkleinern und läuft über — quer ist dafür nur knapp halb so viel Höhe da wie hochkant. Lange Absätze und textreiche Tabellenzellen gehören deshalb erst recht nicht auf eine Querformatseite.
+
+Setz den Marker, wenn eine Seite im Wesentlichen aus einer breiten Zeichnung besteht — ein Netzplan, ein Grundriss, ein Organigramm. Für Text und für Zeichnungen, die ungefähr quadratisch sind, bleibt es hochkant: Sonst steht ein Blatt der Lernsituation anders herum als alle übrigen. Tut der Marker nichts, hat die Instanz eine ältere Fassung der Druckaufbereitung; dann schadet er auch nicht, er bleibt ein leeres, unsichtbares `div`.
+
 ## Platz zum Ausfüllen: das Karofeld
 
 Für Blätter, die ausgedruckt ausgefüllt werden, bringt die Druckaufbereitung ein Karofeld mit. Es wirkt nur im Druck.

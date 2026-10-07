@@ -2,10 +2,10 @@
 // Anmeldedaten -- die stehen auf der Hauptseite.
 //
 // Zwei Abschnitte: die Update-Prüfung (update/update.dart) und der Weg zum
-// Dialog „Claude einrichten". Der Zugangsschlüssel steht hier bewusst
-// nicht: Eingetragen wird er nur über die Kommandozeile von Claude Code
-// (E13), und jede Anzeige wäre ein weiterer Weg, ihn aus Versehen
-// weiterzugeben. Wer ihn braucht, findet ihn in der README.
+// Dialog „KI-Werkzeuge einrichten". Der Zugangsschlüssel steht hier bewusst
+// nicht: Eingetragen wird er nur von der App selbst (E13), und jede Anzeige
+// wäre ein weiterer Weg, ihn aus Versehen weiterzugeben. Wer ihn braucht,
+// findet ihn in der README.
 
 import 'package:flutter/material.dart';
 
@@ -18,7 +18,7 @@ enum EinstellungenErgebnis {
   /// Nichts weiter zu tun.
   fertig,
 
-  /// Die Lehrkraft will zu „Claude einrichten"; der Aufrufer öffnet ihn,
+  /// Die Lehrkraft will zu „KI-Werkzeuge einrichten"; der Aufrufer öffnet ihn,
   /// damit nicht zwei Dialoge übereinanderliegen.
   einrichten,
 
@@ -45,7 +45,7 @@ class EinstellungenDialog extends StatefulWidget {
   /// Ob sich diese App überhaupt selbst aktualisieren kann (update.dart).
   final bool updateMoeglich;
 
-  /// Ob der MCP-Server läuft; dann hängt womöglich eine Claude-Sitzung
+  /// Ob der MCP-Server läuft; dann hängt womöglich eine Sitzung eines KI-Werkzeugs
   /// daran, die ein Update verlöre.
   final bool sitzungLaeuft;
 
@@ -136,12 +136,13 @@ class _EinstellungenDialogState extends State<EinstellungenDialog> {
               ),
             ],
             const Divider(height: 32),
-            Text('Claude Code', style: Theme.of(context).textTheme.titleSmall),
+            Text('KI-Werkzeuge', style: Theme.of(context).textTheme.titleSmall),
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                  'Claude Code braucht die Verbindung zu dieser App und die Skills in der '
-                  'Version, die zu ihr gehört.',
+                  'Claude Code, Codex CLI und LM Studio brauchen die Verbindung zu dieser App und '
+                  'die Skills in der Version, die zu ihr gehört. Dort wählen Sie auch, welche '
+                  'davon eingerichtet werden.',
                   style: klein),
             ),
             Padding(

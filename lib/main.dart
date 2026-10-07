@@ -1,8 +1,10 @@
-// moocp -- lokale App, über die Claude mit Moodle-Kursen arbeitet: ohne
+// moocp -- lokale App, über die ein KI-Werkzeug (Claude Code, Codex CLI,
+// LM Studio) mit Moodle-Kursen arbeitet: ohne
 // Längengrenze, mit Sperr- und Positivliste im Code und einem Protokoll, das
 // die Lehrkraft sieht.
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -20,6 +22,7 @@ import 'einrichtung.dart';
 import 'einrichtung_dialog.dart';
 import 'einstellungen.dart';
 import 'einstellungen_dialog.dart';
+import 'einstellungen_ort.dart';
 import 'freigabe.dart';
 import 'log.dart';
 import 'mcp/mcp_dienst.dart';
@@ -37,6 +40,8 @@ Future<void> main(List<String> argumente) async {
   // Protokoll, nie mit ihrem Text. So gerät das Passwort in keine Ausgabe.
   debugPrint = (String? message, {int? wrapWidth}) {};
   if (argumente.contains(claudeEntfernenSchalter)) exit(await _claudeEntfernen());
+  if (argumente.contains(werkzeuglisteSchalter)) exit(await _werkzeugliste());
+  if (argumente.contains(versionSchalter)) exit(await _version());
   lizenzAnmelden();
   // Die fertige Windows-App hat keine Konsole; print ginge dort ins Leere und
   // Windows meldet „Das Handle ist ungültig". Ausgabe also nur mit Konsole
@@ -46,7 +51,7 @@ Future<void> main(List<String> argumente) async {
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
   final einstellungen = await Einstellungen.laden();
-  final protokoll = Protokoll(datei: File(p.join(Einstellungen.ordner, 'protokoll.log')));
+  final protokoll = Protokoll(datei: File(p.join(einstellungenOrdner, 'protokoll.log')));
   FlutterError.onError = (d) =>
       protokoll.eintrag(Art.fehler, 'Fehler in der Oberfläche: ${fehlerBeschreibung(d.exception, d.stack)}');
   WidgetsBinding.instance.platformDispatcher.onError = (e, st) {
@@ -63,7 +68,7 @@ Future<void> main(List<String> argumente) async {
   // Schließen läuft über _beenden, damit der Arbeitsordner geleert wird.
   await windowManager.setPreventClose(true);
   final moodle = MoodleZugang(protokoll);
-  final freigaben = Freigaben(protokoll);
+  final freigaben = Freigaben(protokoll, stufe: einstellungen.bestaetigungen);
   // Reste früherer Updates im Temp-Verzeichnis; der Installer, der die App
   // gerade neu gestartet hat, läuft noch und bleibt bis zum nächsten Start.
   resteWegraeumen();
@@ -75,7 +80,7 @@ Future<void> main(List<String> argumente) async {
 }
 
 /// Aufruf durch die Deinstallation (installer/moocp.nsi): die
-/// Einrichtung in Claude Code entfernen und mit dem Code aus [Entfernt]
+/// Einrichtung in den KI-Werkzeugen entfernen und mit dem Code aus [Entfernt]
 /// enden. Ohne Fenster: Es erscheint erst mit dem ersten Bild
 /// (windows/runner/flutter_window.cpp), und ohne runApp gibt es keins. Kein
 /// MCP-Server, kein Protokoll -- die Deinstallation löscht dessen Ordner
@@ -91,6 +96,43 @@ Future<int> _claudeEntfernen() async {
     return (await einrichtungEntfernen(umgebung: Platform.environment, skills: skills)).code;
   } catch (_) {
     return 3; // unbekannt, was geblieben ist: beides melden
+  }
+}
+
+/// `moocp.exe --werkzeugliste`, für die Brücke (mcp/bruecke.dart), wenn die
+/// App nicht angemeldet ist oder nicht läuft: die Werkzeugliste als eine
+/// Zeile JSON nach stdout, dann enden. Ohne Fenster (wie _claudeEntfernen),
+/// und ohne Einstellungen, Protokoll oder Arbeitsordner anzufassen -- die
+/// Beschreibungen der Werkzeuge hängen an keinem davon, und neben einer
+/// laufenden App verschränkten sich sonst die Zeilen im Protokoll. Eine
+/// Ausnahme von E11 wie die Brücke selbst: Auf stdout stehen nur Namen,
+/// Beschreibungen und Parameter der Werkzeuge. Meldungen von mcp_dart gehen
+/// an den Logger, und dem hört hier niemand zu.
+Future<int> _werkzeugliste() async {
+  try {
+    mcpLogsUmleiten();
+    final protokoll = Protokoll();
+    final dienst = McpDienst(Einstellungen(moodleAdresse: '', port: standardPort, schluessel: ''),
+        MoodleZugang(protokoll), protokoll, Freigaben(protokoll), '');
+    stdout.writeln(jsonEncode(await dienst.werkzeugliste()));
+    await stdout.flush();
+    return 0;
+  } catch (_) {
+    return 1;
+  }
+}
+
+/// `moocp.exe --version`: die Version wie im Dialog „Über" nach stdout, dann
+/// enden. moocp.exe ist ein Windows-Programm ohne Konsole; lesbar ist die
+/// Antwort über ein Rohr, etwa `moocp.exe --version | more`.
+Future<int> _version() async {
+  try {
+    WidgetsFlutterBinding.ensureInitialized();
+    stdout.writeln(versionText(await PackageInfo.fromPlatform()));
+    await stdout.flush();
+    return 0;
+  } catch (_) {
+    return 1;
   }
 }
 
@@ -164,7 +206,7 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
   /// Haken „Anmeldedaten speichern" (anmeldedaten.dart).
   bool _merken = false;
 
-  /// Ob „Claude einrichten" beim Start durch ist; vorher gibt es keine
+  /// Ob „KI-Werkzeuge einrichten" beim Start durch ist; vorher gibt es keine
   /// Anmeldung und keinen MCP-Server (_starten).
   bool _eingerichtet = false;
 
@@ -194,18 +236,25 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
     WidgetsBinding.instance.addPostFrameCallback((_) => _starten());
   }
 
-  /// Der Start in fester Reihenfolge: Updates, Claude einrichten, anmelden,
-  /// dann der MCP-Server (_mcpStarten). Eine Anmeldung, während der Dialog
-  /// „Claude einrichten" offen ist, wäre umsonst, wenn die Lehrkraft
-  /// „Beenden" wählt. Und Claude erreicht die Werkzeuge erst, wenn die
-  /// Skills zur App passen (E13) und die Sitzung bei Moodle steht -- dann
+  /// Der Start in fester Reihenfolge: Updates, KI-Werkzeuge einrichten,
+  /// anmelden, dann der MCP-Server (_mcpStarten). Eine Anmeldung, während der
+  /// Dialog „KI-Werkzeuge einrichten" offen ist, wäre umsonst, wenn die
+  /// Lehrkraft „Beenden" wählt. Und die KI erreicht die Werkzeuge erst, wenn
+  /// die Skills zur App passen (E13) und die Sitzung bei Moodle steht -- dann
   /// findet schon der erste Aufruf alles bereit.
   ///
   /// Die Update-Prüfung steht davor: Ein Update bringt auch neue Skills;
   /// würde die App vorher einrichten, installierte sie die Version, die
   /// gleich ersetzt wird. Und weil der MCP-Server zuletzt startet, hängt zu
-  /// diesem Zeitpunkt noch keine Claude-Sitzung an der App.
+  /// diesem Zeitpunkt noch keine Sitzung eines KI-Werkzeugs an der App.
   Future<void> _starten() async {
+    // Eine Stufe, die Rückfragen abschaltet, soll nicht unbemerkt weitergelten:
+    // Sie steht beim Start im Protokoll und dauerhaft rot in der Titelzeile.
+    if (widget.freigaben.stufe != Bestaetigungen.mittel) {
+      widget.protokoll.eintrag(
+          widget.freigaben.stufe == Bestaetigungen.keine ? Art.gesperrt : Art.info,
+          'Bestätigungen: ${widget.freigaben.stufe.text} -- ${_stufeKurz[widget.freigaben.stufe]!}');
+    }
     _version = await _eigeneVersion();
     if (_version.isNotEmpty) {
       await updateStandMelden(widget.einstellungen, _version, widget.protokoll);
@@ -294,7 +343,7 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
 
   /// Startet den MCP-Server, sobald die App eingerichtet und angemeldet ist.
   /// Danach bleibt er an, auch nach „Abmelden": Ein Stopp risse laufenden
-  /// Claude-Sitzungen die Verbindung ab; die Werkzeuge melden dann „Nicht
+  /// Sitzungen der KI-Werkzeuge die Verbindung ab; die Werkzeuge melden dann „Nicht
   /// angemeldet".
   Future<void> _mcpStarten() async {
     if (!_eingerichtet || !widget.moodle.angemeldet || widget.dienst.laeuft) return;
@@ -315,14 +364,14 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
     try {
       stand = await _einrichtungsstand();
     } catch (e, st) {
-      widget.protokoll.eintrag(Art.fehler, 'Claude einrichten: Prüfung fehlgeschlagen: ${fehlerBeschreibung(e, st)}');
+      widget.protokoll.eintrag(Art.fehler, 'KI-Werkzeuge einrichten: Prüfung fehlgeschlagen: ${fehlerBeschreibung(e, st)}');
     }
     if (!mounted) return false;
     if (stand != null && !stand.python && stand.gewaehlt.contains('lernsituation')) {
       widget.protokoll.eintrag(Art.info, 'Python nicht gefunden: Die Selbstprüfung des Skills lernsituation läuft nicht');
     }
     if (!immer && stand != null && !stand.brauchtEtwas) {
-      widget.protokoll.eintrag(Art.info, 'Claude einrichten: Verbindung und Skills aktuell');
+      widget.protokoll.eintrag(Art.info, 'KI-Werkzeuge einrichten: Verbindung und Skills aktuell');
       return true;
     }
     final bereit = await showDialog<bool>(
@@ -333,7 +382,6 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
         pruefen: _einrichtungsstand,
         einstellungen: widget.einstellungen,
         protokoll: widget.protokoll,
-        orte: ClaudeOrte(Platform.environment),
       ),
     );
     if (bereit != true) await _beenden();
@@ -352,7 +400,8 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
       port: widget.einstellungen.port,
       schluessel: widget.einstellungen.schluessel,
       skills: pakete,
-      gewaehlt: widget.einstellungen.wahlSkills ?? gewaehltVorgabe(ClaudeOrte(Platform.environment)),
+      abgewaehlt: widget.einstellungen.werkzeugeAbgewaehlt,
+      gewaehlt: widget.einstellungen.wahlSkills ?? gewaehltVorgabe(Platform.environment),
     );
   }
 
@@ -360,7 +409,7 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
   void onWindowClose() => unawaited(_beenden());
 
   /// Der einzige Weg aus der App, über das Fenster wie über den Dialog
-  /// „Claude einrichten": Arbeitsordner leeren, dann schließen. Was sich
+  /// „KI-Werkzeuge einrichten": Arbeitsordner leeren, dann schließen. Was sich
   /// nicht löschen lässt, weil es in Benutzung ist, leert der nächste Start.
   ///
   /// Geschlossen wird auf dem Weg, den Windows selbst nimmt (WM_CLOSE, dann
@@ -387,6 +436,22 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
     } finally {
       await windowManager.setPreventClose(false);
       await windowManager.close();
+    }
+  }
+
+  /// Die Stufe der Bestätigungen umstellen (Feld in der Titelzeile).
+  Future<void> _stufeAendern(Bestaetigungen s) async {
+    if (s == widget.freigaben.stufe) return;
+    setState(() {
+      widget.freigaben.stufe = s;
+      widget.einstellungen.bestaetigungen = s;
+    });
+    widget.protokoll.eintrag(s == Bestaetigungen.keine ? Art.gesperrt : Art.info,
+        'Bestätigungen: ${s.text} -- ${_stufeKurz[s]!}');
+    try {
+      await widget.einstellungen.speichern();
+    } catch (e) {
+      widget.protokoll.eintrag(Art.fehler, 'Einstellungen nicht gespeichert (${e.runtimeType})');
     }
   }
 
@@ -515,18 +580,28 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
       appBar: AppBar(
         title: const Text(appName),
         actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Chip(
-              avatar: Icon(
-                widget.dienst.laeuft
-                    ? Icons.lan
-                    : _mcpVersucht
-                        ? Icons.error_outline
-                        : Icons.hourglass_empty,
-                size: 18,
-              ),
-              label: Text(
+          BestaetigungenFeld(stufe: widget.freigaben.stufe, aendern: _stufeAendern),
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            tooltip: 'Was die Stufen bedeuten',
+            onPressed: () => bestaetigungenHilfe(context),
+          ),
+          // Die beiden Anzeigen dürfen schrumpfen: Sonst läuft die Titelzeile
+          // über, sobald jemand das Fenster schmaler zieht als die 1280 px,
+          // mit denen es startet. Der Text wird dann gekürzt, der Tooltip
+          // zeigt ihn ganz; das Feld links daneben bleibt unangetastet.
+          Flexible(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: _anzeige(
+                Icon(
+                  widget.dienst.laeuft
+                      ? Icons.lan
+                      : _mcpVersucht
+                          ? Icons.error_outline
+                          : Icons.hourglass_empty,
+                  size: 18,
+                ),
                 widget.dienst.laeuft
                     ? 'MCP auf 127.0.0.1:${widget.einstellungen.port}'
                     : _mcpVersucht
@@ -535,20 +610,22 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: Chip(
-              avatar: Icon(
-                angemeldet ? Icons.check_circle : Icons.cancel,
-                size: 18,
-                color: angemeldet ? Colors.green : Colors.red,
+          Flexible(
+            child: Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: _anzeige(
+                Icon(
+                  angemeldet ? Icons.check_circle : Icons.cancel,
+                  size: 18,
+                  color: angemeldet ? Colors.green : Colors.red,
+                ),
+                angemeldet ? 'bei Moodle angemeldet' : 'nicht angemeldet',
               ),
-              label: Text(angemeldet ? 'bei Moodle angemeldet' : 'nicht angemeldet'),
             ),
           ),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
-            tooltip: 'Einstellungen: Updates, Claude einrichten',
+            tooltip: 'Einstellungen: Updates, KI-Werkzeuge einrichten',
             onPressed: _einstellungenZeigen,
           ),
           Padding(
@@ -604,7 +681,7 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
                         ),
                       ),
                       FilledButton(
-                        // Erst nach „Claude einrichten" (_starten).
+                        // Erst nach „KI-Werkzeuge einrichten" (_starten).
                         onPressed: !_eingerichtet || _beschaeftigt || angemeldet ? null : _anmelden,
                         child: Text(_beschaeftigt ? 'Melde an …' : 'Anmelden'),
                       ),
@@ -625,7 +702,7 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
                     'Benutzernamen in ihren Einstellungen, das Passwort verschlüsselt mit Windows '
                     '(DPAPI, nur mit Ihrem Windows-Konto lesbar) -- und meldet sich beim Start '
                     'selbst an. Haken weg: beides wird sofort gelöscht. Das Passwort geht nie an '
-                    'Claude und in kein Protokoll.',
+                    'die KI und in kein Protokoll.',
                     style: klein,
                   ),
                 ]),
@@ -638,6 +715,13 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
       ),
     );
   }
+
+  /// Eine Anzeige in der Titelzeile. Der Text wird gekürzt, wenn der Platz
+  /// nicht reicht, und steht dann im Tooltip.
+  Widget _anzeige(Icon symbol, String text) => Tooltip(
+        message: text,
+        child: Chip(avatar: symbol, label: Text(text, overflow: TextOverflow.ellipsis)),
+      );
 
   Widget _karte(String titel, List<Widget> inhalt) => Card(
     margin: const EdgeInsets.only(bottom: 16),
@@ -654,6 +738,162 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
     ),
   );
 }
+
+/// Ein Satz je Stufe, fürs Protokoll.
+const _stufeKurz = {
+  Bestaetigungen.keine: 'Änderungen in Moodle laufen ohne Rückfrage',
+  Bestaetigungen.mittel: 'Freigabe vor Ändern, Verschieben, Sichtbarkeit, Löschen',
+  Bestaetigungen.alle: 'Freigabe vor jedem Schreibvorgang, auch verborgen Angelegtem',
+};
+
+/// Das Feld in der Titelzeile: welche Bestätigungen die Lehrkraft vor
+/// Änderungen in Moodle will. Bei „keine" ist das ganze Feld in Warnfarbe --
+/// abgeschaltete Rückfragen sollen man im Vorbeigehen sehen.
+class BestaetigungenFeld extends StatelessWidget {
+  const BestaetigungenFeld({required this.stufe, required this.aendern, super.key});
+
+  final Bestaetigungen stufe;
+  final Future<void> Function(Bestaetigungen) aendern;
+
+  @override
+  Widget build(BuildContext context) {
+    final warnung = stufe == Bestaetigungen.keine;
+    final farbe = Theme.of(context).colorScheme;
+    final vorn = warnung ? farbe.onError : farbe.onSurface;
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: Material(
+        color: warnung ? farbe.error : farbe.surfaceContainerHighest,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(color: warnung ? farbe.error : farbe.outlineVariant),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<Bestaetigungen>(
+              value: stufe,
+              isDense: true,
+              // Ohne feste Zeilenhöhe: Die Einträge im Menü sind zweizeilig
+              // (Name und Kurztext) und passen nicht in die Vorgabe von 48.
+              itemHeight: null,
+              borderRadius: BorderRadius.circular(8),
+              focusColor: Colors.transparent,
+              iconEnabledColor: vorn,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: vorn),
+              // Im geöffneten Menü steht jede Stufe mit ihrem Kurztext; im Feld
+              // selbst ist nur Platz für ihren Namen.
+              selectedItemBuilder: (_) => [
+                for (final x in Bestaetigungen.values)
+                  Row(children: [
+                    if (x == Bestaetigungen.keine) ...[
+                      Icon(Icons.warning_amber_rounded, size: 18, color: vorn),
+                      const SizedBox(width: 6),
+                    ],
+                    Text('Bestätigungen: ${x.text}',
+                        style: TextStyle(
+                            color: vorn, fontWeight: x == Bestaetigungen.keine ? FontWeight.bold : null)),
+                  ]),
+              ],
+              items: [
+                for (final x in Bestaetigungen.values)
+                  DropdownMenuItem(
+                    value: x,
+                    child: SizedBox(
+                      width: 320,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(x.text,
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: x == Bestaetigungen.keine ? farbe.error : null)),
+                          Text(_stufeKurz[x]!, style: Theme.of(context).textTheme.bodySmall),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+              onChanged: (x) {
+                if (x != null) aendern(x);
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Der Hilfe-Dialog hinter dem Fragezeichen neben dem Feld.
+Future<void> bestaetigungenHilfe(BuildContext context) => showDialog<void>(
+      context: context,
+      builder: (context) {
+        final klein = Theme.of(context).textTheme.bodySmall;
+        final farbe = Theme.of(context).colorScheme;
+        Widget stufe(String name, Color? ton, String was, String wofuer) => Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(name,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(color: ton)),
+                const SizedBox(height: 2),
+                Text(was),
+                const SizedBox(height: 2),
+                Text(wofuer, style: klein),
+              ]),
+            );
+        return AlertDialog(
+          title: const Text('Bestätigungen vor Änderungen'),
+          content: SizedBox(
+            width: 620,
+            child: SingleChildScrollView(
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(
+                    'Bevor die App etwas in Moodle schreibt, zeigt sie Ihnen in einem Fenster, was '
+                    'geschieht -- mit Kurs, Namen und, wo es Text gibt, einem Vergleich vorher/nachher. '
+                    'Hier stellen Sie ein, wie oft das sein soll. Ohne Entscheidung innerhalb von '
+                    '30 Minuten geschieht nichts.',
+                    style: klein),
+                const Divider(height: 28),
+                stufe(
+                    'alle',
+                    null,
+                    'Jeder Vorgang, der in Moodle etwas schreibt, wird gezeigt -- auch verborgen '
+                        'Angelegtes, Kopien, neue Fragenkategorien und importierte Fragen.',
+                    'Für den Anfang, solange Sie sehen wollen, was die KI tut. Rechnen Sie mit vielen '
+                        'Fenstern: Eine Lernsituation mit zwölf Blättern bedeutet zwölf Bestätigungen.'),
+                stufe(
+                    'mittel',
+                    null,
+                    'Gezeigt wird, was Bestehendes anfasst oder sofort für Lernende sichtbar wird: '
+                        'Ändern, Verschieben, Sichtbarkeit, Löschen, sichtbar Anlegen.',
+                    'Die Voreinstellung. Neues entsteht verborgen und ohne Rückfrage -- sehen kann es '
+                        'nur, wer den Kurs bearbeiten darf, und sichtbar wird es erst mit Ihrer Freigabe.'),
+                stufe(
+                    'keine',
+                    farbe.error,
+                    'Es wird nichts mehr gezeigt. Alles läuft sofort, auch Löschen.',
+                    'Nur für den Fall, dass Sie sich sicher sind und zügig arbeiten wollen. Das Feld ist '
+                        'dann rot. Was bleibt: Die KI kommt an keine Daten von Lernenden, nennt vor jedem '
+                        'Verschieben, Verbergen und Löschen den Namen, wie er jetzt in Moodle steht, und '
+                        'bricht ab, wenn er nicht passt. Jeder Vorgang steht im Protokoll. Die Freigabe je '
+                        'Bildschirmfoto bleibt in jedem Fall: Sie entscheidet nicht über eine Änderung, '
+                        'sondern darüber, welches Bild aus Ihrem Kurs an die KI geht.'),
+                const Divider(height: 28),
+                Text(
+                    'Die Einstellung bleibt über einen Neustart hinweg. Die KI kann sie nicht ändern und '
+                    'erfährt nur, welche gilt -- damit sie keine Rückfrage ankündigt, die nicht kommt.',
+                    style: klein),
+              ]),
+            ),
+          ),
+          actions: [
+            FilledButton(onPressed: () => Navigator.pop(context), child: const Text('Schließen')),
+          ],
+        );
+      },
+    );
 
 class FreigabeDialog extends StatelessWidget {
   const FreigabeDialog(this.anfrage, this.frist, {super.key});

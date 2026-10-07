@@ -1,9 +1,25 @@
-// Freigaben: Die App fragt die Lehrkraft, bevor sie Bestehendes ändert.
+// Freigaben: Die App fragt die Lehrkraft, bevor sie in Moodle schreibt.
 //
 // Ein Werkzeug stellt eine Anfrage und wartet. Die Oberfläche zeigt sie als
 // Dialog mit der Änderungsübersicht; die Lehrkraft entscheidet per Klick.
 // Ohne Antwort innerhalb der Frist gilt die Anfrage als abgelehnt -- im
 // Zweifel wird nichts geschrieben.
+//
+// WIE VIELE Anfragen kommen, stellt die Lehrkraft in der Titelzeile ein
+// ([Bestaetigungen]). Entschieden wird das an einer Stelle: in [anfragen].
+// Jede Anfrage nennt mit [FreigabeAnfrage.ab], ab welcher Stufe sie kommt;
+// liegt die eingestellte Stufe darunter, gilt die Anfrage als erteilt, und
+// das Protokoll hält fest, dass ohne Freigabe geschrieben wurde. So kann kein
+// Aufrufer die Einstellung übersehen, und eine neue Freigabe ist von selbst
+// dabei.
+//
+// Wartet der Client nicht mehr auf das Werkzeug (MCP: notifications/
+// cancelled, etwa nach dem Zeitlimit von Bionic), verfällt die Anfrage wie
+// nach der Frist: Der Dialog schließt sich, nichts wird geschrieben. Sonst
+// schriebe eine späte Freigabe, während die KI den Vorgang für gescheitert
+// hält. Den Abbruch erfährt [Freigaben.anfragen] aus der Zone des
+// Werkzeugaufrufs ([Freigaben.mitAbbruch]) -- auch das an einer Stelle, kein
+// Werkzeug muss ihn durchreichen.
 
 import 'dart:async';
 
@@ -11,6 +27,38 @@ import 'package:flutter/foundation.dart';
 
 import 'moodle/zeilenvergleich.dart';
 import 'protokoll.dart';
+
+/// Wie viele Bestätigungen die Lehrkraft vor Änderungen in Moodle will.
+/// Die Reihenfolge ist die Mechanik: Gefragt wird, wenn die eingestellte
+/// Stufe mindestens so hoch ist wie die der Anfrage ([FreigabeAnfrage.ab]).
+enum Bestaetigungen {
+  /// Keine Freigabe vor einer Änderung in Moodle; alles läuft sofort. Die
+  /// Freigabe je Bildschirmfoto bleibt davon unberührt: Sie entscheidet
+  /// nicht über eine Änderung, sondern darüber, welches Bild aus dem Kurs an
+  /// Claude geht (E18).
+  keine('keine'),
+
+  /// Alles, was Bestehendes anfasst oder sofort für Lernende sichtbar wird:
+  /// Ändern, Verschieben, Sichtbarkeit, Löschen, sichtbar Anlegen.
+  mittel('mittel'),
+
+  /// Dazu jeder Vorgang, der in Moodle etwas erzeugt -- auch verborgen
+  /// Angelegtes, Kopien, importierte Fragen.
+  alle('alle');
+
+  const Bestaetigungen(this.text);
+
+  /// Der Name in der Oberfläche und in den Einstellungen.
+  final String text;
+
+  static const Bestaetigungen vorgabe = mittel;
+
+  /// Unbekanntes (alte oder beschädigte Einstellungen) wird zur Vorgabe --
+  /// nie zu „keine": Eine Datei, die niemand lesen kann, schaltet keine
+  /// Rückfragen ab.
+  static Bestaetigungen ausText(String? t) =>
+      values.where((x) => x.text == t).firstOrNull ?? vorgabe;
+}
 
 class FreigabeAnfrage {
   FreigabeAnfrage({
@@ -22,9 +70,17 @@ class FreigabeAnfrage {
     this.ohneEntscheidung = 'wird nichts gespeichert',
     this.bilder = const [],
     this.grund,
+    this.ab = Bestaetigungen.mittel,
   });
 
   final String titel;
+
+  /// Ab welcher Stufe diese Anfrage gestellt wird. Vorgabe ist „mittel" --
+  /// alles, was Bestehendes anfasst oder sofort sichtbar wird. Wer nur bei
+  /// „alle" fragen will (Anlegen, Duplizieren, Importieren), gibt
+  /// [Bestaetigungen.alle] an; [Bestaetigungen.keine] heißt „immer fragen, auch
+  /// bei keine" und gilt nur für das Bildschirmfoto, das keine Änderung ist.
+  final Bestaetigungen ab;
 
   /// Wozu Claude das braucht, in Claudes eigenen Worten -- steht oben im
   /// Dialog (Bildschirmfotos).
@@ -56,20 +112,64 @@ class FreigabeAnfrage {
 }
 
 class Freigaben extends ChangeNotifier {
-  Freigaben(this.protokoll, {this.frist = const Duration(minutes: 30)});
+  Freigaben(this.protokoll, {this.frist = fristVorgabe, this.stufe = Bestaetigungen.vorgabe});
+
+  /// Kürzer als das Zeitlimit, das die App in Bionic einträgt
+  /// (`bionicZeitlimit`, einrichtung.dart).
+  static const fristVorgabe = Duration(minutes: 30);
 
   final Protokoll protokoll;
   final Duration frist;
 
+  /// Die eingestellte Stufe (Titelzeile, gespeichert in den Einstellungen).
+  /// Bewusst ohne notifyListeners: Die Zuhörer warten auf eine neue Anfrage,
+  /// und die Oberfläche, die sie setzt, baut sich selbst neu auf.
+  Bestaetigungen stufe;
+
+  /// Wie oft eine Freigabe wegen der Stufe ausgelassen wurde. Der MCP-Dienst
+  /// vergleicht den Zähler vor und nach einem Werkzeug und sagt Claude, dass
+  /// ohne Freigabe geschrieben wurde -- sonst kündigt der Skill eine
+  /// Rückfrage an, die nie kommt.
+  int ausgelassen = 0;
+
   FreigabeAnfrage? _aktuell;
   FreigabeAnfrage? get aktuell => _aktuell;
 
-  /// Stellt eine Anfrage und wartet auf die Entscheidung, höchstens [frist].
-  /// Es gibt immer nur eine offene Anfrage; eine zweite wartet, bis die erste
-  /// entschieden ist.
+  static const _abbruch = #freigabenAbbruch;
+
+  /// Führt [f] so aus, dass seine Freigaben verfallen, sobald sich [abbruch]
+  /// erfüllt: Dann wartet der Client nicht mehr auf das Ergebnis.
+  static Future<T> mitAbbruch<T>(Future<void> abbruch, Future<T> Function() f) =>
+      runZoned(f, zoneValues: {_abbruch: abbruch});
+
+  /// Ob [a] bei der eingestellten Stufe überhaupt gefragt wird.
+  bool fragt(FreigabeAnfrage a) => stufe.index >= a.ab.index;
+
+  /// Stellt eine Anfrage und wartet auf die Entscheidung, höchstens [frist]
+  /// und nur, solange der Client wartet ([mitAbbruch]). Es gibt immer nur eine
+  /// offene Anfrage; eine zweite wartet, bis die erste entschieden ist.
+  ///
+  /// Liegt die eingestellte Stufe unter der der Anfrage, wird nicht gefragt:
+  /// Die Lehrkraft hat das so eingestellt, das Protokoll hält es fest (A4),
+  /// und der Werkzeugaufruf läuft durch.
   Future<bool> anfragen(FreigabeAnfrage a) async {
-    while (_aktuell != null) {
-      await _aktuell!._antwort.future;
+    if (!fragt(a)) {
+      ausgelassen++;
+      protokoll.eintrag(Art.schreiben, 'Ohne Freigabe (Bestätigungen: ${stufe.text}): ${a.titel}');
+      a._antwort.complete(true);
+      return true;
+    }
+    var abgebrochen = false;
+    final abbruch = (Zone.current[_abbruch] as Future<void>?)?.then((_) => abgebrochen = true);
+    while (_aktuell != null && !abgebrochen) {
+      await Future.any([_aktuell!._antwort.future, ?abbruch]);
+    }
+    // Abgebrochen, während eine andere Anfrage offen war: gar nicht erst
+    // fragen.
+    if (abgebrochen) {
+      protokoll.eintrag(Art.info, 'Die KI wartet nicht mehr -- nicht gefragt, nicht gespeichert: ${a.titel}');
+      a._antwort.complete(false);
+      return false;
     }
     _aktuell = a;
     protokoll.eintrag(Art.info, 'Freigabe angefragt: ${a.titel} (Frist ${_dauer(frist)})');
@@ -79,6 +179,12 @@ class Freigaben extends ChangeNotifier {
     final uhr = Timer(frist, () {
       if (a.offen) {
         protokoll.eintrag(Art.info, 'Frist abgelaufen -- nicht gespeichert');
+        a._antwort.complete(false);
+      }
+    });
+    abbruch?.then((_) {
+      if (a.offen) {
+        protokoll.eintrag(Art.info, 'Die KI wartet nicht mehr -- nicht gespeichert');
         a._antwort.complete(false);
       }
     });

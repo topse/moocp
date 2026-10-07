@@ -117,3 +117,15 @@ install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
 install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   CONFIGURATIONS Profile;Release
   COMPONENT Runtime)
+
+# Die Brücke moocp-bruecke.exe für KI-Werkzeuge, die MCP nur über stdio
+# sprechen (lib/mcp/bruecke.dart), neben die exe: ein eigenes Dart-Programm
+# ohne Flutter, bei jedem Bau neu übersetzt (bruecke.cmake). Das Dart von
+# Flutter, damit es dieselbe Version ist, mit der die App gebaut wird.
+get_directory_property(FLUTTER_ROOT DIRECTORY flutter DEFINITION FLUTTER_ROOT)
+install(CODE "
+  set(BRUECKE_DART \"${FLUTTER_ROOT}/bin/cache/dart-sdk/bin/dart.exe\")
+  set(BRUECKE_PROJEKT \"${CMAKE_CURRENT_SOURCE_DIR}/..\")
+  set(BRUECKE_ORDNER \"${CMAKE_INSTALL_PREFIX}\")
+  " COMPONENT Runtime)
+install(SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/bruecke.cmake" COMPONENT Runtime)

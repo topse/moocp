@@ -8,13 +8,17 @@ import 'package:moocp/moodle/wiki.dart';
 import 'package:moocp/protokoll.dart';
 
 /// Das Einstellungsformular eines Wikis, wie Moodle es nach dem Anlegen
-/// zeigt: der Typ als gesperrte Auswahl.
-Formular einstellungen(String typ, {String modul = 'wiki'}) {
+/// zeigt: der Typ als gesperrte Auswahl, der Gruppenmodus als Auswahl oder,
+/// wenn der Kurs ihn erzwingt, als verstecktes Feld.
+Formular einstellungen(String typ, {String modul = 'wiki', String? gruppen, bool erzwungen = false}) {
+  String option(String wert, String text) => '<option value="$wert"${gruppen == wert ? ' selected="selected"' : ''}>$text</option>';
   final form = html_parser.parse('<form><input type="hidden" name="modulename" value="$modul">'
           '<select name="wikimode" disabled="disabled">'
           '<option value="collaborative"${typ == 'collaborative' ? ' selected="selected"' : ''}>Gemeinsam</option>'
           '<option value="individual"${typ == 'individual' ? ' selected="selected"' : ''}>Persönlich</option>'
-          '</select></form>')
+          '</select>'
+          '${gruppen == null ? '' : erzwungen ? '<input type="hidden" name="groupmode" value="$gruppen">' : '<select name="groupmode">${option('0', 'Keine Gruppen')}${option('1', 'Getrennte Gruppen')}${option('2', 'Sichtbare Gruppen')}</select>'}'
+          '</form>')
       .querySelector('form')!;
   return Formular(form, formularFelder(form), '/course/modedit.php', Seitenangaben.aus(''), const {});
 }
@@ -38,6 +42,18 @@ void main() {
         throwsA(isA<MoodleFehler>().having((f) => f.meldung, 'meldung', contains('persönliches Wiki'))));
     expect(() => wikiTypPruefen(einstellungen(''), 15397), throwsA(isA<MoodleFehler>()), reason: 'Typ unbekannt');
     expect(() => wikiTypPruefen(einstellungen('collaborative', modul: 'page'), 15397), throwsA(isA<MoodleFehler>()));
+  });
+
+  test('Gruppenmodus aus den Einstellungen sperrt, auch ohne Gruppen im Kurs und vor der ersten Seite', () {
+    wikiTypPruefen(einstellungen('collaborative', gruppen: '0'), 15397);
+    for (final g in ['1', '2']) {
+      expect(() => wikiTypPruefen(einstellungen('collaborative', gruppen: g), 15397),
+          throwsA(isA<MoodleFehler>().having((f) => f.meldung, 'meldung', contains('Gruppenmodus'))),
+          reason: 'groupmode $g');
+    }
+    expect(() => wikiTypPruefen(einstellungen('collaborative', gruppen: '1', erzwungen: true), 15397),
+        throwsA(isA<MoodleFehler>()), reason: 'vom Kurs erzwungen');
+    wikiTypPruefen(einstellungen('collaborative', gruppen: '0', erzwungen: true), 15397);
   });
 
   test('Ansicht: Auswahl einer Person oder Gruppe sperrt', () {

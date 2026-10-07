@@ -6,7 +6,7 @@
 
 ```
 1. Ordner im Arbeitsordner anlegen, etwa  <Arbeitsordner>\ls3-auftrag\
-2. Inhalt hineinschreiben (Write-Werkzeug):  page.html / introeditor.html …,
+2. Inhalt hineinschreiben (Datei-Werkzeug):  page.html / introeditor.html …,
    Bilder nach dateien\, Dateien nach bereiche\<feld>\
 3. aktivitaet_anlegen(kurs, abschnitt_id, typ, name, ordner, einstellungen)
 4. Antwort lesen: cmid, verborgen, Rückleseprobe
@@ -104,7 +104,7 @@ Freigabe zeigt es, sag es trotzdem vorher im Chat.
 
 | Schlüssel | Bedeutung |
 |---|---|
-| `wikimode` | gemeinsam oder persönlich. **Nur das gemeinsame** bearbeitet die App; das persönliche besteht aus Nutzerdaten. Nach dem Anlegen nicht mehr änderbar. Ein gemeinsames Wiki im Gruppenmodus (`groupmode`) liest und schreibt die App nicht mehr, sobald der Kurs Gruppen hat: Dann hat jede Gruppe eigene Seiten. |
+| `wikimode` | gemeinsam oder persönlich. **Nur das gemeinsame** bearbeitet die App; das persönliche besteht aus Nutzerdaten. Nach dem Anlegen nicht mehr änderbar. Ein Wiki im Gruppenmodus (`groupmode`) liest und schreibt die App nicht, auch solange der Kurs keine Gruppen hat: Mit Gruppen hat jede Gruppe eigene Seiten. |
 | `firstpagetitle` | Titel der Startseite — die erste Seite muss genau so heißen |
 | `defaultformat` | Standardformat; die App schreibt HTML |
 | `forceformat` | Format festlegen |

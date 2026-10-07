@@ -107,6 +107,19 @@ String? mathjaxQuelle(String html) {
   return ende < 0 ? null : adresse.substring(0, ende + 1);
 }
 
+/// Der Grund, wenn eine Anfrage an Moodle nur nicht auf der Liste steht.
+const nichtAufDerListe = 'nicht auf der Liste für Bildschirmfotos';
+
+/// Ob eine nicht geladene Anfrage das Bild verändern kann und deshalb in den
+/// Freigabedialog und die Antwort an die KI gehört: jede Datenschutz-Sperre,
+/// jeder fremde Rechner (Schriften, fremde Bilder), jede andere Seite, auch im
+/// Rahmen; von dem, was nur nicht auf der Liste steht, Stylesheets, Bilder,
+/// Schriften und Medien ([art]: resourceType des DevTools-Protokolls).
+/// Skripte und Hintergrundabfragen für Kopfzeile und Plugins ändern am Inhalt
+/// nichts -- sie stehen nur im Protokoll.
+bool veraendertBild(String grund, String? art) =>
+    grund != nichtAufDerListe || const {'Stylesheet', 'Image', 'Font', 'Media'}.contains(art);
+
 /// Entscheidet über eine Anfrage des Browsers. [dokument]: eine Seite, keine
 /// Datei in ihr. [basis]: die Moodle-Instanz der Sitzung. [seiten]: die
 /// Adressen, die als Seite geladen werden dürfen (die aufgenommene und ihre
@@ -134,5 +147,5 @@ String? mathjaxQuelle(String html) {
     return (BrowserWeg.ueberApp, 'Dienst ${uri.queryParameters['info']}');
   }
   if (dienst && methode == 'POST' && _nurBrowserDienste(rumpf)) return (BrowserWeg.ueberApp, 'Dienst');
-  return (BrowserWeg.gesperrt, 'nicht auf der Liste für Bildschirmfotos');
+  return (BrowserWeg.gesperrt, nichtAufDerListe);
 }

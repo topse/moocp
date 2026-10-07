@@ -69,7 +69,7 @@ Bauen und die drei Prüfungen laufen lassen (Befehle in der README). Dabei:
   Zusatz zuerst kürzen.
 - **Installieren** macht die App (E13 der Projekt-CLAUDE.md): `build.py` baut
   nach `dist/`, `tool/neustart.sh` baut die App mit diesen Paketen, und beim
-  Start bietet sie im Dialog „Claude einrichten" an, sie zu installieren. Die
+  Start bietet sie im Dialog „KI-Werkzeuge einrichten" an, sie zu installieren. Die
   Entscheidung trifft der Nutzer dort; einen anderen Weg gibt es nicht.
 - Zeilenenden sind LF (`.gitattributes`). Skripte, die Dateien der Skills
   umschreiben, lesen und schreiben mit `io.open(…, encoding='utf-8',
@@ -90,6 +90,11 @@ Bauen und die drei Prüfungen laufen lassen (Befehle in der README). Dabei:
   Herkünften – beides Gleichanteile, hier nur als Erinnerung.
 - Dateien mit dem Write-Werkzeug schreiben, nicht per Bash-Heredoc: der
   scheitert erfahrungsgemäß an deutschem Text und Anführungszeichen.
+- Die Skills laufen in Claude Code, Codex CLI und LM Studio (E21 der
+  Projekt-CLAUDE.md). Darum steht in ihnen nichts, was nur in einem Client
+  gilt – keine Werkzeugnamen mit Präfix, kein „Write-Werkzeug", kein
+  `~/.claude/skills` als einziger Ort; braucht es ein Beispiel, dann mit
+  „in Claude Code" davor.
 
 ## Ein eingefügter Befund ist ein Auftrag
 

@@ -24,6 +24,12 @@
 //     Textwerkzeuge auch lesen (wiki.dart).
 //   - Der Grund steht im Dialog; die Lehrkraft sieht jedes Bild und gibt es
 //     frei, erst dann geht es an Claude. Ohne Freigabe wird es verworfen.
+//   - Freigegebene Bilder gehen nur als PNG in den Arbeitsordner, die Antwort
+//     nennt die Pfade. Kein Bild in der Antwort selbst (ImageContent oder
+//     eingebettete Ressource, beides Base64 im JSON): Bionic gibt keines
+//     davon ans Modell weiter (gemessen), Dateien öffnen kann jedes
+//     KI-Werkzeug, mit dem die App arbeitet, und beides zugleich ließe das
+//     Modell dasselbe Bild zweimal ansehen.
 //
 // Nebenwirkungen wie beim Ansehen im Browser: Moodle protokolliert den Aufruf
 // unter dem eigenen Konto und setzt eventuell den Abschluss „angesehen"; die
@@ -32,6 +38,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:path/path.dart' as p;
@@ -49,10 +56,62 @@ import 'wiki.dart';
 /// Bildschirms, nicht das eines Telefons.
 const int _breite = 1280;
 
-/// Höchste Höhe eines Bilds. Längere Inhalte werden geteilt: Claude
-/// verkleinert hohe Bilder, und Schrift wird dann unlesbar.
-const int _teilhoehe = 1400;
+/// Höchste Höhe eines Bilds. Längere Inhalte werden geteilt ([teilen]):
+/// Claude verkleinert hohe Bilder, und Schrift wird dann unlesbar.
+const double _teilhoehe = 1400;
 const int _hoechstensTeile = 12;
+
+/// So viel wiederholt der nächste Teil, wenn ein Element durchschnitten
+/// werden muss, damit die Schnittkante in beiden Bildern zu sehen ist.
+const double _ueberlappung = 100;
+
+/// Ein Teil eines langen Inhalts, gemessen vom oberen Rand des Inhalts.
+/// [zerschnitten]: Sein unterer Rand geht durch ein Element, das höher ist
+/// als ein Teil; der nächste Teil beginnt dann [_ueberlappung] davor.
+typedef Teil = ({double oben, double hoehe, bool zerschnitten});
+
+/// Teilt einen Inhalt der Höhe [hoehe] in Teile von höchstens [hoechstens]
+/// und schneidet nur, wo keine der [sperren] liegt -- Textzeilen, Bilder,
+/// Formeln, Tabellenzeilen …, je (oben, unten): so tief wie möglich, und
+/// lieber vor einem Element als hindurch, wenn es dann ganz in den nächsten
+/// Teil passt. Nur ein Element, das höher ist als ein Teil, wird
+/// durchschnitten, mit Überlappung. Ein Modell setzt eine zerschnittene
+/// Zeile oder Formel nicht zuverlässig zusammen und hielte sie für kaputt;
+/// ein einziges hohes Bild dagegen verkleinert es, bis nichts mehr lesbar ist.
+List<Teil> teilen(double hoehe, List<(double, double)> sperren,
+    {double hoechstens = _teilhoehe, double ueberlappung = _ueberlappung}) {
+  final s = [for (final x in sperren) if (x.$2 > x.$1) x]..sort((a, b) => a.$1.compareTo(b.$1));
+  // Was sich überlappt, wird eine Sperre; was sich nur berührt, nicht --
+  // zwischen zwei Zeilen darf geschnitten werden.
+  final gesperrt = <(double, double)>[];
+  for (final x in s) {
+    if (gesperrt.isNotEmpty && x.$1 < gesperrt.last.$2) {
+      gesperrt.last = (gesperrt.last.$1, math.max(gesperrt.last.$2, x.$2));
+    } else {
+      gesperrt.add(x);
+    }
+  }
+  final teile = <Teil>[];
+  var oben = 0.0;
+  while (hoehe - oben > hoechstens) {
+    final grenze = oben + hoechstens;
+    final m = gesperrt.where((x) => x.$1 < grenze && grenze < x.$2).firstOrNull;
+    if (m == null) {
+      teile.add((oben: oben, hoehe: hoechstens, zerschnitten: false));
+      oben = grenze;
+    } else if (m.$1 - oben >= 1 && (m.$2 - m.$1 <= hoechstens || m.$1 - oben >= hoechstens / 2)) {
+      // Vor dem Element schneiden: Es passt ganz in den nächsten Teil, oder
+      // es ist ohnehin zu hoch und beginnt erst in der unteren Hälfte.
+      teile.add((oben: oben, hoehe: m.$1 - oben, zerschnitten: false));
+      oben = m.$1;
+    } else {
+      teile.add((oben: oben, hoehe: hoechstens, zerschnitten: true));
+      oben = grenze - ueberlappung;
+    }
+  }
+  teile.add((oben: oben, hoehe: hoehe - oben, zerschnitten: false));
+  return teile;
+}
 
 class _Cdp {
   _Cdp(this._ws) {
@@ -185,8 +244,16 @@ Future<(String, String)> _browser() async {
 /// prüfen soll. Er ist eine Angabe für ihre Entscheidung, keine Sicherung.
 String grundPruefen(String? grund) {
   final g = (grund ?? '').replaceAll(RegExp(r'\s+'), ' ').trim();
-  if (g.length < 10) {
+  if (g.isEmpty) {
     throw MoodleFehler('Ohne Grund kein Bildschirmfoto: in einem Satz angeben, was das Bild prüfen soll (grund).');
+  }
+  // Ein Wort wie „Testlauf" sagt der Lehrkraft nicht, wozu das Bild dient.
+  // Die Meldung sagt, dass er zu knapp ist -- nicht „ohne Grund", das läse
+  // das Modell als fehlenden Parameter.
+  if (g.length < 10) {
+    throw MoodleFehler('Der Grund „$g" ist zu knapp; die Lehrkraft entscheidet danach, ob das Bild an dich geht. '
+        'In einem Satz angeben, was das Bild prüfen soll (grund, ab 10 Zeichen), etwa „Prüfen, ob die Formeln auf '
+        'Infoblatt 2 gesetzt werden".');
   }
   if (g.length > 200) throw MoodleFehler('Der Grund hat ${g.length} Zeichen, höchstens 200 -- ein Satz genügt.');
   return g;
@@ -272,14 +339,34 @@ const Map<String, (String, String?)> _inhalt = {
   'frage': ('#region-main .que', null),
 };
 
-/// Lage des Inhalts auf der ganzen Seite, null ohne Treffer.
+/// Lage des Inhalts auf der ganzen Seite, null ohne Treffer; dazu, wo darin
+/// nicht geschnitten werden darf ([teilen]): jede Textzeile, jedes Bild und
+/// jede Zeichnung, jede Formel, jede Tabellenzeile, jedes Formularfeld, je
+/// [oben, unten] vom oberen Rand des Inhalts. Bei Formeln zählt jedes Teil:
+/// Die Hülle (MathJax 3 `mjx-container`) ist nur so hoch wie die Textzeile,
+/// ein Bruch ragt darüber hinaus (gemessen: Schnitt durch den Zähler).
 String _bereich((String, String?) inhalt) => '''
 (() => {
   const e = document.querySelector(${jsonEncode(inhalt.$1)});
   const z = e && ${inhalt.$2 == null ? 'e' : 'e.closest(${jsonEncode(inhalt.$2)})'};
   if (!z) return JSON.stringify(null);
   const r = z.getBoundingClientRect();
-  return JSON.stringify({x: r.left + scrollX, y: r.top + scrollY, w: r.width, h: r.height});
+  const sperren = [];
+  const dazu = q => { if (q.width > 0 && q.height > 0) sperren.push([q.top - r.top, q.bottom - r.top]); };
+  const texte = document.createTreeWalker(z, NodeFilter.SHOW_TEXT);
+  const stueck = document.createRange();
+  while (texte.nextNode()) {
+    if (!texte.currentNode.data.trim()) continue;
+    stueck.selectNodeContents(texte.currentNode);
+    for (const q of stueck.getClientRects()) dazu(q);
+  }
+  for (const k of z.querySelectorAll('img, svg, canvas, video, iframe, object, embed, tr, input, select, textarea, '
+      + 'button, hr')) dazu(k.getBoundingClientRect());
+  for (const k of z.querySelectorAll('mjx-container, .MathJax, .MathJax_Display')) {
+    dazu(k.getBoundingClientRect());
+    for (const t of k.querySelectorAll('*')) dazu(t.getBoundingClientRect());
+  }
+  return JSON.stringify({x: r.left + scrollX, y: r.top + scrollY, w: r.width, h: r.height, sperren});
 })()
 ''';
 
@@ -382,8 +469,17 @@ Future<_Aufnahme> _aufnehmen(
             await cdp!.senden('Fetch.continueRequest', {'requestId': id});
           case BrowserWeg.gesperrt:
             final wo = uri.host == basis.host ? adresseOhneWerte(uri) : '${uri.host}${uri.path}';
-            a.gesperrt.add('$methode $wo ($grund)');
-            protokoll.eintrag(Art.gesperrt, 'Browser gesperrt: $methode $wo ($grund)');
+            final zaehlt = veraendertBild(grund, e['resourceType'] as String?);
+            if (zaehlt) a.gesperrt.add('$methode $wo ($grund)');
+            // Ein Treffer der Sperrliste ist ein Schutzfall und steht so da.
+            // Alles andere ist nur nicht geladen; als Sperre gemeldet sähe es
+            // aus wie ein Fehler.
+            if (grund.startsWith('Datenschutz-Sperre')) {
+              protokoll.eintrag(Art.gesperrt, 'Browser gesperrt: $methode $wo ($grund)');
+            } else {
+              protokoll.eintrag(
+                  Art.info, 'Browser: nicht geladen${zaehlt ? '' : ' (fürs Bild nicht nötig)'}: $methode $wo ($grund)');
+            }
             await cdp!.senden('Fetch.failRequest', {'requestId': id, 'errorReason': 'BlockedByClient'});
           case BrowserWeg.ueberApp:
             final r = await moodle.fuerBrowser(methode, uri, seiten: seiten, rumpf: rumpf, dokument: dokument);
@@ -493,20 +589,25 @@ Future<_Aufnahme> _aufnehmen(
       final x = (b['x'] as num).floorToDouble(), y = (b['y'] as num).floorToDouble();
       final w = (b['w'] as num).ceilToDouble(), h = (b['h'] as num).ceilToDouble();
       if (w < 1 || h < 1) throw MoodleFehler('Der Inhalt ist leer.');
-      final teile = (h / _teilhoehe).ceil();
-      if (teile > _hoechstensTeile) {
+      final teile = teilen(h, [
+        for (final s in (b['sperren'] as List? ?? const []).cast<List>())
+          ((s[0] as num).toDouble(), (s[1] as num).toDouble()),
+      ]);
+      if (teile.length > _hoechstensTeile) {
         throw MoodleFehler('Die Seite ist zu lang für Bildschirmfotos (${h.toInt()} Pixel, mehr als '
             '$_hoechstensTeile Teile).');
       }
+      final zerschnitten = [for (var i = 0; i < teile.length; i++) if (teile[i].zerschnitten) i + 1];
       a.ausschnitt = '${druck ? 'wie gedruckt (ohne Druckaufbereitung), ' : 'wie am Bildschirm, '}nur der Inhalt, '
-          '${w.toInt()} × ${h.toInt()} Pixel${teile > 1 ? ', in $teile Teilen' : ''}';
-      for (var i = 0; i < teile; i++) {
-        final oben = y + i * _teilhoehe;
-        final hoehe = (i == teile - 1) ? h - i * _teilhoehe : _teilhoehe.toDouble();
+          '${w.toInt()} × ${h.toInt()} Pixel'
+          '${teile.length < 2 ? '' : ', in ${teile.length} Teilen, geteilt zwischen Zeilen und Elementen'}'
+          '${zerschnitten.isEmpty ? '' : '; Teil ${zerschnitten.join(', ')} endet mitten in einem Element, das '
+              'höher ist als ein Bild, und der nächste wiederholt ${_ueberlappung.toInt()} Pixel davon'}';
+      for (final t in teile) {
         final r = await cdp.senden('Page.captureScreenshot', {
           'format': 'png',
           'captureBeyondViewport': true,
-          'clip': {'x': x, 'y': oben, 'width': w, 'height': hoehe, 'scale': 1},
+          'clip': {'x': x, 'y': y + t.oben, 'width': w, 'height': t.hoehe, 'scale': 1},
         });
         a.bilder.add(base64Decode('${r['data']}'));
       }
@@ -594,9 +695,9 @@ Future<String> _auswerten(_Cdp cdp, String js) async {
 }
 
 /// Nimmt eine Ansicht auf, zeigt die Bilder mit dem [grund] der Lehrkraft
-/// und gibt sie nur nach ihrer Freigabe zurück. Entweder [cmid] (Textseite,
+/// und legt sie nur nach ihrer Freigabe in den Arbeitsordner. Entweder [cmid] (Textseite,
 /// Buch, Wiki) oder [frage] mit [sammlung] (Fragenvorschau).
-Future<(String, List<Uint8List>)> bildschirmfoto(MoodleZugang moodle, Freigaben freigaben, Protokoll protokoll,
+Future<String> bildschirmfoto(MoodleZugang moodle, Freigaben freigaben, Protokoll protokoll,
     {required String grund,
     int? cmid,
     int? kapitel,
@@ -645,40 +746,59 @@ Future<(String, List<Uint8List>)> bildschirmfoto(MoodleZugang moodle, Freigaben 
   // Die Lehrkraft entscheidet über die Bilder; was der Browser technisch
   // tat, braucht sie nur, wenn es das Bild verfälschen kann.
   final ja = await freigaben.anfragen(FreigabeAnfrage(
-    titel: 'Bildschirmfoto an Claude geben?',
+    titel: 'Bildschirmfoto an die KI geben?',
     grund: wozu,
     punkte: [
       ...wo,
       if (a.gesperrt.isNotEmpty)
-        '${a.gesperrt.length} Anfrage(n) des Browsers gesperrt (Datenschutz oder fremde Rechner) -- die '
+        '${a.gesperrt.length} Anfrage(n) des Browsers nicht geladen (Datenschutz, fremde Rechner …) -- die '
             'Darstellung kann deshalb abweichen',
     ],
     vergleich: const [],
     bilder: a.bilder,
-    knopf: 'An Claude geben',
+    knopf: 'An die KI geben',
     ablehnen: 'Verwerfen',
     ohneEntscheidung: 'wird das Bild verworfen',
+    // Diese Freigabe kommt bei JEDER Stufe, auch bei „keine": Sie entscheidet
+    // nicht über eine Änderung in Moodle, sondern darüber, welches Bild aus
+    // dem Kurs an die KI geht (A1, E18).
+    ab: Bestaetigungen.keine,
   ));
   if (!ja) {
-    return ('Nicht freigegeben: Die Lehrkraft hat das Bildschirmfoto verworfen. Nichts weitergegeben.', const <Uint8List>[]);
+    return 'Nicht freigegeben: Die Lehrkraft hat das Bildschirmfoto verworfen. Nichts weitergegeben.';
   }
   final name = '${frage != null ? 'frage-$frage' : 'cm-$cmid'}${kapitel == null ? '' : '-kapitel-$kapitel'}'
       '${wikiseite == null ? '' : '-seite-$wikiseite'}${druck ? '-druck' : ''}';
+  // Ältere Bilder derselben Ansicht weg: Ein Bild zeigt den Stand beim
+  // Aufnehmen, und von einer Aufnahme mit mehr Teilen bliebe sonst ein alter
+  // Teil neben den neuen liegen.
+  final alt = RegExp('^bildschirmfoto-${RegExp.escape(name)}' r'(-\d+)?\.png$');
+  for (final f in Directory(arbeitsordner).listSync().whereType<File>()) {
+    if (!alt.hasMatch(p.basename(f.path))) continue;
+    try {
+      f.deleteSync();
+    } on FileSystemException {
+      // Geöffnet und gesperrt: Gleichnamiges wird gleich überschrieben.
+    }
+  }
   final dateien = <String>[];
   for (var i = 0; i < a.bilder.length; i++) {
     final d = File(p.join(arbeitsordner, 'bildschirmfoto-$name${a.bilder.length > 1 ? '-${i + 1}' : ''}.png'));
     await d.writeAsBytes(a.bilder[i]);
     dateien.add(d.path);
   }
-  return (
-    [
-      ...wo,
-      'Formeln: ${a.formeln}',
-      'Browser: ${a.browser}; Anfragen: ${a.ueberApp} über die App, ${a.direkt} direkt (MathJax), '
-          '${a.gesperrt.length} gesperrt',
-      for (final g in a.gesperrt) 'Gesperrt: $g',
-      'Gespeichert: ${dateien.join(', ')}',
-    ].join('\n'),
-    a.bilder
-  );
+  return [
+    ...wo,
+    'Formeln: ${a.formeln}',
+    'Browser: ${a.browser}; Anfragen: ${a.ueberApp} über die App, ${a.direkt} direkt (MathJax), '
+        '${a.gesperrt.length} nicht geladen',
+    // „Nicht geladen", nicht „Gesperrt": So melden die Lesewerkzeuge eine
+    // Lücke (A6), und das ist hier keine.
+    for (final g in a.gesperrt) 'Nicht geladen: $g',
+    // Nur die Pfade und wie lange sie gelten, keine Anleitung zum Öffnen:
+    // Ein schwaches Modell folgte ihr nicht, ein starkes braucht sie nicht
+    // (E21).
+    'Bilder: ${dateien.join(', ')} -- der Stand von jetzt; nach einer Änderung ein neues Bildschirmfoto '
+        'aufnehmen, nicht diese Dateien noch einmal öffnen.',
+  ].join('\n');
 }

@@ -88,6 +88,22 @@ Set<String> eingebunden(String html) => {
 String normalisiert(String html) => html.replaceAll(
     RegExp(r'/draftfile\.php/\d+/user/draft/\d+/'), '/draftfile.php/U/user/draft/X/');
 
+/// Größte Datei, die in der Freigabe noch zeilenweise verglichen wird.
+const int _vergleichGrenze = 256 * 1024;
+
+/// Der Inhalt als Text, oder null, wenn es keiner ist: Nullbytes oder kein
+/// gültiges UTF-8 heißt Bilddatei, Schrift, Archiv -- dort zeigt ein
+/// Zeilenvergleich nichts. Zeilenenden werden angeglichen, sonst stünde eine
+/// Datei mit CRLF komplett als geändert da.
+String? alsText(List<int> b) {
+  if (b.length > _vergleichGrenze || b.contains(0)) return null;
+  try {
+    return utf8.decode(b).replaceAll('\r\n', '\n');
+  } on FormatException {
+    return null;
+  }
+}
+
 bool gleicheBytes(List<int> a, List<int> b) {
   if (a.length != b.length) return false;
   for (var i = 0; i < a.length; i++) {
@@ -115,6 +131,18 @@ String imArbeitsordner(String ordner, String arbeitsordner) {
     throw MoodleFehler('Gesperrt: Der Ordner muss im Arbeitsordner liegen ($arbeitsordner).');
   }
   return q;
+}
+
+/// Liest eine Textdatei aus dem Arbeitsordner. Fehlt sie, sagt die Meldung
+/// das, statt als „unerwarteter Fehler" mit Stack-Trace zu enden.
+Future<String> dateiAusArbeitsordner(String datei, String arbeitsordner) async {
+  final pfad = imArbeitsordner(datei, arbeitsordner);
+  final f = File(pfad);
+  if (!f.existsSync()) {
+    throw MoodleFehler('Die Datei $pfad gibt es nicht. Nach einem Neustart der App ist der Arbeitsordner leer -- '
+        'dann die Datei neu schreiben.');
+  }
+  return f.readAsString(encoding: utf8);
 }
 
 /// Ein Pfad so, wie Windows ihn selbst schreibt: Kurznamen ausgeschrieben
@@ -153,7 +181,6 @@ Map<String, String> felderIn(String ordner) {
   return {
     for (final f in d.listSync().whereType<File>())
       if (f.path.endsWith('.html') &&
-          !f.path.endsWith('.vorschau.html') &&
           p.basename(f.path) != 'formular.html')
         p.basenameWithoutExtension(f.path):
             f.readAsStringSync(encoding: utf8).replaceAll('\r\n', '\n').replaceAll('\r', '\n')
@@ -583,24 +610,28 @@ Future<String> aktivitaetAnlegen(
       ? '${await kursBezeichnung(moodle, kurs)}, allgemeiner Abschnitt'
       : '${await kursBezeichnung(moodle, kurs)}, Abschnitt „${abschnitt.titel}"';
 
-  if (sichtbar) {
-    final ja = await freigaben.anfragen(FreigabeAnfrage(
-      titel: 'Sichtbar anlegen?',
-      punkte: [
-        '${typName(typ)} „$name" in $wo',
-        'Für Lernende SOFORT SICHTBAR (sonst legt die App verborgen an).',
-        for (final e in inhalt.felder.entries)
-          if (e.value.trim().isNotEmpty) '${e.key}: ${e.value.length} Zeichen',
-        for (final e in einstellungen.entries) 'Einstellung ${e.key}: ${e.value}',
-      ],
-      vergleich: const [],
-      knopf: 'Sichtbar anlegen',
-    ));
-    if (!ja) {
-      return 'Nicht angelegt: Sichtbares Anlegen wurde in der App abgelehnt oder nicht '
-          'innerhalb von ${freigaben.frist.inMinutes} Minuten freigegeben. Verborgen anlegen '
-          'geht ohne Rückfrage.';
-    }
+  // Sichtbar anlegen fragt ab „mittel", verborgen anlegen erst bei „alle":
+  // Verborgenes sieht niemand außer der Lehrkraft (A3).
+  final ja = await freigaben.anfragen(FreigabeAnfrage(
+    titel: sichtbar ? 'Sichtbar anlegen?' : 'Verborgen anlegen?',
+    punkte: [
+      '${typName(typ)} „$name" in $wo',
+      sichtbar
+          ? 'Für Lernende SOFORT SICHTBAR (sonst legt die App verborgen an).'
+          : 'Für Lernende verborgen; sichtbar wird es erst mit sichtbarkeit_setzen.',
+      for (final e in inhalt.felder.entries)
+        if (e.value.trim().isNotEmpty) '${e.key}: ${e.value.length} Zeichen',
+      for (final e in einstellungen.entries) 'Einstellung ${e.key}: ${e.value}',
+    ],
+    vergleich: const [],
+    knopf: sichtbar ? 'Sichtbar anlegen' : 'Anlegen',
+    ohneEntscheidung: 'wird nichts angelegt',
+    ab: sichtbar ? Bestaetigungen.mittel : Bestaetigungen.alle,
+  ));
+  if (!ja) {
+    return 'Nicht angelegt: ${sichtbar ? 'Sichtbares Anlegen' : 'Das Anlegen'} wurde in der App '
+        'abgelehnt oder nicht innerhalb von ${freigaben.frist.inMinutes} Minuten freigegeben.'
+        '${sichtbar ? ' Verborgen anlegen braucht nur bei Bestätigungen „alle" eine Freigabe.' : ''}';
   }
 
   final vorher = istSammlung
@@ -649,9 +680,12 @@ Future<String> aktivitaetAnlegen(
       'Hinweis: Moodle legt Fragensammlungen nur im allgemeinen Abschnitt an; '
           'der gewünschte Abschnitt „${abschnitt.titel}" wurde nicht verwendet.',
     if (geschrieben.isNotEmpty || inhalt.dateien.isNotEmpty || inhalt.bereiche.isNotEmpty)
-      'Geschrieben: ${geschrieben.keys.map((k) => '$k.html').join(", ")}'
-          '${inhalt.dateien.isEmpty ? '' : '; Dateien: ${inhalt.dateien.keys.join(", ")}'}'
-          '${inhalt.bereiche.isEmpty ? '' : '; Dateibereiche: ${inhalt.bereiche.entries.map((b) => '${b.key} (${b.value.length})').join(", ")}'}.',
+      'Geschrieben: ${[
+        if (geschrieben.isNotEmpty) geschrieben.keys.map((k) => '$k.html').join(", "),
+        if (inhalt.dateien.isNotEmpty) 'Dateien: ${inhalt.dateien.keys.join(", ")}',
+        if (inhalt.bereiche.isNotEmpty)
+          'Dateibereiche: ${inhalt.bereiche.entries.map((b) => '${b.key} (${b.value.length})').join(", ")}',
+      ].join('; ')}.',
     if (gesetzt.isNotEmpty) 'Einstellungen: ${gesetzt.map((s) => '${s.label}: ${s.nachher}').join("; ")}.',
     probe.text,
     'Einstellungen jetzt:',
@@ -681,9 +715,13 @@ void _pruefeStand(Formular f, Formularziel ziel, String stand, Map<String, Strin
   if (bereiche.isNotEmpty) {
     final datei = File(p.join(stand, 'dateibereiche.json'));
     final alt = datei.existsSync() ? jsonDecode(datei.readAsStringSync()) as List : const [];
+    // Name, Größe und Änderungszeit: Die Größe allein ließe eine Änderung
+    // durch, die gleich lang ist -- bei einer Textdatei keine Seltenheit.
+    // „datemodified" stammt von der Datei, nicht vom Entwurfsbereich, und
+    // bleibt über mehrere Formularaufrufe gleich (gemessen 05.10.2026).
     String liste(Object? l) => [
           for (final e in (l as List?) ?? const [])
-            if (e is Map) '${e['filepath']}${e['filename']}:${e['size']}'
+            if (e is Map) '${e['filepath']}${e['filename']}:${e['size']}:${e['datemodified']}'
         ].join('|');
     for (final b in bereiche) {
       final vorher = alt.whereType<Map>().where((x) => '${x['target']}' == 'id_$b').firstOrNull;
@@ -847,6 +885,21 @@ Future<_Aenderung?> _vorbereiten(
   }
   for (final b in bereiche) {
     einzelheiten.add('Dateibereich ${b.feld}: ${b.beschreibung()}');
+    // Bei einer Textdatei zeigt die Freigabe auch, welche Zeilen sich ändern.
+    // „ersetzt: CLAUDE.md" allein sagt der Lehrkraft nicht, was sie freigibt;
+    // der Zeilenvergleich ist bei einer Seite die eigentliche Kontrolle, und
+    // eine Datei ist nicht weniger wert. Bilder, Schriften und große Dateien
+    // bleiben bei Name und Größe.
+    for (final n in [...b.geaendert, ...b.neu]) {
+      final jetzt = alsText(b.lokal[n]!);
+      final vorher = b.stand.containsKey(n) ? alsText(b.stand[n]!) : '';
+      if (jetzt == null || vorher == null) continue;
+      final v = zeilenVergleich(vorher, jetzt);
+      if (v.gleich) continue;
+      vergleich
+        ..add(Zeile(ZeilenArt.ausgelassen, '──── ${b.feld}$n ────'))
+        ..addAll(v.zeilen);
+    }
   }
   for (final s in probeSetzen) {
     einzelheiten.add('Einstellung $s');

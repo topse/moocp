@@ -45,7 +45,7 @@ DIST = os.path.join(HIER, 'dist')
 SKILLS = [
     {
         'name': 'moodle',
-        'bloecke': ['kurshinweise.md', 'aktueller-kurs.md', 'erfundene-namen.md', 'plan.md', 'ueberarbeiten.md',
+        'bloecke': ['kurshinweise.md', 'konventionen-vorschlagen.md', 'aktueller-kurs.md', 'erfundene-namen.md', 'plan.md', 'ueberarbeiten.md',
                     'luecken.md', 'protokoll.md', 'bildschirmfoto.md', 'urheberrecht-kurz.md', 'urheberrecht.md',
                     'datenschutzbefund.md', 'skillfehler.md', 'html-kurz.md', 'html.md', 'zeichnungen.md', 'bruecke.md'],
         'ersetzungen': {'@@NAME@@': 'moodle',
@@ -54,7 +54,7 @@ SKILLS = [
     {
         'name': 'moodle-fragen',
         # Fragen werden nicht gedruckt; die Brücke betrifft Kurs und Blätter.
-        'bloecke': ['kurshinweise.md', 'aktueller-kurs.md', 'erfundene-namen.md', 'plan.md', 'ueberarbeiten.md',
+        'bloecke': ['kurshinweise.md', 'konventionen-vorschlagen.md', 'aktueller-kurs.md', 'erfundene-namen.md', 'plan.md', 'ueberarbeiten.md',
                     'luecken.md', 'protokoll.md', 'bildschirmfoto.md', 'urheberrecht-kurz.md', 'urheberrecht.md',
                     'datenschutzbefund.md', 'skillfehler.md', 'html-kurz.md', 'html.md', 'zeichnungen.md'],
         'ersetzungen': {'@@NAME@@': 'moodle-fragen',
@@ -70,7 +70,7 @@ SKILLS = [
         # auch hier eine fehlende Funktion als Befund zum Nachrüsten ankommt.
         # Wählbar (lib/einrichtung.dart): gebaut für berufsbildende Schulen.
         'name': 'lernsituation',
-        'bloecke': ['bruecke.md', 'erfundene-namen.md', 'plan.md', 'ueberarbeiten.md', 'html-kurz.md', 'html.md',
+        'bloecke': ['bruecke.md', 'konventionen-vorschlagen.md', 'erfundene-namen.md', 'plan.md', 'ueberarbeiten.md', 'html-kurz.md', 'html.md',
                     'zeichnungen.md', 'urheberrecht-kurz.md', 'urheberrecht.md', 'luecken.md', 'skillfehler.md'],
         'ersetzungen': {'@@NAME@@': 'lernsituation',
                         '@@QUELLENBEISPIELE@@': ('datei', 'urheberrecht-beispiele-lernsituation.md')},

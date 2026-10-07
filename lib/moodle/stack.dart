@@ -57,7 +57,13 @@ bool _pass(dom.Element e) => e.classes.contains('pass');
 
 Future<String> stackTesten(MoodleZugang moodle, {required int sammlung, required int frage, int? seed}) async {
   final r = await moodle.lesen('${_stack}questiontestrun.php?questionid=$frage&cmid=$sammlung${seed == null ? '' : '&seed=$seed'}');
-  final d = html_parser.parse(r.text);
+  return stackTestBericht(r.text, frage: frage, seed: seed);
+}
+
+/// Der Bericht zur Testseite von STACK (questiontestrun.php); ohne Moodle
+/// prüfbar (test/stack_test_bericht_test.dart).
+String stackTestBericht(String html, {required int frage, int? seed}) {
+  final d = html_parser.parse(html);
   final haupt = d.querySelector('#region-main');
   if (haupt == null) throw MoodleFehler('Testseite nicht lesbar -- ist $frage eine STACK-Frage?');
   final gesamt = d.querySelector('.overallresult');
@@ -65,6 +71,8 @@ Future<String> stackTesten(MoodleZugang moodle, {required int sammlung, required
   final durchgefallen = <String>[];
   var anzahl = 0;
   var verworfen = false;
+  final verdacht = <String, List<String>>{};
+  final gerechnet = <String>{};
   for (final tab in haupt.querySelectorAll('table.stacktestsuite')) {
     final spalten = tab.querySelectorAll('thead th').length;
     final titel = _ueberschrift(tab);
@@ -78,9 +86,8 @@ Future<String> stackTesten(MoodleZugang moodle, {required int sammlung, required
         final z = _zellen(tr);
         if (z.length < 6 || z[1].isEmpty || z[2].isNotEmpty) continue;
         final warum = [z[4], z[5]].where((t) => t.isNotEmpty).join(' -- ');
-        faelle.putIfAbsent(titel, () => []).add('! Eingabe ${z[0]}: „${z[1]}" nicht übernommen'
+        verdacht.putIfAbsent(titel, () => []).add('! Eingabe ${z[0]}: „${z[1]}" nicht übernommen'
             '${warum.isEmpty ? '' : ' ($warum)'}');
-        verworfen = true;
       }
       continue;
     }
@@ -90,10 +97,19 @@ Future<String> stackTesten(MoodleZugang moodle, {required int sammlung, required
       final z = _zellen(tr);
       if (z.length < 7) continue;
       final ok = _pass(tr);
+      if (z[1].isNotEmpty || z[5].isNotEmpty) gerechnet.add(titel);
       faelle.putIfAbsent(titel, () => []).add('${ok ? '✓' : '✗'} ${z[0]}: ${z[1]} P. (erwartet ${z[2]}), '
           'Hinweis „${z[5]}" (erwartet „${z[6]}")');
       if (!ok) durchgefallen.add('$titel / ${z[0]}: ${z[1]} statt ${z[2]}, „${z[5]}" statt „${z[6]}"');
     }
+  }
+  // Leer steht der übernommene Wert auch da, wo STACK ihn nicht als Text
+  // zeigt (gemessen: matrix). Verworfen ist eine Eingabe deshalb nur, wenn im
+  // selben Testfall kein Baum etwas geliefert hat.
+  for (final e in verdacht.entries) {
+    if (gerechnet.contains(e.key)) continue;
+    faelle[e.key] = [...e.value, ...?faelle[e.key]];
+    verworfen = true;
   }
   final meldungen = [
     for (final e in haupt.querySelectorAll('.alert-danger, .notifyproblem, .error')) _text(e)

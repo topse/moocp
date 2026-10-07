@@ -21,7 +21,10 @@ const lizenzAsset = 'LICENSE.md';
 /// beim Start die gesammelten Lizenzen der Pakete.
 void lizenzAnmelden() {
   LicenseRegistry.addLicense(() async* {
-    yield LicenseEntryWithLineBreaks([appName], await rootBundle.loadString(lizenzAsset));
+    // Ohne das BOM, mit dem die Datei beginnt (es steht dort für den
+    // Installer, siehe installer/moocp.nsi).
+    final text = await rootBundle.loadString(lizenzAsset);
+    yield LicenseEntryWithLineBreaks([appName], text.replaceFirst('\uFEFF', ''));
   });
 }
 

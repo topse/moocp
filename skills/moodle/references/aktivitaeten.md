@@ -103,10 +103,7 @@ Moodle den Seitenaufbau neu berechnet.
 
 Nicht eingebaut: einzelne Abschnitte einer Seite bearbeiten, Creole und NWiki
 (die App schreibt HTML), Dateien im Wiki. Ein **persönliches Wiki** liest die
-App nicht, ebenso wenig ein Wiki, das nach Gruppen getrennt ist (Gruppenmodus,
-und der Kurs hat Gruppen): Jede Gruppe hat dort eigene Seiten, geschrieben von
-ihren Mitgliedern. Die Werkzeuge melden es; ein Wiki im Gruppenmodus ohne
-Gruppen ist ein gewöhnliches gemeinsames Wiki.
+App nicht, ebenso wenig ein Wiki im Gruppenmodus, auch solange der Kurs keine Gruppen hat: Mit Gruppen hat jede Gruppe dort eigene Seiten, geschrieben von ihren Mitgliedern. Die Werkzeuge melden es; soll daran gearbeitet werden, muss der Gruppenmodus auf „Keine Gruppen" stehen.
 
 ### Board
 
@@ -146,7 +143,7 @@ bei „ausschließlich" gibt es kein Kursboard, und die App findet keines.
 
 ## Bewertungsschema einer Aufgabe
 
-`bewertungsschema_lesen(cmid)` legt die **Definition** der Rubrik oder Bewertungsrichtlinie nach `bewertung-<cmid>.json`: Kriterien, Stufen, Punkte und unter `optionen` die Einstellungen des Schemas; ihre Beschriftungen stehen in der Übersicht, die das Werkzeug zurückgibt. Bei einfacher direkter Bewertung gibt es kein Raster; dann zählen die Punkte aus dem Aufgabenformular.
+`bewertungsschema_lesen(cmid)` legt die **Definition** der Rubrik oder Bewertungsrichtlinie nach `bewertung-<cmid>.json`: Kriterien, Stufen, Punkte und unter `optionen` die Einstellungen des Schemas. Die Übersicht, die das Werkzeug zurückgibt, nennt die Kriterien mit den Punkten ihrer Stufen und die Optionen mit Beschriftung; die Texte der Stufen stehen nur in der Datei. Bei einfacher direkter Bewertung gibt es kein Raster; dann zählen die Punkte aus dem Aufgabenformular.
 
 Ein Schema setzen:
 
