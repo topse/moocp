@@ -53,21 +53,24 @@ final List<(RegExp, String)> _netz = [
   (RegExp(r'\bimportScripts\b'), 'importScripts'),
 ];
 
-/// Ein [[jsxgraph]]-Block: Attribute und Code.
+/// Ein [[jsxgraph]]-Block: Attribute (Namen wie geschrieben) und Code.
 typedef JsxgraphBlock = ({Map<String, String> attribute, String code});
 
-/// Die [[jsxgraph]]-Blöcke eines Textfelds.
+/// Die [[jsxgraph]]-Blöcke eines Textfelds. Die Attributnamen bleiben, wie
+/// sie stehen: STACK vergleicht sie mit Groß und Klein (jsxgraph.block.php),
+/// und Eingabenamen sind Maxima-Namen -- input-ref-ansG bindet ansG, nicht ansg.
 List<JsxgraphBlock> jsxgraphBloecke(String text) => [
       for (final m in _jsxgraphBlock.allMatches(text))
         (
           attribute: {
-            for (final a in _attribut.allMatches(m.group(1)!)) a.group(1)!.toLowerCase(): a.group(2) ?? a.group(3)!,
+            for (final a in _attribut.allMatches(m.group(1)!)) a.group(1)!: a.group(2) ?? a.group(3)!,
           },
           code: m.group(2)!,
         )
     ];
 
-/// Die Eingaben, die ein [[jsxgraph]] über `input-ref-<name>` bindet.
+/// Die Eingaben, die ein [[jsxgraph]] über `input-ref-<name>` bindet. Das
+/// Präfix klein wie in STACK; anders geschrieben bindet es dort nichts.
 Set<String> jsxgraphEingaben(String text) => {
       for (final b in jsxgraphBloecke(text))
         for (final k in b.attribute.keys)
@@ -91,10 +94,12 @@ List<String> stackSkriptFehler(String text) {
   }
   for (final (i, b) in jsxgraphBloecke(text).indexed) {
     final wo = '[[jsxgraph]] Nr. ${i + 1}';
-    for (final a in _jsxgraphLaedt) {
-      final w = b.attribute[a];
-      if (w == null || (a == 'version' && w.trim().toLowerCase() == 'local')) continue;
-      aus.add('$wo: $a="$w" lädt JSXGraph von einem fremden Rechner. Ohne $a nimmt STACK die mitgebrachte '
+    // Ohne Groß und Klein: lieber ein „Version=" zu viel abweisen, als eines
+    // durchlassen, das eine andere STACK-Version doch auswertet.
+    for (final MapEntry(key: k, value: w) in b.attribute.entries) {
+      final a = k.toLowerCase();
+      if (!_jsxgraphLaedt.contains(a) || (a == 'version' && w.trim().toLowerCase() == 'local')) continue;
+      aus.add('$wo: $k="$w" lädt JSXGraph von einem fremden Rechner. Ohne $k nimmt STACK die mitgebrachte '
           'Version vom eigenen Moodle.');
     }
     for (final (muster, was) in _netz) {

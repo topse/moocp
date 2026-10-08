@@ -152,6 +152,12 @@ void main() {
     final xmlHand = xml.replaceFirst('input-ref-ans2="ans2Ref"', 'input-ref-ans2="ans2Ref" input-ref-ans9="x"');
     expect(() => fragenXmlPruefen(xmlHand),
         throwsA(predicate((e) => e is MoodleFehler && e.meldung.contains('input-ref-ans9'))));
+
+    // Eingabenamen mit Großbuchstaben bindet STACK wie geschrieben.
+    final gross = quizXml([stackXml(frage(attribute: ' input-ref-ansG="ans2Ref"', ans2: {'name': 'ansG'}), version: '1')]);
+    expect(gross, contains('<div class="d-none">[[input:ansG]] [[validation:ansG]]</div>'));
+    fragenXmlPruefen(gross);
+    verweigert(frage(attribute: ' input-ref-ansg="ans2Ref"', ans2: {'name': 'ansG'}), 'input-ref-ansg');
   });
 
   test('STACK: Teile ohne Antwort -- allowempty nur mit Knoten für EMPTYANSWER, Abzug je Zweig', () {

@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.9.12
+- Zeichnungen in STACK-Fragen: Eingaben mit Großbuchstaben im Namen (etwa „ansG") lassen sich an die Zeichnung binden; Regler zeigen die Einheit hinter dem Wert.
+
 ## 0.9.10
 - STACK: Neu angelegte Fragen mit Auswahlliste lassen sich nachträglich ändern.
 - Neu: Zeichnungen in STACK-Fragen (JSXGraph) – aus den Zufallswerten gezeichnet oder zum Ziehen, mit Hinweisen, wann sie sich lohnen; geladen wird nur, was von Ihrem Moodle kommt.

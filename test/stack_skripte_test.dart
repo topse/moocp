@@ -28,7 +28,13 @@ void main() {
   });
 
   test('Abgewiesen: Versionen von fremden Rechnern und eigene Adressen', () {
-    for (final a in [' version="cdn"', ' version="1.12.2"', ' overridejs="https://x.example/j.js"', " overridecss='a.css'"]) {
+    for (final a in [
+      ' version="cdn"',
+      ' version="1.12.2"',
+      ' Version="cdn"',
+      ' overridejs="https://x.example/j.js"',
+      " overrideCSS='a.css'",
+    ]) {
       expect(stackSkriptFehler(_block(_zeichnung, a)), [contains('fremden Rechner')], reason: a);
     }
   });
@@ -60,6 +66,9 @@ void main() {
   test('Bindungen: die Eingaben aus input-ref-…', () {
     expect(jsxgraphEingaben(_block(_zeichnung, ' input-ref-ans1="a" input-ref-ans2=\'b\'')), {'ans1', 'ans2'});
     expect(jsxgraphEingaben('[[jsxgraph]]x[[/jsxgraph]]'), isEmpty);
+    // Groß und Klein wie in STACK: input-ref-ansG bindet ansG; ein anders
+    // geschriebenes Präfix bindet dort nichts.
+    expect(jsxgraphEingaben(_block(_zeichnung, ' input-ref-ansG="g" Input-Ref-ans2="b"')), {'ansG'});
   });
 
   test('Der Code ist kein Text: keine Formelfehler, keine Befunde aus dem Code', () {
