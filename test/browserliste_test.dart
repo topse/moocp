@@ -135,6 +135,34 @@ void main() {
     expect(grund, nichtAufDerListe);
   });
 
+  test('STACK-Zeichnungen: Skripte aus corsscripts, nur Dateinamen', () {
+    const ordner = '/question/type/stack/corsscripts';
+    for (final a in [
+      '$ordner/cors.php?name=jsxgraphcore.min.js',
+      '$ordner/cors.php?name=stackjsiframe.min.js',
+      '$ordner/cors.php?name=jsxgraph.min.css',
+      '$ordner/cors.php?name=jsxgraphstyles%2Fempty.css',
+      '$ordner/stackjsxgraph.min.js',
+    ]) {
+      expect(browserPruefen('GET', _basis.resolve(a), basis: _basis, seiten: const {}), (BrowserWeg.ueberApp, stackSkript),
+          reason: a);
+    }
+    for (final a in [
+      '$ordner/cors.php?name=..%2F..%2F..%2Fconfig.php',
+      '$ordner/cors.php?name=..%2Fversion.js',
+      '$ordner/cors.php?name=x.php',
+      '$ordner/cors.php',
+      '$ordner/cors.php?name=a.js&x=1',
+      '$ordner/README',
+      '$ordner/a.js?x=1',
+      '/question/type/stack/adminui/index.php',
+    ]) {
+      expect(weg('GET', a), BrowserWeg.gesperrt, reason: a);
+    }
+    expect(weg('POST', '$ordner/cors.php?name=jsxgraphcore.min.js'), BrowserWeg.gesperrt);
+    expect(weg('GET', '$ordner/cors.php?name=jsxgraphcore.min.js', dokument: true), BrowserWeg.gesperrt);
+  });
+
   test('Grund: Pflicht, ein Satz', () {
     expect(grundPruefen('  Prüfen, ob die Formeln\n auf Infoblatt 2 gesetzt werden  '),
         'Prüfen, ob die Formeln auf Infoblatt 2 gesetzt werden');

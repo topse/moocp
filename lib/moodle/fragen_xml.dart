@@ -24,6 +24,7 @@ import 'package:xml/xml.dart';
 import 'auswertung.dart';
 import 'formeln.dart';
 import 'moodle_zugang.dart';
+import 'stack_skripte.dart';
 
 // kernAnlegbar, zusatzAnlegbar und nurLesen gibt die Übersicht „Unterstützte
 // Aktivitäten und Fragetypen" in README.md (Teil 2) wieder; dort im selben Zug
@@ -122,6 +123,12 @@ const List<(String, String)> _stackEingabe = [
   ('showvalidation', '1'), ('options', ''),
 ];
 
+/// Auswahllisten zeigen keine Validierung: Da gibt es nichts zu deuten, und
+/// mit 1 sähen Lernende nach der Wahl „Ihre letzte Antwort wurde
+/// folgendermaßen interpretiert …". Den Platzhalter [[validation:…]] brauchen
+/// sie trotzdem (siehe fragenXmlPruefen); mit 0 zeigt er nichts.
+const Set<String> _stackAuswahl = {'dropdown', 'radio', 'checkbox'};
+
 /// STACK zählt Knoten an drei Stellen verschieden (gemessen): Beschriftung
 /// „Knoten 1" und Antwortnotiz prt1-1-T 1-basiert, Formularindex und XML
 /// `<node><name>` 0-basiert, nextnode 0-basiert mit -1 = Ende. Die Beschreibung
@@ -175,17 +182,103 @@ List<String> _obereEbene(String s) {
   return aus;
 }
 
+/// Vorgaben einer Eingabe, die nur den Zustand einer JSXGraph-Zeichnung hält
+/// (`gebunden: true`): Die Lernenden sehen das Feld nicht, also auch keine
+/// Prüfanzeige und keinen Bestätigungsschritt, und die Musterantwort -- eine
+/// rohe Liste wie [2.0,3.5] -- erscheint nicht in der Rückmeldung. Leer ist
+/// erlaubt: Wer den Punkt nicht bewegt, lässt die Eingabe leer, und ohne
+/// allowempty liefe der Baum dann gar nicht -- der Teil bekäme weder Punkte
+/// noch Rückmeldung (gemessen am 08.10.2026). Siehe [_leerePruefen].
+const Map<String, String> _stackGebunden = {
+  'showvalidation': '0',
+  'mustverify': '0',
+  'options': 'hideanswer,allowempty',
+};
+
+/// Was eine leere Eingabe mit allowempty ist, wo es nicht EMPTYANSWER ist
+/// (STACK-Dokumentation, Input_options): Der Typ bleibt derselbe wie bei
+/// einer Antwort. Eine leere Matrix ist eine Matrix aus null in der Größe der
+/// Musterantwort; sie wird hier nicht geprüft.
+const Map<String, String> _stackLeer = {'string': '""', 'checkbox': '[]', 'textarea': '[EMPTYANSWER]', 'equiv': '[EMPTYANSWER]'};
+
+/// Eine Eingabe mit allowempty ist leer EMPTYANSWER ([_stackLeer]), und jeder
+/// Baum, der sie benutzt, muss das prüfen, bevor er rechnet: `ans2[1]` auf
+/// EMPTYANSWER ist ein Fehler in Maxima, kein „falsch". Verlangt wird deshalb
+/// in jedem solchen Baum ein Knoten mit sans = Eingabe und tans = dem leeren
+/// Wert; dass er der erste ist, sagt der Skill (stack.md, „Teile ohne Antwort").
+/// Ein Knoten, der nur prüft, ob eine Eingabe leer ist, ist immer leise: Bei
+/// einer Liste meldet AlgEquiv gegen EMPTYANSWER sonst den Lernenden bei
+/// jeder Antwort, sie sei kein Ausdruck (ATAlgEquiv_SA_not_expression,
+/// gemessen am 08.10.2026 an einer gebundenen Eingabe). Leise unterdrückt nur
+/// diese Meldung des Antworttests, nicht die Rückmeldung des Zweigs.
+bool _leerKnoten(Map<String, Object?> k) => const {'EMPTYANSWER', '[EMPTYANSWER]'}.contains(_t(k, 'tans').replaceAll(' ', ''));
+
+void _leerePruefen(String name, List<Map<String, Object?>> eingaben, List<Map<String, Object?>> prts) {
+  for (final e in eingaben) {
+    final n = _t(e, 'name');
+    final optionen = e['options'] != null ? _t(e, 'options') : (e['gebunden'] == true ? _stackGebunden['options']! : '');
+    if (!optionen.split(',').map((o) => o.trim()).contains('allowempty') || _t(e, 'typ') == 'matrix') continue;
+    final leer = _stackLeer[_t(e, 'typ')] ?? 'EMPTYANSWER';
+    final wort = RegExp('(^|[^A-Za-z0-9_])${RegExp.escape(n)}(\$|[^A-Za-z0-9_])');
+    for (final q in prts) {
+      final knoten = _liste(q['knoten'], 'knoten');
+      if (!knoten.any((k) => wort.hasMatch(_t(k, 'sans')))) continue;
+      if (knoten.any((k) => _t(k, 'sans').trim() == n && _t(k, 'tans').replaceAll(' ', '') == leer)) continue;
+      throw MoodleFehler('STACK „$name": Die Eingabe $n darf leer bleiben (allowempty${e['gebunden'] == true ? ', Vorgabe '
+              'bei gebundenen Eingaben' : ''}), aber ${_t(q, 'name')} prüft das nicht. Als Knoten 1: '
+          '{"test": "AlgEquiv", "sans": "$n", "tans": ${jsonEncode(leer)}, "leise": true, "wahr": {"punkte": 0, "abzug": 0, "feedback": '
+          '"<p>… nicht bearbeitet.</p>"}, "falsch": {"weiter": 2}}');
+    }
+  }
+}
+
+/// Prüft die Eingaben, die eine Zeichnung bindet, und setzt die Platzhalter
+/// der gebundenen Eingaben verborgen ans Ende des Fragetexts. Verborgen mit
+/// der Bootstrap-Klasse d-none statt style="display:none" wie in der
+/// STACK-Dokumentation: keine style-Attribute (A8). In einem <div>, nicht in
+/// einem <p>: [[validation:…]] wird ein <div>, und ein <div> beendet ein <p>
+/// -- es stünde dann außerhalb des verborgenen Absatzes.
+String _gebundeneEingaben(String name, String fragetext, List<Map<String, Object?>> eingaben) {
+  final namen = {for (final e in eingaben) _t(e, 'name')};
+  final referenziert = jsxgraphEingaben(fragetext);
+  final unbekannt = referenziert.difference(namen);
+  if (unbekannt.isNotEmpty) {
+    throw MoodleFehler('STACK „$name": [[jsxgraph]] bindet ${unbekannt.map((n) => 'input-ref-$n').join(', ')}, '
+        'aber eine solche Eingabe gibt es nicht (vorhanden: ${namen.join(', ')}).');
+  }
+  final anhang = StringBuffer();
+  for (final e in eingaben.where((e) => e['gebunden'] == true)) {
+    final n = _t(e, 'name'), typ = _t(e, 'typ');
+    if (!const {'algebraic', 'string'}.contains(typ)) {
+      throw MoodleFehler('STACK „$name": Die gebundene Eingabe $n braucht typ algebraic (Punkte, Regler: Zahlen '
+          'und Listen) oder string (eigene Bindung mit JSON), nicht $typ.');
+    }
+    if (!referenziert.contains(n)) {
+      throw MoodleFehler('STACK „$name": Eingabe $n ist gebunden, aber kein [[jsxgraph input-ref-$n="…"]] bindet sie.');
+    }
+    if (fragetext.contains('[[input:$n]]') || fragetext.contains('[[validation:$n]]')) {
+      throw MoodleFehler('STACK „$name": Für die gebundene Eingabe $n setzt stack_xml die Platzhalter selbst, '
+          'verborgen -- [[input:$n]] und [[validation:$n]] im fragetext weglassen.');
+    }
+    anhang.write('\n<div class="d-none">[[input:$n]] [[validation:$n]]</div>');
+  }
+  return '$fragetext$anhang';
+}
+
 /// Baut das XML einer STACK-Frage aus einer knappen Beschreibung (Aufbau wie
 /// in der Skill-Referenz stack.md). [dateien] liefert die Bytes zu
 /// zeichnungen[].name.
 String stackXml(Map<String, Object?> o, {required String version, Map<String, List<int>> dateien = const {}}) {
-  final name = _t(o, 'name'), fragetext = _t(o, 'fragetext');
+  final name = _t(o, 'name');
+  var fragetext = _t(o, 'fragetext');
   if (name.isEmpty) throw MoodleFehler('STACK: name fehlt.');
   if (fragetext.isEmpty) throw MoodleFehler('STACK: fragetext fehlt.');
   final eingaben = _liste(o['eingaben'], 'eingaben'), prts = _liste(o['prts'], 'prts');
   final tests = _liste(o['tests'], 'tests');
   if (eingaben.isEmpty) throw MoodleFehler('STACK: keine eingaben.');
   if (prts.isEmpty) throw MoodleFehler('STACK: keine prts.');
+  fragetext = _gebundeneEingaben(name, fragetext, eingaben);
+  _leerePruefen(name, eingaben, prts);
   // Ohne Testfälle ist die Frage zwar gültig, aber nicht überprüfbar -- und
   // dann fällt der ganze Vorteil von STACK weg.
   if (tests.isEmpty) throw MoodleFehler('STACK: keine tests. Ohne Testfälle keine STACK-Frage.');
@@ -250,12 +343,22 @@ String stackXml(Map<String, Object?> o, {required String version, Map<String, Li
     if (!stackEingabetypen.contains(typ)) {
       throw MoodleFehler('STACK: Eingabetyp „$typ" unbekannt. Gemessen: ${stackEingabetypen.join(", ")}.');
     }
+    final vorgabe = {
+      for (final (k, standard) in _stackEingabe) k: standard,
+      if (_stackAuswahl.contains(typ)) 'showvalidation': '0',
+      // Zahl und Einheit tippt man mit Leerzeichen oder direkt hintereinander;
+      // mit insertstars 0 wies STACK „66,7 mA" (Leerzeichen) und „66,7mA"
+      // (fehlendes *) ab (gemessen am 08.10.2026). 4: Sterne für implizite
+      // Multiplikation und für Leerzeichen.
+      if (typ == 'units') 'insertstars': '4',
+      if (e['gebunden'] == true) ..._stackGebunden,
+    };
     z.add([
       '    <input>',
       '      <name>${xEsc(_t(e, 'name'))}</name>',
       '      <type>${xEsc(typ)}</type>',
       '      <tans>${xEsc(_t(e, 'tans'))}</tans>',
-      for (final (k, standard) in _stackEingabe) '      <$k>${xEsc(e[k] == null ? standard : '${e[k]}')}</$k>',
+      for (final MapEntry(:key, :value) in vorgabe.entries) '      <$key>${xEsc(e[key] ?? value)}</$key>',
       '    </input>',
     ].join('\n'));
   }
@@ -284,13 +387,15 @@ String stackXml(Map<String, Object?> o, {required String version, Map<String, Li
         '        <sans>${xEsc(_t(k, 'sans'))}</sans>',
         '        <tans>${xEsc(_t(k, 'tans'))}</tans>',
         '        <testoptions>${xEsc(_t(k, 'optionen'))}</testoptions>',
-        '        <quiet>${k['leise'] == true ? 1 : 0}</quiet>',
+        '        <quiet>${k['leise'] == true || _leerKnoten(k) ? 1 : 0}</quiet>',
       ]);
       for (final (pre, v, kz) in [('true', _map(k['wahr'], 'wahr'), 'T'), ('false', _map(k['falsch'], 'falsch'), 'F')]) {
         z.addAll([
           '        <${pre}scoremode>=</${pre}scoremode>',
           '        <${pre}score>${_t(v, 'punkte', kz == 'T' ? '1' : '0')}</${pre}score>',
-          '        <${pre}penalty></${pre}penalty>',
+          // Leer: der Abzug der Frage. 0 etwa im Zweig „nicht bearbeitet",
+          // den STACK mit allowempty auch beim bloßen Weiterblättern bewertet.
+          '        <${pre}penalty>${xEsc(_t(v, 'abzug'))}</${pre}penalty>',
           '        <${pre}nextnode>${_weiter(v['weiter'])}</${pre}nextnode>',
           '        <${pre}answernote>${xEsc(_t(v, 'hinweis', '$pn-$nr-$kz'))}</${pre}answernote>',
           '        <${pre}feedback format="html"><text>${xCd(_t(v, 'feedback'))}</text></${pre}feedback>',
@@ -473,9 +578,30 @@ class FrageImXml {
       for (final i in q.findElements('input')) {
         final n = i.getElement('name')?.innerText.trim() ?? '';
         if (!text.contains('[[input:$n]]')) fehler.add('$wer: Platzhalter [[input:$n]] fehlt im Fragetext');
+        // Der Import nimmt die Frage ohne [[validation:…]] an, das
+        // Bearbeitungsformular nicht: Es verlangt den Platzhalter für JEDE
+        // Eingabe, auch für Auswahllisten und auch bei showvalidation 0
+        // (gemessen am 08.10.2026). Ohne ließe sich die Frage nicht mehr ändern.
+        if (!text.contains('[[validation:$n]]')) {
+          fehler.add('$wer: Platzhalter [[validation:$n]] fehlt im Fragetext -- Moodle importiert die Frage auch '
+              'ohne, aber ändern lässt sie sich dann nicht mehr (das Formular verlangt ihn für jede Eingabe, '
+              'auch für Auswahllisten)');
+        }
       }
       for (final (k, _) in _stackAnzeige) {
         if (q.getElement(k) == null) fehler.add('$wer: Pflichtelement <$k> fehlt (stack_xml benutzen)');
+      }
+      // Nichts von außen laden (stack_skripte.dart) -- in jedem Textfeld, auch
+      // in den Rückmeldungen der Knoten, wo eine Zeichnung ebenfalls stehen kann.
+      final eingaben = {for (final i in q.findElements('input')) i.getElement('name')?.innerText.trim() ?? ''};
+      for (final feld in q.descendantElements.where((e) => e.getAttribute('format') == 'html')) {
+        final t = feld.getElement('text')?.innerText ?? '';
+        for (final f in stackSkriptFehler(t)) {
+          fehler.add('$wer, <${feld.name.local}>: $f');
+        }
+        for (final n in jsxgraphEingaben(t).difference(eingaben)) {
+          fehler.add('$wer, <${feld.name.local}>: [[jsxgraph]] bindet input-ref-$n, aber diese Eingabe gibt es nicht');
+        }
       }
     }
     // Formeln in jedem HTML-Feld (formeln.dart), samt den Fallen einzelner

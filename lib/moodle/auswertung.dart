@@ -22,6 +22,7 @@ import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
 
 import 'formeln.dart';
+import 'stack_skripte.dart';
 
 String kurz(String s, [int max = 160]) {
   final t = s.replaceAll(RegExp(r'\s+'), ' ').trim();
@@ -368,6 +369,11 @@ Feldauswertung feldAuswerten(String feld, String html,
     {required String host, Map<String, String> lokalerName = const {}}) {
   final a = Feldauswertung(feld, html.length);
   a.formelfehler.addAll(formelFehler(html));
+  for (final f in stackSkriptFehler(html)) {
+    a.befunde.add('Skript', f);
+  }
+  // Der Code einer STACK-Zeichnung ist kein HTML (stack_skripte.dart).
+  html = ohneJsxgraphCode(html);
   var punkt = Punkt(0, '');
   a.gliederung.add(punkt);
   var letzteEbene = 2;

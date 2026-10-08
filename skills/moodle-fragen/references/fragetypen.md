@@ -158,6 +158,8 @@ falsch. Dezimaltrenner im XML ist der **Punkt**.
 `showunits`: `3` = keine Einheit verlangt, `0` = Einheit muss mit eingegeben
 werden.
 
+Einheit und Rundung nach der Regel im SKILL.md („Zahlenergebnisse"): `showunits` `3`, die Einheit steht im Fragetext („Welcher Strom fließt in mA?"), und der Text sagt, wie gerundet wird. `<tolerance>` ist hier absolut – eine halbe Einheit der letzten verlangten Stelle, bei zwei Nachkommastellen `0.005`. Geltende Ziffern lassen sich mit einer absoluten Toleranz nur für einen festen Wert ausdrücken; variieren die Zahlen, nimm `calculatedsimple` mit relativer Toleranz oder STACK. Einheiten mit Vorsätzen eingeben zu lassen ist hier nicht vorgesehen – dafür STACK (`stack.md`, „Einheit und Genauigkeit").
+
 ```xml
 <question type="numerical">
   <name><text>Strom berechnen</text></name>
@@ -514,6 +516,8 @@ berechnete Werte als Multiple Choice an.
 Durchgespielt: importiert, in der Vorschau geöffnet, beantwortet. Moodle setzte
 R=10 und U=12 ein und wertete die Eingabe `1.2` als „Richtig, 2,00 von 2,00" mit
 der Rückmeldung „Die richtige Antwort ist: 1,20".
+
+Toleranz und Anzeige folgen der Rundung, die der Text verlangt (SKILL.md, „Zahlenergebnisse"): `<tolerancetype>1</tolerancetype>` ist relativ, `0.005` deckt drei geltende Ziffern; `<correctanswerformat>2</correctanswerformat>` mit `<correctanswerlength>3</correctanswerlength>` zeigt die richtige Antwort ebenso auf drei geltende Ziffern. Verlangt der Text Nachkommastellen, steht `correctanswerformat` auf `1` und `correctanswerlength` auf deren Zahl. Das Beispiel oben zeigt nur das XML; eine neue Frage nennt die Rundung im Text und setzt Toleranz und Anzeige danach.
 
 ### Der Fallstrick bei `calculatedmulti`
 

@@ -59,35 +59,43 @@ Teilen und die STACK-Version der Instanz.
   "punkte": 2,
   "variablen": "I : (rand(9)+1)/2;\nR : 10*(rand(9)+2);\nU : I*R;\nP : U*I;\nPfalsch : U*R;",
   "hinweis": "U={@U@} V, R={@R@} Ohm, I={@I@} A, P={@P@} W",
-  "fragetext": "<p>An einem Widerstand \\(R = {@R@}\\,\\Omega\\) liegt die Spannung \\(U = {@U@}\\,\\mathrm{V}\\).</p><p><strong>a)</strong> Wie groß ist der Strom \\(I\\) in A? [[input:ans1]] [[validation:ans1]]</p><p><strong>b)</strong> Welche Leistung \\(P\\) in W wird umgesetzt? [[input:ans2]] [[validation:ans2]]</p>",
+  "fragetext": "<p>An einem Widerstand \\(R = {@R@}\\,\\Omega\\) liegt die Spannung \\(U = {@U@}\\,\\mathrm{V}\\).</p><p><strong>a)</strong> Wie groß ist der Strom? \\(I =\\) [[input:ans1]] A [[validation:ans1]]</p><p><strong>b)</strong> Welche Leistung wird umgesetzt? \\(P =\\) [[input:ans2]] W [[validation:ans2]]</p>",
   "allgemeinesFeedback": "<p>\\(I = U/R = {@I@}\\) A, \\(P = U \\cdot I = {@P@}\\) W</p>",
   "eingaben": [
-    { "name": "ans1", "typ": "numerical", "tans": "I", "boxsize": 10 },
-    { "name": "ans2", "typ": "numerical", "tans": "P", "boxsize": 10 }
+    { "name": "ans1", "typ": "numerical", "tans": "I", "boxsize": 10, "options": "allowempty" },
+    { "name": "ans2", "typ": "numerical", "tans": "P", "boxsize": 10, "options": "allowempty" }
   ],
   "prts": [
     { "name": "prt1", "knoten": [
-      { "beschreibung": "Strom richtig?", "test": "NumRelative", "sans": "ans1", "tans": "I", "optionen": "0.001",
+      { "nr": 1, "beschreibung": "a) bearbeitet?", "test": "AlgEquiv", "sans": "ans1", "tans": "EMPTYANSWER", "leise": true,
+        "wahr": { "punkte": 0, "abzug": 0, "feedback": "<p>a) wurde nicht bearbeitet – 0 Punkte.</p>" },
+        "falsch": { "weiter": 2 } },
+      { "nr": 2, "beschreibung": "Strom richtig?", "test": "NumRelative", "sans": "ans1", "tans": "I", "optionen": "0.001",
         "falsch": { "feedback": "<p>Nutze den Zusammenhang zwischen U, R und I.</p>" } } ] },
     { "name": "prt2", "knoten": [
-      { "nr": 1, "beschreibung": "Leistung genau richtig?", "test": "NumRelative", "sans": "ans2", "tans": "P", "optionen": "0.001",
+      { "nr": 1, "beschreibung": "b) bearbeitet?", "test": "AlgEquiv", "sans": "ans2", "tans": "EMPTYANSWER", "leise": true,
+        "wahr": { "punkte": 0, "abzug": 0, "feedback": "<p>b) wurde nicht bearbeitet – 0 Punkte.</p>" },
         "falsch": { "weiter": 2 } },
-      { "nr": 2, "beschreibung": "U mal R statt U mal I", "test": "NumRelative", "sans": "ans2", "tans": "Pfalsch", "optionen": "0.001",
-        "wahr": { "punkte": 0.25, "feedback": "<p>Hier wurde \\(U \\cdot R\\) gerechnet. Die Leistung ist \\(P = U \\cdot I\\).</p>" },
+      { "nr": 2, "beschreibung": "Leistung genau richtig?", "test": "NumRelative", "sans": "ans2", "tans": "P", "optionen": "0.001",
         "falsch": { "weiter": 3 } },
-      { "nr": 3, "beschreibung": "Zahlenwert richtig, aber in kW", "test": "NumRelative", "sans": "1000*ans2", "tans": "P", "optionen": "0.001",
+      { "nr": 3, "beschreibung": "U mal R statt U mal I", "test": "NumRelative", "sans": "ans2", "tans": "Pfalsch", "optionen": "0.001",
+        "wahr": { "punkte": 0.25, "feedback": "<p>Hier wurde \\(U \\cdot R\\) gerechnet. Die Leistung ist \\(P = U \\cdot I\\).</p>" },
+        "falsch": { "weiter": 4 } },
+      { "nr": 4, "beschreibung": "Zahlenwert richtig, aber in kW", "test": "NumRelative", "sans": "1000*ans2", "tans": "P", "optionen": "0.001",
         "wahr": { "punkte": 0.5, "feedback": "<p>Der Zahlenwert passt, aber die Einheit: gefragt war W, nicht kW.</p>" },
         "falsch": { "feedback": "<p>Rechne die Leistung aus Spannung und Strom.</p>" } } ] }
   ],
   "tests": [
     { "beschreibung": "Alles richtig", "eingaben": { "ans1": "I", "ans2": "P" },
-      "erwartet": { "prt1": { "punkte": 1, "hinweis": "prt1-1-T" }, "prt2": { "punkte": 1, "hinweis": "prt2-1-T" } } },
+      "erwartet": { "prt1": { "punkte": 1, "hinweis": "prt1-2-T" }, "prt2": { "punkte": 1, "hinweis": "prt2-2-T" } } },
     { "beschreibung": "Leistung als U mal R", "eingaben": { "ans1": "I", "ans2": "Pfalsch" },
-      "erwartet": { "prt1": { "punkte": 1, "hinweis": "prt1-1-T" }, "prt2": { "punkte": 0.25, "abzug": 0.1, "hinweis": "prt2-2-T" } } },
+      "erwartet": { "prt1": { "punkte": 1, "hinweis": "prt1-2-T" }, "prt2": { "punkte": 0.25, "abzug": 0.1, "hinweis": "prt2-3-T" } } },
     { "beschreibung": "Leistung in kW statt W", "eingaben": { "ans1": "I", "ans2": "P/1000" },
-      "erwartet": { "prt1": { "punkte": 1, "hinweis": "prt1-1-T" }, "prt2": { "punkte": 0.5, "abzug": 0.1, "hinweis": "prt2-3-T" } } },
+      "erwartet": { "prt1": { "punkte": 1, "hinweis": "prt1-2-T" }, "prt2": { "punkte": 0.5, "abzug": 0.1, "hinweis": "prt2-4-T" } } },
     { "beschreibung": "Beides falsch", "eingaben": { "ans1": "0", "ans2": "0" },
-      "erwartet": { "prt1": { "punkte": 0, "abzug": 0.1, "hinweis": "prt1-1-F" }, "prt2": { "punkte": 0, "abzug": 0.1, "hinweis": "prt2-3-F" } } }
+      "erwartet": { "prt1": { "punkte": 0, "abzug": 0.1, "hinweis": "prt1-2-F" }, "prt2": { "punkte": 0, "abzug": 0.1, "hinweis": "prt2-4-F" } } },
+    { "beschreibung": "Nur a) bearbeitet", "eingaben": { "ans1": "I", "ans2": "" },
+      "erwartet": { "prt1": { "punkte": 1, "hinweis": "prt1-2-T" }, "prt2": { "punkte": 0, "abzug": 0, "hinweis": "prt2-1-T" } } }
   ]
 }
 ```
@@ -103,10 +111,10 @@ Teilen und die STACK-Version der Instanz.
 | `beschreibung` | interne Beschreibung der Frage | — |
 | `allgemeinesFeedback`, `spezifischesFeedback` | Rückmeldungen | spezifisch: `[[feedback:…]]` je Baum |
 | `anzeige` | einzelne Anzeigeoptionen überschreiben (`decimals`, `multiplicationsign` …) | Komma, Malpunkt |
-| `eingaben[]` | `name`, `typ`, `tans`, dazu jede Eingabe-Option (`boxsize`, `forbidfloat`, `options` …) | — |
+| `eingaben[]` | `name`, `typ`, `tans`, dazu jede Eingabe-Option (`boxsize`, `forbidfloat`, `options` …); `gebunden: true` für eine Eingabe, die nur die Lage in einer Zeichnung hält (`jsxgraph.md`) | — |
 | `prts[]` | `name`, `knoten`, `wert?` (Anteil), `vereinfachen?`, `feedbackvariablen?` | gleiche Anteile |
 | `knoten[]` | `nr`, `test`, `sans`, `tans`, `optionen`, `beschreibung`, `leise`, `wahr`, `falsch` | Test `AlgEquiv` |
-| `wahr` / `falsch` | `punkte`, `weiter`, `hinweis`, `feedback` | wahr 1, falsch 0, Ende |
+| `wahr` / `falsch` | `punkte`, `weiter`, `hinweis`, `feedback`, `abzug` (Abzug bei diesem Ausgang, etwa 0 für „nicht bearbeitet") | wahr 1, falsch 0, Ende, Abzug wie `strafe` |
 | `tests[]` | `beschreibung`, `eingaben {}`, `erwartet {prt: {punkte, abzug, hinweis}}` | — |
 | `zeichnungen[]` | `name` einer SVG in `dateien\` | — |
 
@@ -134,16 +142,16 @@ Ob das gelungen ist, sieht man erst an den eingesetzten Varianten (Schritt 5).
 | Platzhalter | Bedeutung |
 |---|---|
 | `[[input:ans1]]` | Hier erscheint das Eingabefeld. **Ohne diesen Platzhalter kein Feld.** |
-| `[[validation:ans1]]` | Rückmeldung „so habe ich Ihre Eingabe verstanden". Bei `dropdown`, `radio` und `checkbox` weglassen. |
+| `[[validation:ans1]]` | Rückmeldung „so habe ich Ihre Eingabe verstanden". **Zu jeder Eingabe, auch zu `dropdown`, `radio` und `checkbox`** — dort stellt `stack_xml` die Anzeige ab, der Platzhalter zeigt also nichts. |
 | `{@ausdruck@}` | Wert aus den Aufgabenvariablen, gesetzt und formatiert |
 | `[[feedback:prt1]]` | Rückmeldung eines Baums — steht im spezifischen Feedback |
 
-`stack_xml` bricht ab, wenn zu einer Eingabe der `[[input:…]]`-Platzhalter
-fehlt. Das ist der häufigste Anfängerfehler und fiele sonst erst in der
-Vorschau auf.
+`stack_xml` bricht ab, wenn zu einer Eingabe der `[[input:…]]`-Platzhalter fehlt. Das ist der häufigste Anfängerfehler und fiele sonst erst in der Vorschau auf. Ebenso beim `[[validation:…]]`-Platzhalter: Ohne ihn importiert Moodle die Frage zwar, aber das Bearbeitungsformular lehnt jede spätere Änderung ab.
 
 Formeln in LaTeX: `\(…\)` inline, `\[…\]` abgesetzt. In JSON den Backslash
 verdoppeln.
+
+Eine Zeichnung aus den Aufgabenvariablen oder zum Ziehen steht als Block `[[jsxgraph]]` im Fragetext. Wann sie sich lohnt, wie sie gebaut und bewertet wird und was die App dabei abweist: `jsxgraph.md`.
 
 ## Eingabetypen
 
@@ -172,7 +180,8 @@ Einheiten sind der Grund, warum STACK für Elektrotechnik interessant ist: `47`
 und `47 Ω` und `0,047 kΩ` lassen sich unterscheiden und getrennt bewerten.
 Einheitennamen sind Maxima-Bezeichner: `ohm`, `V`, `A`, `W`, `Hz`, `s`, `m`,
 mit SI-Vorsätzen (`kohm`, `mA`). Das Ω-Zeichen entsteht bei der Anzeige, nicht
-in der Eingabe.
+in der Eingabe: Getippt wird `ohm`, ein eingetipptes `kΩ` weist STACK als
+„verbotene Variable" ab (gemessen 08.10.2026).
 
 **Zerlegen einer Einheitenangabe** — gemessen, weil geraten falsch war:
 
@@ -185,6 +194,30 @@ Die naheliegenden Namen `stackunits_num()` und `stackunits_units()` gibt es
 **nicht**. Wer sie benutzt, bekommt keinen Fehler, sondern einen
 unausgewerteten Ausdruck — und der Antworttest scheitert dann aus scheinbar
 unerklärlichem Grund. Im Zweifel `stack_cas` fragen.
+
+## Einheit und Genauigkeit
+
+Die Regel steht im SKILL.md („Zahlenergebnisse: Einheit und Genauigkeit stehen im Text"): Der Text sagt, in welcher Einheit und wie genau, und der Knoten prüft genau das. Hier die Muster dazu, gemessen am 08.10.2026 mit \(I = 10\,\mathrm{V} / 150\,\Omega = 66{,}666\ldots\,\mathrm{mA}\).
+
+**Einheit hinter dem Feld – die Vorgabe.** Eingabe `numerical`, die Einheit steht im Fragetext nach dem Platzhalter: `<p>\(I =\) [[input:ans1]] mA [[validation:ans1]]</p>`. Wer in der falschen Größenordnung antwortet, bekommt einen eigenen Knoten: `NumRelative` mit `sans: "1000*ans1"` gegen den Wert in mA erkennt die Antwort in A (0,0667) und gibt Teilpunkte mit dem Satz „Der Wert passt zur Einheit A – gefragt war mA."
+
+**Einheit eingeben lassen – nur, wenn sie selbst geprüft wird.** Eingabe `units`, Musterantwort aus `stackunits_make(…)`, Knoten `UnitsRelative`: Er rechnet Vorsätze um. Gemessen: `66.7*mA` und `0.0667*A` sind beide richtig, `66.7*A` ist falsch (Vorsatz vergessen), `66.7*mV` passt nicht (`ATUnits_incompatible_units`). `UnitsStrictRelative` verlangt dagegen genau die Einheit der Musterantwort – nur, wenn der Text diese Einheit ausdrücklich verlangt („in mA"), sonst wird richtiges Umrechnen bestraft. Die Testfälle enthalten mindestens eine Antwort mit anderem Vorsatz als die Musterantwort.
+
+Getippt wird, wie man es schreibt: `stack_xml` setzt bei `units` die Eingabeoption `insertstars` auf `4`, Sterne für Leerzeichen und für implizite Multiplikation. Gemessen: `66,7 mA`, `66,7mA` und `0,0667 A` werden angenommen und richtig gewertet; mit der STACK-Vorgabe `0` wären die ersten beiden ungültig, und Lernende müssten `66,7*mA` tippen.
+
+**Nur Einheiten, die auf der Tastatur stehen.** Ω und µ stehen dort nicht, und wer sie eintippen soll, sucht sie. STACK nimmt sie auch nicht an: `kΩ` ist ungültig, `kohm` richtig (gemessen). Bei solchen Einheiten steht die Einheit deshalb fest hinter dem Feld. Soll sie doch eingegeben werden, nennt der Text die Schreibweise wörtlich („Ω als ohm, kΩ als kohm") – und die Übungsfrage vorher übt genau das.
+
+**Runden.** Die Toleranz ist eine halbe Einheit der letzten verlangten Stelle:
+
+| Der Text verlangt | Knoten | `optionen` | Was zählt (gemessen) |
+|---|---|---|---|
+| zwei Nachkommastellen, feste Einheit | `NumAbsolute` | `0.005` | 66,67 und genauer (66,6667) voll |
+| drei geltende Ziffern | `NumRelative` | `0.005` | 66,7 und genauer voll |
+| drei geltende Ziffern, und das Runden ist Lernziel | `NumSigFigs`, **leise** | `3` | nur 66,7; 66,67 und 66,6667 meldet STACK als falsche Stellenzahl (`ATNumSigFigs_WrongDigits`) |
+
+Zu grob gerundet (66,7 bei verlangten zwei Nachkommastellen) fällt durch die enge Toleranz; ein weiterer Knoten mit `NumRelative` und `0.01` erkennt es und gibt Teilpunkte mit „Richtig gerechnet, aber nicht auf zwei Nachkommastellen gerundet." Ebenso nach `NumSigFigs`: ein Knoten mit `NumRelative` `0.005` für „richtig, aber anders gerundet". Der Knoten mit `NumSigFigs` ist dann **leise**: Sonst zeigt STACK zusätzlich „Ihre Antwort hat die falsche Anzahl an Dezimalstellen" – doppelt, und bei geltenden Ziffern auch noch falsch benannt (gemessen 08.10.2026). Ob genauer als verlangt voll zählt oder Teilpunkte bekommt, ist eine Entscheidung der Lehrkraft; der Vorschlag im Plan ist „voll", außer das Runden selbst ist Lernziel.
+
+**Testfälle:** der richtig gerundete Wert, ein genauerer, ein zu grober und – bei fester Einheit – der Wert in der falschen Größenordnung. Testeingaben stehen in Maxima-Schreibweise mit Punkt (`66.67`); was Lernende mit Komma tippen (`66,67`), deutet die Anzeigeoption `decimals`, die `stack_xml` auf Komma stellt (gemessen 08.10.2026).
 
 ## Rückmeldebäume (PRT)
 
@@ -240,6 +273,20 @@ als gedacht.
 
 `leise: true` an einem Knoten unterdrückt dessen Standardrückmeldung. Sinnvoll
 bei Zwischenknoten, die nur verzweigen.
+
+## Teile ohne Antwort: ausdrücklich 0 Punkte
+
+STACK wertet einen Rückmeldebaum nur aus, wenn seine Eingaben ausgefüllt sind. Ein Teil, den jemand leer lässt, bekommt deshalb weder Punkte noch Rückmeldung, auch kein „falsch" (gemessen 08.10.2026). In einer Frage mit mehreren Teilen sieht dann niemand, dass ein Teil fehlt – die Punkte fehlen einfach, ohne dass die Rückmeldung es sagt.
+
+Darum gilt bei mehreren Teilen (mehreren Bäumen): Jede Eingabe bekommt `"options": "allowempty"`, und jeder Baum prüft als Knoten 1, ob seine Eingabe leer ist – `AlgEquiv` gegen `EMPTYANSWER`, **leise**; wahr: 0 Punkte, **Abzug 0**, Rückmeldung „b) wurde nicht bearbeitet – 0 Punkte."; falsch: weiter zu Knoten 2. Leise, weil `AlgEquiv` bei einer Liste gegen `EMPTYANSWER` sonst den Lernenden bei jeder Antwort meldet, sie sei kein Ausdruck (gemessen 08.10.2026); `stack_xml` setzt einen Knoten gegen `EMPTYANSWER` deshalb immer leise. Moodle zeigt dazu wie bei jedem bewerteten Teil die Bewertung. Das Beispiel oben ist so gebaut.
+
+Der Abzug ist 0, weil STACK mit `allowempty` ein leeres Feld auch dann bewertet, wenn jemand nur die Seite wechselt (STACK-Dokumentation). Wer weiterblättert, um später zurückzukommen, soll dafür nichts verlieren.
+
+`stack_xml` bricht ab, wenn eine Eingabe leer bleiben darf und ein Baum, der sie benutzt, keinen solchen Knoten hat: Ohne ihn rechnet der Baum mit dem leeren Wert, und `ans2[1]` wird zu einem Fehler in Maxima statt zu „falsch". Leer ist nicht bei jedem Typ `EMPTYANSWER`, sondern bei `string` `""`, bei `checkbox` `[]`, bei `textarea` und `equiv` `[EMPTYANSWER]` (STACK-Dokumentation; gemessen sind `numerical` und `algebraic`). Benutzt ein Baum zwei Eingaben, prüft er beide, bevor er rechnet.
+
+Dazu gehört ein Testfall, in dem ein Teil leer bleibt: die Eingabe als `""`, erwartet 0 Punkte, Abzug 0 und der Hinweis des ersten Knotens (`prt2-1-T`).
+
+Eine Frage mit nur einem Teil braucht das nicht: Bleibt sie leer, zeigt Moodle sie als nicht beantwortet.
 
 ## Antworttests
 
@@ -306,7 +353,6 @@ hier**, und es ist der Hauptgrund, warum dieser Schritt nicht optional ist.
   aus, und man hält die stehengebliebene Formel für ein defektes CAS.
   `stack_cas` schaltet sie ein, sofern nicht `vereinfachen: false`.
 - **`stackunits_num` / `stackunits_units` gibt es nicht** — siehe oben.
-- **Auswahllisten brauchen kein `[[validation:…]]`.**
 - **Die Anteile der Bäume summieren sich auf 1.** `wert` ist der Anteil, nicht
   die Punktzahl. Ohne Angabe wird gleichmäßig verteilt; bei ungleicher
   Gewichtung müssen die Werte zusammen 1 ergeben.

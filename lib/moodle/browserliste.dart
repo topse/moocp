@@ -11,6 +11,11 @@
 //   - MathJax lädt der Browser selbst, aber nur von der Adresse, die die
 //     Seite dafür einstellt (Filter MathJax) -- ein fremder Rechner, der
 //     keine Moodle-Sitzung braucht.
+//   - Zeichnungen in STACK-Fragen (JSXGraph) laufen in einem abgeschotteten
+//     Rahmen ohne eigene Herkunft und holen ihre Skripte aus corsscripts/ von
+//     STACK ([stackSkriptDatei]). Ohne Access-Control-Allow-Origin lädt der
+//     Rahmen die Module nicht; bildschirmfoto.dart setzt die Kopfzeile für
+//     genau diese Antworten.
 //   - Alles andere wird gesperrt. Eine gesperrte Hintergrundabfrage
 //     hinterlässt höchstens eine Lücke auf der Seite.
 //
@@ -82,6 +87,24 @@ final RegExp _statisch = RegExp(r'^/(theme/(styles|yui_combo|image|font|javascri
     r'|lib/(javascript|requirejs)\.php'
     r'|pluginfile\.php/\d+/)');
 
+/// Der Grund für Dateien aus corsscripts/ von STACK; bildschirmfoto.dart
+/// erkennt daran die Antworten, die Access-Control-Allow-Origin brauchen.
+const stackSkript = 'STACK-Skript';
+
+final RegExp _corsDatei = RegExp(r'^[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*(\.[A-Za-z0-9_-]+)*\.(js|css)$');
+
+/// Ein Skript oder Stylesheet, das STACK seinen Zeichnungen mitgibt (JSXGraph,
+/// die Brücke zu den Eingabefeldern): seit 2024 über `cors.php?name=<datei>`,
+/// in älteren Versionen direkt aus dem Ordner. Nur Dateinamen, kein „..".
+bool stackSkriptDatei(Uri uri) {
+  const ordner = '/question/type/stack/corsscripts/';
+  if (uri.path == '${ordner}cors.php') {
+    final q = uri.queryParameters;
+    return q.length == 1 && _corsDatei.hasMatch(q['name'] ?? '');
+  }
+  return uri.path.startsWith(ordner) && !uri.hasQuery && _corsDatei.hasMatch(uri.path.substring(ordner.length));
+}
+
 /// Ob ein Dienstaufruf (JSON-Rumpf: Liste von {methodname, args}) nur
 /// [browserDienste] enthält.
 bool _nurBrowserDienste(String? rumpf) {
@@ -142,6 +165,7 @@ bool veraendertBild(String grund, String? art) =>
     return seiten.contains(uri.toString()) ? (BrowserWeg.ueberApp, a) : (BrowserWeg.gesperrt, 'nicht die aufgenommene Seite');
   }
   if (methode == 'GET' && _statisch.hasMatch(uri.path)) return (BrowserWeg.ueberApp, 'Datei');
+  if (methode == 'GET' && stackSkriptDatei(uri)) return (BrowserWeg.ueberApp, stackSkript);
   final dienst = RegExp(r'^/lib/ajax/service(-nologin)?\.php$').hasMatch(uri.path);
   if (dienst && methode == 'GET' && browserDienste.contains(uri.queryParameters['info'])) {
     return (BrowserWeg.ueberApp, 'Dienst ${uri.queryParameters['info']}');

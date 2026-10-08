@@ -181,4 +181,4 @@ Werte zeigen — gegen das Abschreiben —, ist sie das falsche Werkzeug: Ein
 Schaltbild mit eingezeichneten 12 V neben einer Aufgabe, die 9 V nennt, ist
 schlimmer als gar keine Zeichnung. Das gehört dann in eine STACK-Frage, wo
 JSXGraph die Darstellung aus denselben Zufallsvariablen erzeugt wie die
-Aufgabenstellung. Zuständig ist dafür der Skill `moodle-fragen`.
+Aufgabenstellung. Zuständig ist dafür der Skill `moodle-fragen`, dort `references/jsxgraph.md`.

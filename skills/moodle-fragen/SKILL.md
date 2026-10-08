@@ -717,6 +717,16 @@ Schlag den passenden Typ vor und begründe kurz. Bleibt der Nutzer bei festen
 Zahlen, ist das seine Entscheidung; sag einmal, was das bedeutet, und bau die
 Frage.
 
+### Zahlenergebnisse: Einheit und Genauigkeit stehen im Text
+
+Eine Rechenaufgabe wird nur fair bewertet, wenn der Text sagt, was als Antwort zählt, und die Prüfung genau das prüft. Das gilt für `numerical`, die `calculated`-Typen, Zahlenlücken im Cloze und STACK; im Plan steht es je Frage.
+
+**Die Einheit steht hinter dem Feld,** eingegeben wird nur die Zahl: „\(I =\) [ ] mA". Darf die Einheit selbst eingegeben werden, schreibt jemand „0,0667 A" statt „66,7 mA" oder „kV" statt „V" – und das ist richtig und muss umgerechnet werden. Das kann sicher nur STACK (`units` mit `UnitsRelative`, `references/stack.md`, „Einheit und Genauigkeit"). Eine Einheit eingeben zu lassen lohnt sich deshalb nur, wo das Wählen oder Umrechnen der Einheit selbst geprüft werden soll – und nur mit Einheiten, die auf der Tastatur stehen: Ω und µ suchen Lernende vergeblich, und STACK nimmt `kΩ` nicht an, nur `kohm`. Muss es doch sein, nennt der Text die Schreibweise wörtlich. Wer bei fester Einheit in der falschen Größenordnung antwortet (A statt mA), bekommt in STACK einen eigenen Knoten mit Teilpunkten.
+
+**Der Text sagt, wie gerundet wird** – „auf zwei Nachkommastellen" oder „auf drei geltende Ziffern" –, und die Toleranz ist eine halbe Einheit der letzten verlangten Stelle: bei zwei Nachkommastellen 0,005, bei drei geltenden Ziffern relativ 0,005. Dann zählt jede richtig gerundete Antwort und jede genauere. Ohne Vorgabe rundet jemand 66,67 mA auf 67 mA, und eine enge Toleranz wertet richtiges Rechnen als falsch. Keine Vorgabe braucht nur ein glattes Ergebnis. Rechnet ein Teil mit dem Ergebnis eines anderen weiter, deckt seine Toleranz den Rundungsfehler ab, oder der Text sagt „mit dem ungerundeten Wert weiterrechnen". Ein Testfall mit dem richtig gerundeten Wert gehört zu jeder Frage, die Testfälle hat.
+
+Welche Rundung, schlägst du im Plan vor (geltende Ziffern, wo die Werte über Größenordnungen gehen; Nachkommastellen, wo die Einheit den Maßstab festlegt, etwa Euro und Cent), und die Lehrkraft entscheidet. Die Toleranz der Kerntypen steht in `references/fragetypen.md` beim Typ.
+
 ## Bestehende Fragen ändern
 
 Details: **`references/fragetypen.md`**, Abschnitt „Bestehende Fragen ändern"
@@ -784,6 +794,8 @@ XML.
 Nach jeder Änderung einer STACK-Frage `stack_testen` auf der neuen Version
 laufen lassen — eine geänderte Aufgabenvariable kann jeden Zweig des Baums
 verschieben.
+
+**Zeichnungen, die mit den Zufallswerten mitgehen oder zum Ziehen sind,** baut STACK mit JSXGraph: eine Kennlinie aus den Aufgabenvariablen, ein Punkt, den die Lernenden auf den Arbeitspunkt ziehen, ein Regler für einen Parameter. Wann das didaktisch trägt und wann eine SVG oder ein Eingabefeld besser ist, was Lernende und Lehrkraft dafür brauchen und was dazu im Plan steht: **`references/jsxgraph.md`** — vor der ersten Frage mit Zeichnung lesen. Die App nimmt nur JSXGraph, wie STACK es mitbringt; was von einem fremden Rechner lädt, weist sie ab.
 
 ## CodeRunner: Programmieraufgaben, die sich selbst prüfen
 

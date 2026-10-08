@@ -42,6 +42,7 @@ import 'formular.dart';
 import 'formular_lesen.dart';
 import 'kurs.dart';
 import 'moodle_zugang.dart';
+import 'stack_skripte.dart';
 import 'zeilenvergleich.dart';
 
 /// Das Editorfeld, das eine neue Aktivität mindestens braucht. Fehlt ein Typ
@@ -848,6 +849,9 @@ Future<_Aenderung?> _vorbereiten(
   // Ein Feld, das geschrieben wird, darf keinen Formelfehler haben -- auch
   // keinen, der schon in Moodle stand (formeln.dart).
   formelnPruefen({for (final k in zuSchreiben) k: lokal[k]!});
+  // In einer Frage wirken STACK-Blöcke; nichts davon darf von außen laden
+  // (stack_skripte.dart).
+  if (ziel.art == Zielart.frage) stackSkriptePruefen({for (final k in zuSchreiben) k: lokal[k]!});
   final nichtMehr = {for (final h in alt.values) ...eingebunden(h)}.difference(namen).toList()..sort();
 
   final lokaleBereiche = bereicheIn(quelle);

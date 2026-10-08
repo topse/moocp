@@ -78,8 +78,7 @@ Das fachliche Wissen – wie Testfragen Können prüfen statt Auswendiggelerntes
   andere Seite im Kurs, am Bildschirm wie im Ausdruck. Hat Ihre Moodle-Instanz die Druckaufbereitung „Aufgabenblatt-Druck", erkennt die App sie beim Anmelden, und Blätter zum Ausdrucken bekommen Karofelder zum Ausfüllen, auf Wunsch Schreiblinien.
 - **Formeln** schreiben, die Moodle mit MathJax setzt – am Bildschirm wie im Ausdruck, auch Chemie. Vorher sieht die App in den Filtereinstellungen des Kurses nach, ob er Formeln setzt, und sagt sonst, wo Sie MathJax einschalten.
 - **Bewertungsraster** (Rubrik, Bewertungsrichtlinie) einer Aufgabe festlegen, samt Optionen – etwa ob Lernende das Raster schon vor der Bewertung sehen.
-- **Fragen anlegen und ändern**, auch STACK-Fragen mit Rückmeldebaum und
-  CodeRunner-Programmieraufgaben – die App prüft sie danach selbst.
+- **Fragen anlegen und ändern**, auch STACK-Fragen mit Rückmeldebaum und CodeRunner-Programmieraufgaben – die App prüft sie danach selbst. STACK-Fragen bekommen auf Wunsch Zeichnungen (JSXGraph), die mit den Zufallswerten mitgehen, oder in denen die Lernenden einen Punkt an die richtige Stelle ziehen.
 - **Tests zusammenstellen**: Fragen und Zufallsfragen einfügen, Punkte,
   Reihenfolge, Seiten, Fragen mischen, Beste Bewertung angleichen.
 - **Verschieben, sichtbar schalten, löschen.**
@@ -111,7 +110,7 @@ Alle anderen Aktivitäten – Forum, Glossar, H5P und weitere – kann die KI le
 **Fragetypen**, auch mit Bildern und Zeichnungen:
 
 - **Anlegen und ändern, Kerntypen von Moodle:** Multiple Choice (`multichoice`), Wahr/Falsch (`truefalse`), Kurzantwort (`shortanswer`), Numerisch (`numerical`), Zuordnung (`match`), Freitext (`essay`), Beschreibung (`description`), Lückentext/Cloze (`multianswer`), Lückentextauswahl (`gapselect`), Drag-and-Drop auf Text (`ddwtos`), Berechnet (`calculated`), Einfach berechnet (`calculatedsimple`), Berechnete Multiple-Choice (`calculatedmulti`), Zufällige Kurzantwortzuordnung (`randomsamatch`), Anordnung (`ordering`).
-- **Anlegen und ändern, Zusatzmodule\*:** STACK (`stack`) mit Rückmeldebaum und Fragetests, CodeRunner (`coderunner`), Drag-and-Drop-Zuordnung (`ddmatch`), Mehrfach Wahr/Falsch (`mtf`), Erweiterter Lückentext (`gapfill`).
+- **Anlegen und ändern, Zusatzmodule\*:** STACK (`stack`) mit Rückmeldebaum, Fragetests und Zeichnungen (JSXGraph, in der Version, die STACK mitbringt), CodeRunner (`coderunner`), Drag-and-Drop-Zuordnung (`ddmatch`), Mehrfach Wahr/Falsch (`mtf`), Erweiterter Lückentext (`gapfill`).
 - **Nur lesen:** Drag-and-Drop auf Bild (`ddimageortext`) und Drag-and-Drop-Markierungen (`ddmarker`) – sie brauchen ein Hintergrundbild mit Pixelkoordinaten – sowie alle übrigen Zusatztypen.
 
 ### Sie behalten die Kontrolle
@@ -264,6 +263,7 @@ Der Arbeitsordner lebt so lange wie die App: Beim Start und beim Beenden leert s
   Protokoll. Nur MathJax, das die Formeln setzt, lädt er selbst, von der
   Adresse, die Ihre Moodle-Instanz dafür eingestellt hat. Nach jedem Bild
   wird er beendet und sein Profil gelöscht.
+- **Zeichnungen in STACK-Fragen** laufen im Browser Ihrer Lernenden. Die App lässt dort nur zu, was von Ihrem Moodle kommt: JSXGraph, wie STACK es mitbringt. Was eine Frage von einem fremden Server laden würde – eine andere JSXGraph-Version, ein GeoGebra-Applet, Bilder oder Daten –, weist sie beim Anlegen und Ändern ab, denn jeder solche Aufruf verriete dem fremden Server, dass gerade jemand die Frage bearbeitet.
 - Außer Ihrem Moodle fragt die App nur eine einzige Stelle an: GitHub, für
   die **Suche nach Updates** – und das nur, wenn Sie beim ersten Start
   zugestimmt haben. Was dabei übertragen wird, steht unter
@@ -306,7 +306,7 @@ Gelesenes legt die App im Arbeitsordner ab, an die KI geht eine Übersicht. Lese
 | `frage_lesen` | Eine Frage vollständig aus ihrem Bearbeitungsformular. | – |
 | `stack_testen` | Lässt die Fragetests einer STACK-Frage laufen und wertet sie aus. | – |
 | `stack_cas` | Rechnet einen Ausdruck im Maxima-Notizblock von STACK. Speichert nichts. | – |
-| `stack_xml`, `coderunner_xml` | Bauen aus einer knappen Beschreibung Moodle-XML für STACK- bzw. CodeRunner-Fragen und schreiben die Datei in den Arbeitsordner. Angelegt wird erst mit `fragen_importieren`. | – |
+| `stack_xml`, `coderunner_xml` | Bauen aus einer knappen Beschreibung Moodle-XML für STACK- bzw. CodeRunner-Fragen und schreiben die Datei in den Arbeitsordner. Eine Eingabe, die nur die Lage in einer Zeichnung hält, setzt `stack_xml` selbst verborgen ein. Angelegt wird erst mit `fragen_importieren`. | – |
 
 #### Neu anlegen: verborgen, und mit „alle" auch mit Rückfrage
 
@@ -416,7 +416,7 @@ Dazu entfernt die App beim Lesen von Formularen Felder wie Autor, Ersteller, Nam
   - Buchkapitel speichern, löschen, verschieben;
   - Dateien in den eigenen Entwurfsbereich hochladen und ersetzen – die App nimmt sie nur aus dem Arbeitsordner.
 
-Für den Browser der **Bildschirmfotos** gilt eine eigene, noch engere Liste ([lib/moodle/browserliste.dart](lib/moodle/browserliste.dart)): Als Seite lädt er nur die eine, die aufgenommen wird, dazu Stylesheets, Schriften, Bilder und einige Dienste für Vorlagen und Sprachtexte, alles über die App und hinter der Sperrliste.
+Für den Browser der **Bildschirmfotos** gilt eine eigene, noch engere Liste ([lib/moodle/browserliste.dart](lib/moodle/browserliste.dart)): Als Seite lädt er nur die eine, die aufgenommen wird, dazu Stylesheets, Schriften, Bilder, die Skripte, die STACK seinen Zeichnungen mitgibt, und einige Dienste für Vorlagen und Sprachtexte, alles über die App und hinter der Sperrliste.
 
 Die **Suche nach Updates** geht an GitHub statt an Moodle und hat deshalb ihre eigene Liste ([lib/update/updateliste.dart](lib/update/updateliste.dart)): erlaubt sind genau die Auskunft über das neueste Release dieses Repositorys und die Installationsdatei daraus, jeweils nur über `https` und samt jedem Umleitungsziel. Die Verbindung ist eine andere als die zu Moodle, Ihre Moodle-Sitzung geht also nicht mit.
 
@@ -500,6 +500,7 @@ skills/  (Wissen: Didaktik, Regeln,        moocp (Flutter, Windows)
 | `lib/moodle/kurshinweise.dart` | das Verzeichnis `CLAUDE` je Kurs und je Abschnitt: Konventionen lesen und schreiben, mit Verdachtsprüfung |
 | `lib/moodle/kursfilter.dart` | Textfilter eines Kurses: setzt er Formeln (MathJax)? |
 | `lib/moodle/formeln.dart` | Formelfehler im HTML; an ihnen bricht jedes Schreiben ab |
+| `lib/moodle/stack_skripte.dart` | Skriptblöcke in STACK-Fragen: nur `[[jsxgraph]]` ohne fremde Quelle; an allem anderen bricht Bauen, Import und Ändern einer Frage ab |
 | `lib/moodle/bildschirmfoto.dart`, `browserliste.dart` | Bildschirmfotos: den Browser steuern, jede seiner Anfragen prüfen, nur den Inhalt aufnehmen |
 | `lib/moodle/zeilenvergleich.dart` | Zeilenvergleich für den Freigabedialog |
 | `lib/freigabe.dart` | Freigaben mit Frist, und die drei Stufen der Bestätigungen |
@@ -564,7 +565,7 @@ Schalter von `moocp.exe`; die Auskünfte schreiben nach stdout, und weil `moocp.
 
 ### Bildschirmfotos
 
-`bildschirmfoto` rendert mit Microsoft Edge, sonst Google Chrome, ohne Fenster und steuert ihn über das DevTools-Protokoll; ein Paket braucht es dafür nicht. Jede Anfrage des Browsers hält die App an und stellt sie selbst – geprüft gegen Sperrliste und eine eigene, enge Liste (`lib/moodle/browserliste.dart`) und mit Eintrag im Protokoll; der Browser bekommt das Sitzungscookie nie und lädt als Seite nur die eine, die aufgenommen wird, auch nicht in einem eingebetteten Rahmen. Nur MathJax lädt er selbst, von der Adresse, die die Seite dafür einstellt. Aufgenommen wird nur der Inhalt selbst, also was auch die Textwerkzeuge liefern; ein Wiki nur, wenn es gemeinsam ist und nicht im Gruppenmodus steht. Mit `druck: true` wird jede Seite der Druckaufbereitung ein Bild, ohne sie der Inhalt mit den Druck-Stylesheets. Jeder Aufruf braucht einen Grund (`grund`), der im Freigabedialog über dem Bild steht. Das Ansehen hat dieselben Nebenwirkungen wie im Browser: Moodle protokolliert den Aufruf unter dem eigenen Konto, und die Fragenvorschau legt einen Vorschauversuch an. Freigegebene Bilder legt die App als PNG in den Arbeitsordner; die Antwort nennt die Pfade. Beim Entwickeln ersetzt das Werkzeug Bildschirmfotos von Hand: Claude sieht sich Messungen im Testkurs selbst an.
+`bildschirmfoto` rendert mit Microsoft Edge, sonst Google Chrome, ohne Fenster und steuert ihn über das DevTools-Protokoll; ein Paket braucht es dafür nicht. Jede Anfrage des Browsers hält die App an, und zwar auf der Ebene des Browsers, nicht der Seite: Abgeschottete Rahmen wie die Zeichnungen in STACK-Fragen laufen als eigene Ziele, deren Anfragen sonst direkt ins Netz gingen. Sie stellt sie selbst – geprüft gegen Sperrliste und eine eigene, enge Liste (`lib/moodle/browserliste.dart`) und mit Eintrag im Protokoll; der Browser bekommt das Sitzungscookie nie und lädt als Seite nur die eine, die aufgenommen wird, auch nicht in einem eingebetteten Rahmen. Nur MathJax lädt er selbst, von der Adresse, die die Seite dafür einstellt. Aufgenommen wird nur der Inhalt selbst, also was auch die Textwerkzeuge liefern; ein Wiki nur, wenn es gemeinsam ist und nicht im Gruppenmodus steht. Mit `druck: true` wird jede Seite der Druckaufbereitung ein Bild, ohne sie der Inhalt mit den Druck-Stylesheets. Jeder Aufruf braucht einen Grund (`grund`), der im Freigabedialog über dem Bild steht. Das Ansehen hat dieselben Nebenwirkungen wie im Browser: Moodle protokolliert den Aufruf unter dem eigenen Konto, und die Fragenvorschau legt einen Vorschauversuch an. Freigegebene Bilder legt die App als PNG in den Arbeitsordner; die Antwort nennt die Pfade. Beim Entwickeln ersetzt das Werkzeug Bildschirmfotos von Hand: Claude sieht sich Messungen im Testkurs selbst an.
 
 ### Installer bauen
 

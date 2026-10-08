@@ -69,7 +69,7 @@ void main() {
   test('STACK bauen verweigert eine Testeingabe, die keine Option der Auswahlliste ist', () {
     Map<String, Object?> auswahl(String testwert, {String tans = '[[4,true],[2,false]]'}) => {
           ..._stackFrage(),
-          'fragetext': '<p>Welche Zahl? [[input:ans1]]</p>',
+          'fragetext': '<p>Welche Zahl? [[input:ans1]] [[validation:ans1]]</p>',
           'eingaben': [
             {'name': 'ans1', 'typ': 'dropdown', 'tans': tans}
           ],
@@ -88,6 +88,112 @@ void main() {
     expect(stackXml(auswahl('4'), version: '1'), contains('<value>4</value>'));
     // Steht in tans keine wörtliche Liste, lässt sich nichts prüfen.
     expect(stackXml(auswahl('kb+1', tans: 'optionen'), version: '1'), contains('<value>kb+1</value>'));
+  });
+
+  test('STACK: [[validation:…]] für jede Eingabe, Auswahllisten ohne Anzeige der Validierung', () {
+    final auswahl = {
+      ..._stackFrage(),
+      'fragetext': '<p>[[input:ans1]] [[validation:ans1]] [[input:ans2]] [[validation:ans2]]</p>',
+      'eingaben': [
+        {'name': 'ans1', 'typ': 'numerical', 'tans': 'I'},
+        {'name': 'ans2', 'typ': 'dropdown', 'tans': '[[4,true],[2,false]]'},
+      ],
+    };
+    final xml = quizXml([stackXml(auswahl, version: '1')]);
+    expect(RegExp('<showvalidation>(.)</showvalidation>').allMatches(xml).map((m) => m[1]), ['1', '0']);
+    fragenXmlPruefen(xml);
+    // Eine ausdrückliche Angabe gilt weiter.
+    final eingaben = [
+      for (final e in auswahl['eingaben'] as List) {...e as Map, 'showvalidation': 2}
+    ];
+    expect(stackXml({...auswahl, 'eingaben': eingaben}, version: '1'), isNot(contains('<showvalidation>0')));
+
+    // Gemessen: Ohne den Platzhalter importiert Moodle, aber das Formular
+    // lehnt jede spätere Änderung ab -- auch bei Auswahllisten und showvalidation 0.
+    for (final ohne in ['[[validation:ans1]]', '[[validation:ans2]]']) {
+      final f = {...auswahl, 'fragetext': (auswahl['fragetext'] as String).replaceFirst(ohne, '')};
+      expect(() => fragenXmlPruefen(quizXml([stackXml(f, version: '1')])),
+          throwsA(predicate((e) => e is MoodleFehler && e.meldung.contains(ohne))));
+    }
+  });
+
+  test('STACK mit Zeichnung: gebundene Eingabe verborgen, ohne Prüfanzeige, Musterantwort nicht angezeigt', () {
+    Map<String, Object?> frage({String attribute = ' input-ref-ans2="ans2Ref"', Map<String, Object?> ans2 = const {}}) => {
+          ..._stackFrage(),
+          'fragetext': '<p>I in mA? [[input:ans1]] [[validation:ans1]]</p><p>Ziehe P auf den Arbeitspunkt.</p>'
+              '[[jsxgraph$attribute]]\nvar board = JXG.JSXGraph.initBoard(divid, {axis: true});\n'
+              "var p = board.create('point', [1, 1]);\nstack_jxg.bind_point(ans2Ref, p);\n[[/jsxgraph]]",
+          'eingaben': [
+            {'name': 'ans1', 'typ': 'numerical', 'tans': 'I'},
+            {'name': 'ans2', 'typ': 'algebraic', 'tans': '[5,50]', 'gebunden': true, ...ans2},
+          ],
+        };
+    final xml = quizXml([stackXml(frage(), version: '1')]);
+    expect(xml, contains('<div class="d-none">[[input:ans2]] [[validation:ans2]]</div>'));
+    expect(RegExp('<showvalidation>(.)</showvalidation>').allMatches(xml).map((m) => m[1]), ['1', '0']);
+    expect(RegExp('<options>([^<]*)</options>').allMatches(xml).map((m) => m[1]), ['', 'hideanswer,allowempty']);
+    expect(xml, isNot(contains('<mustverify>1')));
+    fragenXmlPruefen(xml);
+    // Eine ausdrückliche Angabe gilt weiter.
+    expect(stackXml(frage(ans2: {'options': 'allowempty'}), version: '1'), contains('<options>allowempty</options>'));
+
+    void verweigert(Map<String, Object?> f, String text) => expect(() => stackXml(f, version: '1'),
+        throwsA(predicate((e) => e is MoodleFehler && e.meldung.contains(text))), reason: text);
+    verweigert(frage(attribute: ''), 'kein [[jsxgraph input-ref-ans2');
+    verweigert(frage(attribute: ' input-ref-ans3="x"'), 'input-ref-ans3');
+    verweigert(frage(ans2: {'typ': 'numerical'}), 'braucht typ algebraic');
+    final mitPlatzhalter = frage();
+    mitPlatzhalter['fragetext'] = '${mitPlatzhalter['fragetext']}<p>[[input:ans2]] [[validation:ans2]]</p>';
+    verweigert(mitPlatzhalter, 'setzt stack_xml die Platzhalter selbst');
+
+    // Was von außen lädt, kommt nicht durch die Prüfung vor dem Import.
+    expect(() => fragenXmlPruefen(quizXml([stackXml(frage(attribute: ' input-ref-ans2="r" version="cdn"'), version: '1')])),
+        throwsA(predicate((e) => e is MoodleFehler && e.meldung.contains('fremden Rechner'))));
+    final xmlHand = xml.replaceFirst('input-ref-ans2="ans2Ref"', 'input-ref-ans2="ans2Ref" input-ref-ans9="x"');
+    expect(() => fragenXmlPruefen(xmlHand),
+        throwsA(predicate((e) => e is MoodleFehler && e.meldung.contains('input-ref-ans9'))));
+  });
+
+  test('STACK: Teile ohne Antwort -- allowempty nur mit Knoten für EMPTYANSWER, Abzug je Zweig', () {
+    Map<String, Object?> frage(List<Map<String, Object?>> knoten, {String optionen = 'allowempty'}) => {
+          ..._stackFrage(),
+          'eingaben': [
+            {'name': 'ans1', 'typ': 'numerical', 'tans': 'I', 'options': optionen}
+          ],
+          'prts': [
+            {'name': 'prt1', 'knoten': knoten}
+          ],
+        };
+    final leer = {
+      'test': 'AlgEquiv',
+      'sans': 'ans1',
+      'tans': 'EMPTYANSWER',
+      'wahr': {'punkte': 0, 'abzug': 0, 'feedback': '<p>Nicht bearbeitet.</p>'},
+      'falsch': {'weiter': 2},
+    };
+    final rechnen = {'nr': 2, 'test': 'NumRelative', 'sans': 'ans1', 'tans': 'I', 'optionen': '0.01'};
+    final xml = stackXml(frage([leer, rechnen]), version: '1');
+    expect(xml, contains('<truepenalty>0</truepenalty>'));
+    // Der Leer-Knoten ist immer leise, der Rechenknoten nicht.
+    expect(RegExp('<quiet>(.)</quiet>').allMatches(xml).map((m) => m[1]), ['1', '0']);
+    expect(xml, contains('<falsepenalty></falsepenalty>'), reason: 'ohne Angabe der Abzug der Frage');
+    fragenXmlPruefen(quizXml([xml]));
+    // Ohne den Knoten liefe der Baum mit EMPTYANSWER in den Rechentest.
+    expect(() => stackXml(frage([rechnen..remove('nr')]), version: '1'),
+        throwsA(predicate((e) => e is MoodleFehler && e.meldung.contains('prt1 prüft das nicht'))));
+    // Ohne allowempty braucht es ihn nicht.
+    stackXml(frage([rechnen], optionen: ''), version: '1');
+  });
+
+  test('STACK: Einheiten tippt man mit Leerzeichen -- units setzt Sterne selbst', () {
+    final f = {
+      ..._stackFrage(),
+      'eingaben': [
+        {'name': 'ans1', 'typ': 'units', 'tans': 'ta'}
+      ],
+    };
+    expect(stackXml(f, version: '1'), contains('<insertstars>4</insertstars>'));
+    expect(stackXml(_stackFrage(), version: '1'), contains('<insertstars>0</insertstars>'));
   });
 
   test('CodeRunner bauen verweigert, was still danebenginge', () {

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.10
+- STACK: Neu angelegte Fragen mit Auswahlliste lassen sich nachträglich ändern.
+- Neu: Zeichnungen in STACK-Fragen (JSXGraph) – aus den Zufallswerten gezeichnet oder zum Ziehen, mit Hinweisen, wann sie sich lohnen; geladen wird nur, was von Ihrem Moodle kommt.
+- Bildschirmfotos: zeigen auch Zeichnungen in STACK-Fragen; eingebettete Rahmen laden nichts mehr an der App vorbei.
+- STACK: In neuen Fragen mit mehreren Teilen meldet ein unbearbeiteter Teil „nicht bearbeitet – 0 Punkte", ohne Punktabzug.
+- Fragen mit Zahlenergebnis: Neue Fragen nennen Einheit und Rundung im Text und werten danach – jede richtig gerundete Antwort zählt. In STACK lassen sich Zahl und Einheit eintippen, wie man sie schreibt („66,7 mA"), und andere Vorsätze werden umgerechnet.
+
 ## 0.9.8
 - Neu: moocp arbeitet außer mit Claude Code auch mit Codex CLI und LM Studio – eingerichtet im Dialog „KI-Werkzeuge einrichten", jedes Werkzeug lässt sich dort abwählen; das Protokoll zeigt, welches sich verbunden hat. Mit LM Studio startet moocp bei Bedarf von selbst.
 - Neu: Der Installer zeigt vor der Installation den Hinweis zur Nutzung – eigene Verantwortung, und was vorher mit Schulleitung, Datenschutz und Moodle-Betreiber zu klären ist; „Weiter" wird dort nach zehn Sekunden aktiv.

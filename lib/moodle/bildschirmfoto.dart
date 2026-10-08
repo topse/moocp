@@ -13,7 +13,13 @@
 //
 // Schutz (A1) im Code, die Freigabe kommt obendrauf:
 //   - Jede Anfrage des Browsers hält die App an (Fetch-Domäne) und
-//     entscheidet nach browserliste.dart. Anfragen an Moodle stellt sie
+//     entscheidet nach browserliste.dart. Angehalten wird auf der Ebene des
+//     Browsers, nicht der Seite: Einen abgeschotteten Rahmen (<iframe
+//     sandbox srcdoc>, so baut STACK seine Zeichnungen) führt der Browser als
+//     eigenes Ziel in eigenem Prozess, und dessen Anfragen gingen an der
+//     Fetch-Domäne der Seite vorbei direkt ins Netz (gemessen mit Edge 154,
+//     08.10.2026). Kindziele anzuhängen fing davon nur die Module ab, nicht
+//     ein gewöhnliches <script src>. Anfragen an Moodle stellt sie
 //     selbst (MoodleZugang.fuerBrowser, mit Protokoll); der Browser bekommt
 //     nur die Antwort und nie das Sitzungscookie. Als Seite lädt er nur die
 //     eine, die aufgenommen wird.
@@ -405,11 +411,11 @@ Future<_Aufnahme> _aufnehmen(
   // Keine Ausgabe, nirgends (E11): Was der Browser schreibt, wird verworfen.
   unawaited(proz.stdout.drain<void>());
   unawaited(proz.stderr.drain<void>());
-  _Cdp? cdp;
+  _Cdp? cdp, netz;
   String? port, browserPfad;
   try {
     // Der Browser schreibt in DevToolsActivePort im Profil den gewählten Port
-    // und den Pfad des Browser-Endpunkts (zum Beenden). Dass der gestartete
+    // und den Pfad des Browser-Endpunkts (Anfragen anhalten, Beenden). Dass der gestartete
     // Prozess sich beendet, heißt nichts: Edge startet sich neu und läuft in
     // einem anderen Prozess weiter (gemessen; siehe _beenden).
     final portDatei = File(p.join(profil.path, 'DevToolsActivePort'));
@@ -438,6 +444,8 @@ Future<_Aufnahme> _aufnehmen(
     final seite = ziele.cast<Map>().firstWhere((z) => z['type'] == 'page',
         orElse: () => throw MoodleFehler('$browser zeigt keine Seite.'));
     cdp = _Cdp(await WebSocket.connect('${seite['webSocketDebuggerUrl']}'));
+    // Die Anfragen hält die App auf der Ebene des Browsers an (siehe oben).
+    netz = _Cdp(await WebSocket.connect('ws://127.0.0.1:$port$browserPfad'));
 
     final a = _Aufnahme()..browser = browser;
     // Als Seite nur die aufgenommene und ihre Umleitungen (browserliste.dart).
@@ -466,7 +474,7 @@ Future<_Aufnahme> _aufnehmen(
               a.direkt++;
               protokoll.eintrag(Art.moodle, 'Browser direkt: $methode ${uri.host}${uri.path} ($grund)');
             }
-            await cdp!.senden('Fetch.continueRequest', {'requestId': id});
+            await netz!.senden('Fetch.continueRequest', {'requestId': id});
           case BrowserWeg.gesperrt:
             final wo = uri.host == basis.host ? adresseOhneWerte(uri) : '${uri.host}${uri.path}';
             final zaehlt = veraendertBild(grund, e['resourceType'] as String?);
@@ -480,7 +488,7 @@ Future<_Aufnahme> _aufnehmen(
               protokoll.eintrag(
                   Art.info, 'Browser: nicht geladen${zaehlt ? '' : ' (fürs Bild nicht nötig)'}: $methode $wo ($grund)');
             }
-            await cdp!.senden('Fetch.failRequest', {'requestId': id, 'errorReason': 'BlockedByClient'});
+            await netz!.senden('Fetch.failRequest', {'requestId': id, 'errorReason': 'BlockedByClient'});
           case BrowserWeg.ueberApp:
             final r = await moodle.fuerBrowser(methode, uri, seiten: seiten, rumpf: rumpf, dokument: dokument);
             a.ueberApp++;
@@ -491,12 +499,15 @@ Future<_Aufnahme> _aufnehmen(
             }
             final typ = r.inhaltstyp ?? 'application/octet-stream';
             final text = typ.startsWith('text/') || typ.contains('javascript') || typ.contains('json');
-            await cdp!.senden('Fetch.fulfillRequest', {
+            await netz!.senden('Fetch.fulfillRequest', {
               'requestId': id,
               'responseCode': r.status,
               'responseHeaders': [
                 {'name': 'Content-Type', 'value': text ? '$typ; charset=utf-8' : typ},
                 if (r.ort != null) {'name': 'Location', 'value': r.ort},
+                // Der Rahmen einer STACK-Zeichnung hat keine Herkunft; seine
+                // Module lädt er nur mit dieser Kopfzeile (browserliste.dart).
+                if (grund == stackSkript) {'name': 'Access-Control-Allow-Origin', 'value': '*'},
               ],
               'body': base64Encode(r.bytes),
             });
@@ -512,7 +523,7 @@ Future<_Aufnahme> _aufnehmen(
           a.gesperrt.add('$methode ${adresseOhneWerte(uri)} ($grund)');
         }
         try {
-          await cdp!.senden('Fetch.failRequest', {'requestId': id, 'errorReason': 'Failed'});
+          await netz!.senden('Fetch.failRequest', {'requestId': id, 'errorReason': 'Failed'});
         } on MoodleFehler {
           // Die Seite ist schon weiter; nichts mehr zu tun.
         }
@@ -523,19 +534,18 @@ Future<_Aufnahme> _aufnehmen(
     }
 
     final abo = cdp.ereignisse.listen((e) {
-      final params = (e['params'] as Map?)?.cast<String, dynamic>() ?? const {};
-      switch (e['method']) {
-        case 'Fetch.requestPaused':
-          unawaited(anfrage(params));
-        case 'Page.loadEventFired':
-          if (!geladen.isCompleted) geladen.complete();
+      if (e['method'] == 'Page.loadEventFired' && !geladen.isCompleted) geladen.complete();
+    });
+    final aboNetz = netz.ereignisse.listen((e) {
+      if (e['method'] == 'Fetch.requestPaused') {
+        unawaited(anfrage((e['params'] as Map?)?.cast<String, dynamic>() ?? const {}));
       }
     });
     try {
       await cdp.senden('Page.enable');
       await cdp.senden('Emulation.setDeviceMetricsOverride',
           {'width': _breite, 'height': 900, 'deviceScaleFactor': 1, 'mobile': false});
-      await cdp.senden('Fetch.enable', {
+      await netz.senden('Fetch.enable', {
         'patterns': [
           {'urlPattern': '*', 'requestStage': 'Request'}
         ]
@@ -615,9 +625,10 @@ Future<_Aufnahme> _aufnehmen(
     } finally {
       fertig = true;
       await abo.cancel();
+      await aboNetz.cancel();
     }
   } finally {
-    await _beenden(cdp, port, browserPfad, proz, profil, p.basename(programm), protokoll);
+    await _beenden(cdp, netz, port, browserPfad, proz, profil, p.basename(programm), protokoll);
   }
 }
 
@@ -663,12 +674,14 @@ Future<bool> _profilLoeschen(Directory profil, int versuche) async {
 /// das Profil ([_profilProzesseBeenden]). Was dabei misslingt, steht im
 /// Protokoll; ein Rest im Arbeitsordner verschwindet spätestens beim
 /// nächsten Leeren.
-Future<void> _beenden(_Cdp? cdp, String? port, String? browserPfad, Process proz, Directory profil, String exe,
-    Protokoll protokoll) async {
-  try {
-    await cdp?.schliessen().timeout(const Duration(seconds: 5));
-  } catch (_) {
-    // Die Seite ist ohnehin gleich weg.
+Future<void> _beenden(_Cdp? cdp, _Cdp? netz, String? port, String? browserPfad, Process proz, Directory profil,
+    String exe, Protokoll protokoll) async {
+  for (final v in [cdp, netz]) {
+    try {
+      await v?.schliessen().timeout(const Duration(seconds: 5));
+    } catch (_) {
+      // Die Seite ist ohnehin gleich weg.
+    }
   }
   if (port != null && browserPfad != null) {
     try {

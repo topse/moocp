@@ -14,6 +14,8 @@ dieser Messungen liegen in `test/daten/fragen/`, und
 `test/fragen_beispiele_test.dart` hält die Prüfung der App vor dem Import
 dagegen. Ändert sich ein Muster im Skill, ändert sich die Beispieldatei mit.
 
+Die Beschreibungen für `stack_xml` in `stack.md` und `jsxgraph.md` prüft derselbe Test direkt aus der Referenz: Jeder `json`-Block dort muss bauen und durch die Prüfung vor dem Import gehen. Ein geändertes Beispiel wird außerdem einmal im Testkurs importiert – die Testfälle laufen dabei mit und sind die eigentliche Abnahme.
+
 **Die Vorschau ist die einzige echte Abnahme.** Eine `calculatedmulti`-Frage
 importierte fehlerfrei, las sich korrekt zurück und bewertete richtig – und
 zeigte in der Auswahl `230*16,0` statt `3680,00`. Für einen neuen Fragetyp

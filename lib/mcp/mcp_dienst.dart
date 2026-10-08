@@ -856,11 +856,15 @@ class McpDienst {
     _werkzeug(server, 'stack_xml',
         titel: 'STACK-Fragen bauen',
         beschreibung: 'Baut Moodle-XML für STACK-Fragen aus einer knappen Beschreibung (Aufbau in der '
-            'Skill-Referenz stack.md: name, fragetext mit [[input:…]], variablen, eingaben[{name, typ, tans}], '
+            'Skill-Referenz stack.md: name, fragetext mit [[input:…]] und [[validation:…]] je Eingabe, variablen, '
+            'eingaben[{name, typ, tans, gebunden?}], '
             'prts[{name, knoten[{nr (ab 1), test, sans, tans, wahr{punkte, weiter, hinweis, feedback}, '
             'falsch{…}}]}], tests[{beschreibung, eingaben{}, erwartet{prt: {punkte, abzug, hinweis}}}], '
             'zeichnungen[{name}] aus dateien/). Setzt die rund 30 Pflichtelemente und die STACK-Version der '
-            'Instanz, schreibt die Datei; anlegen mit fragen_importieren. Ohne Testfälle keine STACK-Frage.',
+            'Instanz, schreibt die Datei; anlegen mit fragen_importieren. Ohne Testfälle keine STACK-Frage. '
+            'gebunden: true = die Eingabe hält nur den Zustand einer JSXGraph-Zeichnung ([[jsxgraph '
+            'input-ref-<name>="…"]], jsxgraph.md); ihre Platzhalter setzt stack_xml selbst, verborgen, ohne '
+            'Prüfanzeige, ohne Musterantwort in der Rückmeldung. Was von außen lädt, wird abgewiesen.',
         parameter: {
           'sammlung': sammlung,
           'fragen': JsonSchema.array(items: JsonSchema.object(additionalProperties: true), description: 'Fragen'),
@@ -978,7 +982,7 @@ class McpDienst {
     _werkzeug(server, 'bildschirmfoto',
         titel: 'Bildschirmfoto',
         beschreibung: 'Zeigt, wie eine Seite im Browser aussieht, um Geschriebenes zu prüfen: gesetzte Formeln, '
-            'Umbruch im Druck, eine Frage in der Vorschau. Nie zum Lesen von Inhalten (dafür die Lesewerkzeuge) '
+            'Umbruch im Druck, eine Frage in der Vorschau (auch eine JSXGraph-Zeichnung, im Ausgangszustand). Nie zum Lesen von Inhalten (dafür die Lesewerkzeuge) '
             'und nicht routinemäßig -- jedes Bild ist ein Klick der Lehrkraft. Bild nur vom Inhalt selbst, lange '
             'Seiten in Teilen. Die Lehrkraft sieht jedes Bild mit dem grund in der App und gibt es frei; ohne '
             'Freigabe wird es verworfen. Entweder cmid (Textseite, Buch mit optional kapitel, gemeinsames Wiki '

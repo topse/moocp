@@ -39,7 +39,9 @@ Future<void> main(List<String> argumente) async {
   // Speicher beim Entschlüsseln). Fehler gehen nur mit ihrem TYP ins
   // Protokoll, nie mit ihrem Text. So gerät das Passwort in keine Ausgabe.
   debugPrint = (String? message, {int? wrapWidth}) {};
-  if (argumente.contains(claudeEntfernenSchalter)) exit(await _claudeEntfernen());
+  if (argumente.contains(claudeEntfernenSchalter)) {
+    exit(await _claudeEntfernen());
+  }
   if (argumente.contains(werkzeuglisteSchalter)) exit(await _werkzeugliste());
   if (argumente.contains(versionSchalter)) exit(await _version());
   lizenzAnmelden();
@@ -51,20 +53,28 @@ Future<void> main(List<String> argumente) async {
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
   final einstellungen = await Einstellungen.laden();
-  final protokoll = Protokoll(datei: File(p.join(einstellungenOrdner, 'protokoll.log')));
-  FlutterError.onError = (d) =>
-      protokoll.eintrag(Art.fehler, 'Fehler in der Oberfläche: ${fehlerBeschreibung(d.exception, d.stack)}');
+  final protokoll = Protokoll(
+    datei: File(p.join(einstellungenOrdner, 'protokoll.log')),
+  );
+  FlutterError.onError = (d) => protokoll.eintrag(
+    Art.fehler,
+    'Fehler in der Oberfläche: ${fehlerBeschreibung(d.exception, d.stack)}',
+  );
   WidgetsBinding.instance.platformDispatcher.onError = (e, st) {
-    protokoll.eintrag(Art.fehler, 'Unerwarteter Fehler: ${fehlerBeschreibung(e, st)}');
+    protokoll.eintrag(
+      Art.fehler,
+      'Unerwarteter Fehler: ${fehlerBeschreibung(e, st)}',
+    );
     return true;
   };
   protokoll.eintrag(Art.info, 'App gestartet');
   final (arbeitsordner, geblieben) = Arbeitsordner.einrichten();
   protokoll.eintrag(
-      Art.info,
-      geblieben == 0
-          ? 'Arbeitsordner geleert: ${arbeitsordner.pfad}'
-          : 'Arbeitsordner: ${arbeitsordner.pfad} -- $geblieben Einträge in Benutzung, nicht gelöscht');
+    Art.info,
+    geblieben == 0
+        ? 'Arbeitsordner geleert: ${arbeitsordner.pfad}'
+        : 'Arbeitsordner: ${arbeitsordner.pfad} -- $geblieben Einträge in Benutzung, nicht gelöscht',
+  );
   // Schließen läuft über _beenden, damit der Arbeitsordner geleert wird.
   await windowManager.setPreventClose(true);
   final moodle = MoodleZugang(protokoll);
@@ -74,9 +84,24 @@ Future<void> main(List<String> argumente) async {
   resteWegraeumen();
   // Gestartet wird der MCP-Server erst, wenn die App eingerichtet und
   // angemeldet ist (_HauptseiteState._starten).
-  final dienst = McpDienst(einstellungen, moodle, protokoll, freigaben, arbeitsordner.pfad);
-  runApp(MoocpApp(einstellungen, protokoll, moodle, dienst, freigaben, arbeitsordner,
-      updatefaehig: updateMoeglich(argumente, Platform.environment)));
+  final dienst = McpDienst(
+    einstellungen,
+    moodle,
+    protokoll,
+    freigaben,
+    arbeitsordner.pfad,
+  );
+  runApp(
+    MoocpApp(
+      einstellungen,
+      protokoll,
+      moodle,
+      dienst,
+      freigaben,
+      arbeitsordner,
+      updatefaehig: updateMoeglich(argumente, Platform.environment),
+    ),
+  );
 }
 
 /// Aufruf durch die Deinstallation (installer/moocp.nsi): die
@@ -90,10 +115,15 @@ Future<int> _claudeEntfernen() async {
     WidgetsFlutterBinding.ensureInitialized();
     final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
     final skills = [
-      for (final a in manifest.listAssets().where((a) => a.startsWith(skillAssets) && a.endsWith('.skill')))
+      for (final a in manifest.listAssets().where(
+        (a) => a.startsWith(skillAssets) && a.endsWith('.skill'),
+      ))
         p.basenameWithoutExtension(a),
     ];
-    return (await einrichtungEntfernen(umgebung: Platform.environment, skills: skills)).code;
+    return (await einrichtungEntfernen(
+      umgebung: Platform.environment,
+      skills: skills,
+    )).code;
   } catch (_) {
     return 3; // unbekannt, was geblieben ist: beides melden
   }
@@ -112,8 +142,13 @@ Future<int> _werkzeugliste() async {
   try {
     mcpLogsUmleiten();
     final protokoll = Protokoll();
-    final dienst = McpDienst(Einstellungen(moodleAdresse: '', port: standardPort, schluessel: ''),
-        MoodleZugang(protokoll), protokoll, Freigaben(protokoll), '');
+    final dienst = McpDienst(
+      Einstellungen(moodleAdresse: '', port: standardPort, schluessel: ''),
+      MoodleZugang(protokoll),
+      protokoll,
+      Freigaben(protokoll),
+      '',
+    );
     stdout.writeln(jsonEncode(await dienst.werkzeugliste()));
     await stdout.flush();
     return 0;
@@ -169,20 +204,40 @@ class MoocpApp extends StatelessWidget {
     return MaterialApp(
       title: appName,
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(colorSchemeSeed: const Color(0xFF0851A0), useMaterial3: true),
+      theme: ThemeData(
+        colorSchemeSeed: const Color(0xFF0851A0),
+        useMaterial3: true,
+      ),
       // Deutsch auch in den eingebauten Texten: Lizenzseite, Kontextmenü.
       locale: const Locale('de'),
       supportedLocales: const [Locale('de')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
-      home: Hauptseite(einstellungen, protokoll, moodle, dienst, freigaben, arbeitsordner,
-          einrichtungsstand: einrichtungsstand, updatefaehig: updatefaehig),
+      home: Hauptseite(
+        einstellungen,
+        protokoll,
+        moodle,
+        dienst,
+        freigaben,
+        arbeitsordner,
+        einrichtungsstand: einrichtungsstand,
+        updatefaehig: updatefaehig,
+      ),
     );
   }
 }
 
 class Hauptseite extends StatefulWidget {
-  const Hauptseite(this.einstellungen, this.protokoll, this.moodle, this.dienst, this.freigaben, this.arbeitsordner,
-      {this.einrichtungsstand, this.updatefaehig = false, super.key});
+  const Hauptseite(
+    this.einstellungen,
+    this.protokoll,
+    this.moodle,
+    this.dienst,
+    this.freigaben,
+    this.arbeitsordner, {
+    this.einrichtungsstand,
+    this.updatefaehig = false,
+    super.key,
+  });
   final Einstellungen einstellungen;
   final Protokoll protokoll;
   final MoodleZugang moodle;
@@ -197,7 +252,9 @@ class Hauptseite extends StatefulWidget {
 }
 
 class _HauptseiteState extends State<Hauptseite> with WindowListener {
-  late final TextEditingController _adresse = TextEditingController(text: widget.einstellungen.moodleAdresse);
+  late final TextEditingController _adresse = TextEditingController(
+    text: widget.einstellungen.moodleAdresse,
+  );
   final _benutzer = TextEditingController();
   final _passwort = TextEditingController();
   bool _beschaeftigt = false;
@@ -252,8 +309,11 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
     // Sie steht beim Start im Protokoll und dauerhaft rot in der Titelzeile.
     if (widget.freigaben.stufe != Bestaetigungen.mittel) {
       widget.protokoll.eintrag(
-          widget.freigaben.stufe == Bestaetigungen.keine ? Art.gesperrt : Art.info,
-          'Bestätigungen: ${widget.freigaben.stufe.text} -- ${_stufeKurz[widget.freigaben.stufe]!}');
+        widget.freigaben.stufe == Bestaetigungen.keine
+            ? Art.gesperrt
+            : Art.info,
+        'Bestätigungen: ${widget.freigaben.stufe.text} -- ${_stufeKurz[widget.freigaben.stufe]!}',
+      );
     }
     _version = await _eigeneVersion();
     if (_version.isNotEmpty) {
@@ -285,7 +345,10 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
     try {
       return (await PackageInfo.fromPlatform()).version;
     } catch (e) {
-      widget.protokoll.eintrag(Art.fehler, 'Version nicht lesbar (${e.runtimeType})');
+      widget.protokoll.eintrag(
+        Art.fehler,
+        'Version nicht lesbar (${e.runtimeType})',
+      );
       return '';
     }
   }
@@ -321,7 +384,10 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
     try {
       d = await Anmeldedaten.laden();
     } catch (e) {
-      widget.protokoll.eintrag(Art.fehler, 'Anmeldedaten: Speicher nicht erreichbar (${e.runtimeType})');
+      widget.protokoll.eintrag(
+        Art.fehler,
+        'Anmeldedaten: Speicher nicht erreichbar (${e.runtimeType})',
+      );
       return;
     }
     if (!mounted) return;
@@ -334,10 +400,16 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
     if (d.passwort == null) {
       // Etwa unter einem anderen Windows-Konto: DPAPI entschlüsselt nicht.
       // Ohne Eintrag bliebe die App still abgemeldet.
-      widget.protokoll.eintrag(Art.anmeldung, 'Gespeichertes Passwort nicht lesbar -- bitte in der App anmelden');
+      widget.protokoll.eintrag(
+        Art.anmeldung,
+        'Gespeichertes Passwort nicht lesbar -- bitte in der App anmelden',
+      );
       return;
     }
-    widget.protokoll.eintrag(Art.anmeldung, 'Melde mit gespeicherten Anmeldedaten an');
+    widget.protokoll.eintrag(
+      Art.anmeldung,
+      'Melde mit gespeicherten Anmeldedaten an',
+    );
     await _anmelden();
   }
 
@@ -346,11 +418,16 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
   /// Sitzungen der KI-Werkzeuge die Verbindung ab; die Werkzeuge melden dann „Nicht
   /// angemeldet".
   Future<void> _mcpStarten() async {
-    if (!_eingerichtet || !widget.moodle.angemeldet || widget.dienst.laeuft) return;
+    if (!_eingerichtet || !widget.moodle.angemeldet || widget.dienst.laeuft) {
+      return;
+    }
     try {
       await widget.dienst.starten();
     } catch (e) {
-      widget.protokoll.eintrag(Art.fehler, 'MCP-Server startet nicht auf Port ${widget.einstellungen.port}: $e');
+      widget.protokoll.eintrag(
+        Art.fehler,
+        'MCP-Server startet nicht auf Port ${widget.einstellungen.port}: $e',
+      );
     }
     if (mounted) setState(() => _mcpVersucht = true);
   }
@@ -364,14 +441,25 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
     try {
       stand = await _einrichtungsstand();
     } catch (e, st) {
-      widget.protokoll.eintrag(Art.fehler, 'KI-Werkzeuge einrichten: Prüfung fehlgeschlagen: ${fehlerBeschreibung(e, st)}');
+      widget.protokoll.eintrag(
+        Art.fehler,
+        'KI-Werkzeuge einrichten: Prüfung fehlgeschlagen: ${fehlerBeschreibung(e, st)}',
+      );
     }
     if (!mounted) return false;
-    if (stand != null && !stand.python && stand.gewaehlt.contains('lernsituation')) {
-      widget.protokoll.eintrag(Art.info, 'Python nicht gefunden: Die Selbstprüfung des Skills lernsituation läuft nicht');
+    if (stand != null &&
+        !stand.python &&
+        stand.gewaehlt.contains('lernsituation')) {
+      widget.protokoll.eintrag(
+        Art.info,
+        'Python nicht gefunden: Die Selbstprüfung des Skills lernsituation läuft nicht',
+      );
     }
     if (!immer && stand != null && !stand.brauchtEtwas) {
-      widget.protokoll.eintrag(Art.info, 'KI-Werkzeuge einrichten: Verbindung und Skills aktuell');
+      widget.protokoll.eintrag(
+        Art.info,
+        'KI-Werkzeuge einrichten: Verbindung und Skills aktuell',
+      );
       return true;
     }
     final bereit = await showDialog<bool>(
@@ -392,8 +480,13 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
     if (widget.einrichtungsstand != null) return widget.einrichtungsstand!();
     final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
     final pakete = <SkillPaket>[
-      for (final a in manifest.listAssets().where((a) => a.startsWith(skillAssets) && a.endsWith('.skill')))
-        SkillPaket.ausZip(p.basenameWithoutExtension(a), (await rootBundle.load(a)).buffer.asUint8List()),
+      for (final a in manifest.listAssets().where(
+        (a) => a.startsWith(skillAssets) && a.endsWith('.skill'),
+      ))
+        SkillPaket.ausZip(
+          p.basenameWithoutExtension(a),
+          (await rootBundle.load(a)).buffer.asUint8List(),
+        ),
     ];
     return einrichtungPruefen(
       umgebung: Platform.environment,
@@ -401,7 +494,9 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
       schluessel: widget.einstellungen.schluessel,
       skills: pakete,
       abgewaehlt: widget.einstellungen.werkzeugeAbgewaehlt,
-      gewaehlt: widget.einstellungen.wahlSkills ?? gewaehltVorgabe(Platform.environment),
+      gewaehlt:
+          widget.einstellungen.wahlSkills ??
+          gewaehltVorgabe(Platform.environment),
     );
   }
 
@@ -427,12 +522,16 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
     try {
       final geblieben = widget.arbeitsordner.leeren();
       widget.protokoll.eintrag(
-          Art.info,
-          geblieben == 0
-              ? 'App beendet, Arbeitsordner geleert'
-              : 'App beendet, $geblieben Einträge im Arbeitsordner in Benutzung, der nächste Start leert sie');
+        Art.info,
+        geblieben == 0
+            ? 'App beendet, Arbeitsordner geleert'
+            : 'App beendet, $geblieben Einträge im Arbeitsordner in Benutzung, der nächste Start leert sie',
+      );
     } catch (e, st) {
-      widget.protokoll.eintrag(Art.fehler, 'Arbeitsordner leeren: ${fehlerBeschreibung(e, st)}');
+      widget.protokoll.eintrag(
+        Art.fehler,
+        'Arbeitsordner leeren: ${fehlerBeschreibung(e, st)}',
+      );
     } finally {
       await windowManager.setPreventClose(false);
       await windowManager.close();
@@ -446,12 +545,17 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
       widget.freigaben.stufe = s;
       widget.einstellungen.bestaetigungen = s;
     });
-    widget.protokoll.eintrag(s == Bestaetigungen.keine ? Art.gesperrt : Art.info,
-        'Bestätigungen: ${s.text} -- ${_stufeKurz[s]!}');
+    widget.protokoll.eintrag(
+      s == Bestaetigungen.keine ? Art.gesperrt : Art.info,
+      'Bestätigungen: ${s.text} -- ${_stufeKurz[s]!}',
+    );
     try {
       await widget.einstellungen.speichern();
     } catch (e) {
-      widget.protokoll.eintrag(Art.fehler, 'Einstellungen nicht gespeichert (${e.runtimeType})');
+      widget.protokoll.eintrag(
+        Art.fehler,
+        'Einstellungen nicht gespeichert (${e.runtimeType})',
+      );
     }
   }
 
@@ -466,7 +570,10 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
             : 'Gespeicherte Anmeldedaten gelöscht',
       );
     } catch (e) {
-      widget.protokoll.eintrag(Art.fehler, 'Anmeldedaten: Speicher nicht erreichbar (${e.runtimeType})');
+      widget.protokoll.eintrag(
+        Art.fehler,
+        'Anmeldedaten: Speicher nicht erreichbar (${e.runtimeType})',
+      );
     }
   }
 
@@ -476,7 +583,9 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
   void _freigabeZeigen() {
     final a = widget.freigaben.aktuell;
     if (a == null) {
-      if (_gezeigt != null && mounted) Navigator.of(context, rootNavigator: true).maybePop();
+      if (_gezeigt != null && mounted) {
+        Navigator.of(context, rootNavigator: true).maybePop();
+      }
       _gezeigt = null;
       return;
     }
@@ -490,7 +599,9 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
       barrierDismissible: false,
       builder: (context) => FreigabeDialog(a, widget.freigaben.frist),
     ).then((ja) {
-      if (identical(widget.freigaben.aktuell, a)) widget.freigaben.entscheiden(ja ?? false);
+      if (identical(widget.freigaben.aktuell, a)) {
+        widget.freigaben.entscheiden(ja ?? false);
+      }
       _gezeigt = null;
       _nachVorn(false);
     });
@@ -580,7 +691,10 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
       appBar: AppBar(
         title: const Text(appName),
         actions: [
-          BestaetigungenFeld(stufe: widget.freigaben.stufe, aendern: _stufeAendern),
+          BestaetigungenFeld(
+            stufe: widget.freigaben.stufe,
+            aendern: _stufeAendern,
+          ),
           IconButton(
             icon: const Icon(Icons.help_outline),
             tooltip: 'Was die Stufen bedeuten',
@@ -598,15 +712,15 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
                   widget.dienst.laeuft
                       ? Icons.lan
                       : _mcpVersucht
-                          ? Icons.error_outline
-                          : Icons.hourglass_empty,
+                      ? Icons.error_outline
+                      : Icons.hourglass_empty,
                   size: 18,
                 ),
                 widget.dienst.laeuft
                     ? 'MCP auf 127.0.0.1:${widget.einstellungen.port}'
                     : _mcpVersucht
-                        ? 'MCP-Server läuft nicht'
-                        : 'MCP startet nach der Anmeldung',
+                    ? 'MCP-Server läuft nicht'
+                    : 'MCP startet nach der Anmeldung',
               ),
             ),
           ),
@@ -649,18 +763,27 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
                 _karte('Moodle-Anmeldung', [
                   TextField(
                     controller: _adresse,
-                    decoration: const InputDecoration(labelText: 'Moodle-Adresse', hintText: 'https://…'),
+                    decoration: const InputDecoration(
+                      labelText: 'Moodle-Adresse',
+                      hintText: 'https://…',
+                    ),
                   ),
                   TextField(
                     controller: _benutzer,
-                    decoration: const InputDecoration(labelText: 'Benutzername'),
+                    decoration: const InputDecoration(
+                      labelText: 'Benutzername',
+                    ),
                   ),
                   TextField(
                     controller: _passwort,
                     obscureText: true,
                     decoration: const InputDecoration(labelText: 'Passwort'),
                     onSubmitted: (_) {
-                      if (_eingerichtet && !_beschaeftigt && !widget.moodle.angemeldet) _anmelden();
+                      if (_eingerichtet &&
+                          !_beschaeftigt &&
+                          !widget.moodle.angemeldet) {
+                        _anmelden();
+                      }
                     },
                   ),
                   const SizedBox(height: 12),
@@ -674,7 +797,10 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Checkbox(value: _merken, onChanged: (v) => _merkenAendern(v ?? false)),
+                            Checkbox(
+                              value: _merken,
+                              onChanged: (v) => _merkenAendern(v ?? false),
+                            ),
                             const Text('Anmeldedaten speichern'),
                             const SizedBox(width: 4),
                           ],
@@ -682,18 +808,29 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
                       ),
                       FilledButton(
                         // Erst nach „KI-Werkzeuge einrichten" (_starten).
-                        onPressed: !_eingerichtet || _beschaeftigt || angemeldet ? null : _anmelden,
+                        onPressed: !_eingerichtet || _beschaeftigt || angemeldet
+                            ? null
+                            : _anmelden,
                         child: Text(_beschaeftigt ? 'Melde an …' : 'Anmelden'),
                       ),
-                      OutlinedButton(onPressed: angemeldet ? _abmelden : null, child: const Text('Abmelden')),
-                      TextButton(
-                        onPressed: angemeldet ? widget.moodle.sitzungVerwerfen : null,
-                        child: const Text('Sitzung verwerfen (Test)'),
+                      OutlinedButton(
+                        onPressed: angemeldet ? _abmelden : null,
+                        child: const Text('Abmelden'),
                       ),
+                      if (kDebugMode)
+                        TextButton(
+                          onPressed: angemeldet
+                              ? widget.moodle.sitzungVerwerfen
+                              : null,
+                          child: const Text('Sitzung verwerfen (Test)'),
+                        ),
                     ],
                   ),
                   if (_meldung != null)
-                    Padding(padding: const EdgeInsets.only(top: 8), child: Text(_meldung!)),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(_meldung!),
+                    ),
                   const SizedBox(height: 8),
                   Text(
                     'Ohne Haken bleiben Benutzername und Passwort nur im Arbeitsspeicher, solange '
@@ -719,9 +856,12 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
   /// Eine Anzeige in der Titelzeile. Der Text wird gekürzt, wenn der Platz
   /// nicht reicht, und steht dann im Tooltip.
   Widget _anzeige(Icon symbol, String text) => Tooltip(
-        message: text,
-        child: Chip(avatar: symbol, label: Text(text, overflow: TextOverflow.ellipsis)),
-      );
+    message: text,
+    child: Chip(
+      avatar: symbol,
+      label: Text(text, overflow: TextOverflow.ellipsis),
+    ),
+  );
 
   Widget _karte(String titel, List<Widget> inhalt) => Card(
     margin: const EdgeInsets.only(bottom: 16),
@@ -742,15 +882,21 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
 /// Ein Satz je Stufe, fürs Protokoll.
 const _stufeKurz = {
   Bestaetigungen.keine: 'Änderungen in Moodle laufen ohne Rückfrage',
-  Bestaetigungen.mittel: 'Freigabe vor Ändern, Verschieben, Sichtbarkeit, Löschen',
-  Bestaetigungen.alle: 'Freigabe vor jedem Schreibvorgang, auch verborgen Angelegtem',
+  Bestaetigungen.mittel:
+      'Freigabe vor Ändern, Verschieben, Sichtbarkeit, Löschen',
+  Bestaetigungen.alle:
+      'Freigabe vor jedem Schreibvorgang, auch verborgen Angelegtem',
 };
 
 /// Das Feld in der Titelzeile: welche Bestätigungen die Lehrkraft vor
 /// Änderungen in Moodle will. Bei „keine" ist das ganze Feld in Warnfarbe --
 /// abgeschaltete Rückfragen sollen man im Vorbeigehen sehen.
 class BestaetigungenFeld extends StatelessWidget {
-  const BestaetigungenFeld({required this.stufe, required this.aendern, super.key});
+  const BestaetigungenFeld({
+    required this.stufe,
+    required this.aendern,
+    super.key,
+  });
 
   final Bestaetigungen stufe;
   final Future<void> Function(Bestaetigungen) aendern;
@@ -780,20 +926,33 @@ class BestaetigungenFeld extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
               focusColor: Colors.transparent,
               iconEnabledColor: vorn,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: vorn),
+              style: Theme.of(context).textTheme.bodyMedium
+                  ?.copyWith(color: vorn),
               // Im geöffneten Menü steht jede Stufe mit ihrem Kurztext; im Feld
               // selbst ist nur Platz für ihren Namen.
               selectedItemBuilder: (_) => [
                 for (final x in Bestaetigungen.values)
-                  Row(children: [
-                    if (x == Bestaetigungen.keine) ...[
-                      Icon(Icons.warning_amber_rounded, size: 18, color: vorn),
-                      const SizedBox(width: 6),
-                    ],
-                    Text('Bestätigungen: ${x.text}',
+                  Row(
+                    children: [
+                      if (x == Bestaetigungen.keine) ...[
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          size: 18,
+                          color: vorn,
+                        ),
+                        const SizedBox(width: 6),
+                      ],
+                      Text(
+                        'Bestätigungen: ${x.text}',
                         style: TextStyle(
-                            color: vorn, fontWeight: x == Bestaetigungen.keine ? FontWeight.bold : null)),
-                  ]),
+                          color: vorn,
+                          fontWeight: x == Bestaetigungen.keine
+                              ? FontWeight.bold
+                              : null,
+                        ),
+                      ),
+                    ],
+                  ),
               ],
               items: [
                 for (final x in Bestaetigungen.values)
@@ -805,11 +964,19 @@ class BestaetigungenFeld extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(x.text,
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: x == Bestaetigungen.keine ? farbe.error : null)),
-                          Text(_stufeKurz[x]!, style: Theme.of(context).textTheme.bodySmall),
+                          Text(
+                            x.text,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: x == Bestaetigungen.keine
+                                  ? farbe.error
+                                  : null,
+                            ),
+                          ),
+                          Text(
+                            _stufeKurz[x]!,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
                         ],
                       ),
                     ),
@@ -828,72 +995,89 @@ class BestaetigungenFeld extends StatelessWidget {
 
 /// Der Hilfe-Dialog hinter dem Fragezeichen neben dem Feld.
 Future<void> bestaetigungenHilfe(BuildContext context) => showDialog<void>(
-      context: context,
-      builder: (context) {
-        final klein = Theme.of(context).textTheme.bodySmall;
-        final farbe = Theme.of(context).colorScheme;
-        Widget stufe(String name, Color? ton, String was, String wofuer) => Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(name,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(color: ton)),
-                const SizedBox(height: 2),
-                Text(was),
-                const SizedBox(height: 2),
-                Text(wofuer, style: klein),
-              ]),
-            );
-        return AlertDialog(
-          title: const Text('Bestätigungen vor Änderungen'),
-          content: SizedBox(
-            width: 620,
-            child: SingleChildScrollView(
-              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(
-                    'Bevor die App etwas in Moodle schreibt, zeigt sie Ihnen in einem Fenster, was '
-                    'geschieht -- mit Kurs, Namen und, wo es Text gibt, einem Vergleich vorher/nachher. '
-                    'Hier stellen Sie ein, wie oft das sein soll. Ohne Entscheidung innerhalb von '
-                    '30 Minuten geschieht nichts.',
-                    style: klein),
-                const Divider(height: 28),
-                stufe(
-                    'alle',
-                    null,
-                    'Jeder Vorgang, der in Moodle etwas schreibt, wird gezeigt -- auch verborgen '
-                        'Angelegtes, Kopien, neue Fragenkategorien und importierte Fragen.',
-                    'Für den Anfang, solange Sie sehen wollen, was die KI tut. Rechnen Sie mit vielen '
-                        'Fenstern: Eine Lernsituation mit zwölf Blättern bedeutet zwölf Bestätigungen.'),
-                stufe(
-                    'mittel',
-                    null,
-                    'Gezeigt wird, was Bestehendes anfasst oder sofort für Lernende sichtbar wird: '
-                        'Ändern, Verschieben, Sichtbarkeit, Löschen, sichtbar Anlegen.',
-                    'Die Voreinstellung. Neues entsteht verborgen und ohne Rückfrage -- sehen kann es '
-                        'nur, wer den Kurs bearbeiten darf, und sichtbar wird es erst mit Ihrer Freigabe.'),
-                stufe(
-                    'keine',
-                    farbe.error,
-                    'Es wird nichts mehr gezeigt. Alles läuft sofort, auch Löschen.',
-                    'Nur für den Fall, dass Sie sich sicher sind und zügig arbeiten wollen. Das Feld ist '
-                        'dann rot. Was bleibt: Die KI kommt an keine Daten von Lernenden, nennt vor jedem '
-                        'Verschieben, Verbergen und Löschen den Namen, wie er jetzt in Moodle steht, und '
-                        'bricht ab, wenn er nicht passt. Jeder Vorgang steht im Protokoll. Die Freigabe je '
-                        'Bildschirmfoto bleibt in jedem Fall: Sie entscheidet nicht über eine Änderung, '
-                        'sondern darüber, welches Bild aus Ihrem Kurs an die KI geht.'),
-                const Divider(height: 28),
-                Text(
-                    'Die Einstellung bleibt über einen Neustart hinweg. Die KI kann sie nicht ändern und '
-                    'erfährt nur, welche gilt -- damit sie keine Rückfrage ankündigt, die nicht kommt.',
-                    style: klein),
-              ]),
-            ),
+  context: context,
+  builder: (context) {
+    final klein = Theme.of(context).textTheme.bodySmall;
+    final farbe = Theme.of(context).colorScheme;
+    Widget stufe(String name, Color? ton, String was, String wofuer) => Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            name,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(color: ton),
           ),
-          actions: [
-            FilledButton(onPressed: () => Navigator.pop(context), child: const Text('Schließen')),
-          ],
-        );
-      },
+          const SizedBox(height: 2),
+          Text(was),
+          const SizedBox(height: 2),
+          Text(wofuer, style: klein),
+        ],
+      ),
     );
+    return AlertDialog(
+      title: const Text('Bestätigungen vor Änderungen'),
+      content: SizedBox(
+        width: 620,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Bevor die App etwas in Moodle schreibt, zeigt sie Ihnen in einem Fenster, was '
+                'geschieht -- mit Kurs, Namen und, wo es Text gibt, einem Vergleich vorher/nachher. '
+                'Hier stellen Sie ein, wie oft das sein soll. Ohne Entscheidung innerhalb von '
+                '30 Minuten geschieht nichts.',
+                style: klein,
+              ),
+              const Divider(height: 28),
+              stufe(
+                'alle',
+                null,
+                'Jeder Vorgang, der in Moodle etwas schreibt, wird gezeigt -- auch verborgen '
+                    'Angelegtes, Kopien, neue Fragenkategorien und importierte Fragen.',
+                'Für den Anfang, solange Sie sehen wollen, was die KI tut. Rechnen Sie mit vielen '
+                    'Fenstern: Eine Lernsituation mit zwölf Blättern bedeutet zwölf Bestätigungen.',
+              ),
+              stufe(
+                'mittel',
+                null,
+                'Gezeigt wird, was Bestehendes anfasst oder sofort für Lernende sichtbar wird: '
+                    'Ändern, Verschieben, Sichtbarkeit, Löschen, sichtbar Anlegen.',
+                'Die Voreinstellung. Neues entsteht verborgen und ohne Rückfrage -- sehen kann es '
+                    'nur, wer den Kurs bearbeiten darf, und sichtbar wird es erst mit Ihrer Freigabe.',
+              ),
+              stufe(
+                'keine',
+                farbe.error,
+                'Es wird nichts mehr gezeigt. Alles läuft sofort, auch Löschen.',
+                'Nur für den Fall, dass Sie sich sicher sind und zügig arbeiten wollen. Das Feld ist '
+                    'dann rot. Was bleibt: Die KI kommt an keine Daten von Lernenden, nennt vor jedem '
+                    'Verschieben, Verbergen und Löschen den Namen, wie er jetzt in Moodle steht, und '
+                    'bricht ab, wenn er nicht passt. Jeder Vorgang steht im Protokoll. Die Freigabe je '
+                    'Bildschirmfoto bleibt in jedem Fall: Sie entscheidet nicht über eine Änderung, '
+                    'sondern darüber, welches Bild aus Ihrem Kurs an die KI geht.',
+              ),
+              const Divider(height: 28),
+              Text(
+                'Die Einstellung bleibt über einen Neustart hinweg. Die KI kann sie nicht ändern und '
+                'erfährt nur, welche gilt -- damit sie keine Rückfrage ankündigt, die nicht kommt.',
+                style: klein,
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Schließen'),
+        ),
+      ],
+    );
+  },
+);
 
 class FreigabeDialog extends StatelessWidget {
   const FreigabeDialog(this.anfrage, this.frist, {super.key});
@@ -927,15 +1111,26 @@ class FreigabeDialog extends StatelessWidget {
       title: Text(anfrage.titel),
       content: SizedBox(
         width: gross ? 900 : 620,
-        height: anfrage.bilder.isNotEmpty ? 680 : gross ? 560 : 240,
+        height: anfrage.bilder.isNotEmpty
+            ? 680
+            : gross
+            ? 560
+            : 240,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (anfrage.grund != null) ...[
-              Text.rich(TextSpan(children: [
-                const TextSpan(text: 'Wozu: ', style: TextStyle(fontWeight: FontWeight.bold)),
-                TextSpan(text: anfrage.grund),
-              ])),
+              Text.rich(
+                TextSpan(
+                  children: [
+                    const TextSpan(
+                      text: 'Wozu: ',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    TextSpan(text: anfrage.grund),
+                  ],
+                ),
+              ),
               const SizedBox(height: 8),
             ],
             // Bei einer Sammelfreigabe viele Punkte: Sie scrollen für sich,
@@ -951,29 +1146,43 @@ class FreigabeDialog extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             if (anfrage.vergleich.isNotEmpty) ...[
-              Text('Quelltext, vorher (−) und nachher (+):', style: Theme.of(context).textTheme.titleSmall),
+              Text(
+                'Quelltext, vorher (−) und nachher (+):',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
               const SizedBox(height: 4),
               Expanded(
                 child: DecoratedBox(
-                  decoration: BoxDecoration(border: Border.all(color: Colors.black12)),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.black12),
+                  ),
                   child: SelectionArea(
-                    child: ListView(children: [for (final z in anfrage.vergleich) zeile(z)]),
+                    child: ListView(
+                      children: [for (final z in anfrage.vergleich) zeile(z)],
+                    ),
                   ),
                 ),
               ),
             ] else if (anfrage.bilder.isNotEmpty) ...[
-              Text('Genau diese Bilder gehen weiter:', style: Theme.of(context).textTheme.titleSmall),
+              Text(
+                'Genau diese Bilder gehen weiter:',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
               const SizedBox(height: 4),
               Expanded(
                 child: DecoratedBox(
-                  decoration: BoxDecoration(border: Border.all(color: Colors.black12)),
-                  child: ListView(children: [
-                    for (final b in anfrage.bilder)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Image.memory(b, fit: BoxFit.fitWidth),
-                      ),
-                  ]),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.black12),
+                  ),
+                  child: ListView(
+                    children: [
+                      for (final b in anfrage.bilder)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Image.memory(b, fit: BoxFit.fitWidth),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ] else
@@ -987,8 +1196,14 @@ class FreigabeDialog extends StatelessWidget {
         ),
       ),
       actions: [
-        OutlinedButton(onPressed: () => Navigator.of(context).pop(false), child: Text(anfrage.ablehnen)),
-        FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(anfrage.knopf)),
+        OutlinedButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: Text(anfrage.ablehnen),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: Text(anfrage.knopf),
+        ),
       ],
     );
   }
@@ -1027,7 +1242,8 @@ class _ProtokollAnsichtState extends State<ProtokollAnsicht> {
   // keine Bewegung: Er verschiebt nur das Ende, und die Liste folgt weiter.
   bool _folgen = true;
 
-  bool get _unten => _scroll.position.pixels >= _scroll.position.maxScrollExtent - 1;
+  bool get _unten =>
+      _scroll.position.pixels >= _scroll.position.maxScrollExtent - 1;
 
   @override
   void initState() {
@@ -1066,7 +1282,10 @@ class _ProtokollAnsichtState extends State<ProtokollAnsicht> {
             children: [
               Text('Protokoll', style: Theme.of(context).textTheme.titleMedium),
               const Spacer(),
-              TextButton(onPressed: widget.protokoll.leeren, child: const Text('Leeren')),
+              TextButton(
+                onPressed: widget.protokoll.leeren,
+                child: const Text('Leeren'),
+              ),
             ],
           ),
         ),
@@ -1086,8 +1305,17 @@ class _ProtokollAnsichtState extends State<ProtokollAnsicht> {
                     return ListTile(
                       dense: true,
                       leading: Icon(symbol, color: farbe, size: 18),
-                      title: SelectableText(x.text, style: const TextStyle(fontFamily: 'Consolas', fontSize: 12.5)),
-                      trailing: Text(_zeit(x.zeit), style: Theme.of(context).textTheme.bodySmall),
+                      title: SelectableText(
+                        x.text,
+                        style: const TextStyle(
+                          fontFamily: 'Consolas',
+                          fontSize: 12.5,
+                        ),
+                      ),
+                      trailing: Text(
+                        _zeit(x.zeit),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                     );
                   },
                 );
