@@ -47,7 +47,8 @@ SKILLS = [
         'name': 'moodle',
         'bloecke': ['kurshinweise.md', 'konventionen-vorschlagen.md', 'aktueller-kurs.md', 'erfundene-namen.md', 'plan.md', 'ueberarbeiten.md',
                     'luecken.md', 'protokoll.md', 'bildschirmfoto.md', 'urheberrecht-kurz.md', 'urheberrecht.md',
-                    'datenschutzbefund.md', 'skillfehler.md', 'html-kurz.md', 'html.md', 'zeichnungen.md', 'bruecke.md'],
+                    'datenschutzbefund.md', 'skillfehler.md', 'html-kurz.md', 'html.md', 'zeichnungen.md', 'bruecke.md',
+                    'einsatz.md'],
         'ersetzungen': {'@@NAME@@': 'moodle',
                         '@@QUELLENBEISPIELE@@': ('datei', 'urheberrecht-beispiele-html.md')},
     },
@@ -61,17 +62,20 @@ SKILLS = [
                         '@@QUELLENBEISPIELE@@': ('datei', 'urheberrecht-beispiele-html.md')},
     },
     {
-        # Entwirft ohne Moodle: Lernsituationen als Entwurf im Arbeitsordner,
+        # Entwirft Lernsituationen für einen Kurs: als Entwurf im Arbeitsordner,
         # schon in HTML und in der Form der Werkzeuge, den der Skill moodle
-        # gleich danach in den Kurs bringt. Von den Gleichanteilen braucht er
-        # nur, was nichts mit dem Bedienen von Moodle zu tun hat -- dazu das
-        # HTML, weil er es selbst schreibt, das Überarbeiten, weil „Das Neue
-        # steht allein" schon für seinen Entwurf gilt, und die Lücken, damit
-        # auch hier eine fehlende Funktion als Befund zum Nachrüsten ankommt.
+        # gleich danach in den Kurs bringt. Lesen und Schreiben in Moodle
+        # bleiben beim Skill moodle; von dort braucht er die Konventionen des
+        # Kurses samt Steckbrief und die Anregungen, welche Aktivität wofür
+        # taugt. Dazu das HTML, weil er es selbst schreibt, das Überarbeiten,
+        # weil „Das Neue steht allein" schon für seinen Entwurf gilt, und die
+        # Lücken, damit auch hier eine fehlende Funktion als Befund zum
+        # Nachrüsten ankommt.
         # Wählbar (lib/einrichtung.dart): gebaut für berufsbildende Schulen.
         'name': 'lernsituation',
-        'bloecke': ['bruecke.md', 'konventionen-vorschlagen.md', 'erfundene-namen.md', 'plan.md', 'ueberarbeiten.md', 'html-kurz.md', 'html.md',
-                    'zeichnungen.md', 'urheberrecht-kurz.md', 'urheberrecht.md', 'luecken.md', 'skillfehler.md'],
+        'bloecke': ['bruecke.md', 'kurshinweise.md', 'konventionen-vorschlagen.md', 'erfundene-namen.md', 'plan.md', 'ueberarbeiten.md',
+                    'html-kurz.md', 'html.md', 'zeichnungen.md', 'urheberrecht-kurz.md', 'urheberrecht.md', 'luecken.md', 'skillfehler.md',
+                    'einsatz.md'],
         'ersetzungen': {'@@NAME@@': 'lernsituation',
                         '@@QUELLENBEISPIELE@@': ('datei', 'urheberrecht-beispiele-lernsituation.md')},
     },

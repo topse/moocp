@@ -670,6 +670,7 @@ Future<String> aktivitaetAnlegen(
   final (int cmid, String angelegt) = istSammlung
       ? await _neueSammlung(moodle, kurs, vorher)
       : await _neueAktivitaet(moodle, kurs, typ, vorher);
+  if (!sichtbar) moodle.selbstAngelegt.add(cmid);
 
   final g = await formularLesen(moodle, Formularziel.aktivitaet(cmid), arbeitsordner);
   final probe = await zuruecklesen(g,
@@ -796,6 +797,16 @@ class _Aenderung {
   final List<Zeile> vergleich;
 
   String get stand => p.join(quelle, '.stand');
+
+  /// Die Aktivität, die sich ändert -- bei einem Buchkapitel das Buch; null
+  /// bei Abschnitt und Frage. Danach richtet sich, ob die Änderung noch der
+  /// Arbeitssitzung gehört ([fuellenAb]).
+  int? get cmid => switch (ziel.art) {
+        Zielart.aktivitaet => ziel.id,
+        Zielart.buchkapitel => ziel.cmid,
+        Zielart.abschnitt || Zielart.frage => null,
+      };
+
   String kopf({bool mitKurs = true}) =>
       '${_was(ziel, vorab)} „${vorab.name}" (${ziel.bezeichnung}${mitKurs ? wo : ''})';
 }
@@ -1003,7 +1014,8 @@ Future<String> aendern(
   final ja = await freigaben.anfragen(FreigabeAnfrage(
       titel: 'Änderung speichern?',
       punkte: [a.kopf(), ...a.einzelheiten, 'Alles andere bleibt, wie es ist.'],
-      vergleich: a.vergleich));
+      vergleich: a.vergleich,
+      ab: await fuellenAb(moodle, a.vorab.kurs, [a.cmid])));
   if (!ja) {
     return 'Nicht gespeichert: Die Änderung wurde in der App abgelehnt oder nicht innerhalb von '
         '${freigaben.frist.inMinutes} Minuten freigegeben. Der Ordner ist unverändert.';
@@ -1100,6 +1112,7 @@ Future<String> aendernMehrere(
   final abschnitt = k.nachId[abschnitte.single]!;
 
   final ja = await freigaben.anfragen(FreigabeAnfrage(
+    ab: await fuellenAb(moodle, kurse.single, [for (final a in alle) a.cmid]),
     titel: titel ?? '${alle.length} Änderungen speichern?',
     knopf: 'Alle speichern',
     punkte: [

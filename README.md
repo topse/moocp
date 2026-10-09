@@ -59,7 +59,7 @@ an. Was nicht angefragt wird, kann auch nicht bei einer KI landen. Diese
 Sperre steht im Programmcode, nicht in einer Bitte an die KI, und soll sich
 so weit ausbauen lassen, dass sie sich DSGVO-seitig begründen lässt.
 
-Das fachliche Wissen – wie Testfragen Können prüfen statt Auswendiggelerntes, wie Quellen angegeben werden, wie ein Blatt auch auf Papier taugt – steckt in **Skills**, die das KI-Werkzeug dazu lädt: `moodle` für Kurse und `moodle-fragen` für Fragen und Tests. Für berufsbildende Schulen gibt es zusätzlich `lernsituation`: Lernsituationen mit SchuCu-Tabelle, Lehrerhandreichung, Arbeits- und Informationsblättern entwerfen und in den Kurs bringen. Wer ihn braucht, setzt beim Einrichten einen Haken.
+Das fachliche Wissen – wie Testfragen Können prüfen statt Auswendiggelerntes, wie Quellen angegeben werden, wie ein Blatt auch auf Papier taugt – steckt in **Skills**, die das KI-Werkzeug dazu lädt: `moodle` für Kurse und `moodle-fragen` für Fragen und Tests. Für berufsbildende Schulen gibt es zusätzlich `lernsituation`: Lernsituationen mit SchuCu-Tabelle, Lehrerhandreichung, Arbeits- und Informationsblättern entwerfen – dazu Board, Wiki, Test und was sonst zum Ablauf passt – und in den Kurs bringen. Wer ihn braucht, setzt beim Einrichten einen Haken.
 
 ### Was die KI damit tun kann
 
@@ -82,6 +82,7 @@ Das fachliche Wissen – wie Testfragen Können prüfen statt Auswendiggelerntes
 - **Tests zusammenstellen**: Fragen und Zufallsfragen einfügen, Punkte,
   Reihenfolge, Seiten, Fragen mischen, Beste Bewertung angleichen.
 - **Verschieben, sichtbar schalten, löschen.**
+- **Vorschlagen, was sich wofür anbietet**: neben Textseite und Aufgabe auch Board, Kanban-Board, Wiki, Fortschrittsliste oder ein Übungstest – am Gerät, auf Papier oder gemischt, etwa ein Schritt im Computerraum in einem Kurs, der sonst auf Papier läuft, oder ein Blatt, das die Lernenden abfotografieren und in der Aufgabe abgeben. Entscheiden tun Sie.
 - **Selbst nachsehen**: Die KI kann sich ansehen, wie eine Textseite, ein Buchkapitel, eine Wikiseite oder eine Frage im Browser aussieht – ob die Formeln gesetzt sind, wie ein Blatt im Ausdruck umbricht, ob eine Frage in der Vorschau läuft. Jedes Bild sehen Sie zuerst, zusammen mit dem Grund, warum die KI es braucht.
 
 ### Unterstützte Aktivitäten und Fragetypen
@@ -222,6 +223,8 @@ danach in der App der **Freigabedialog**: Er nennt Kurs und Objekt, was sich
 von 30 Minuten oder wartet das KI-Werkzeug nicht mehr, wird nichts gespeichert. Die App holt sich dafür nach vorn.
 Wie oft der Dialog kommt, stellen Sie selbst ein: siehe [Wie viele Bestätigungen Sie bekommen](#wie-viele-bestätigungen-sie-bekommen).
 
+**Der Steckbrief des Kurses.** Was jede Arbeit in einem Kurs wieder braucht – Schulform und Bildungsgang, ob die Lernenden mit „du" oder „Sie" angeredet werden, wie meistens gearbeitet wird (auf Papier, am Gerät, gemischt) und welche Räume und Geräte es gibt –, fragt die KI einmal und schlägt im Plan vor, es im verborgenen Verzeichnis „CLAUDE" des Kurses festzuhalten. Danach fragt sie nicht mehr. Die Arbeitsweise ist für sie eine Ausgangslage, keine Grenze: Sie darf vorschlagen, einen Schritt anders zu machen.
+
 **Bildschirmfotos.** Um zu prüfen, was sie geschrieben hat, kann die KI sich eine Seite im Browser ansehen, auch so, wie sie gedruckt aussieht. Die App öffnet dafür Microsoft Edge (oder Google Chrome) ohne Fenster und nimmt nur den Inhalt der Seite auf, ohne Kopf, Navigation und Blöcke. Sie sehen das Bild mit dem Grund, den die KI dafür nennt, und mit Kurs und Seite: „An die KI geben" gibt es weiter, „Verwerfen" nicht, und ohne Entscheidung binnen 30 Minuten wird es verworfen. Jedes Bild kostet Sie also einen Klick; die KI soll nur nachsehen, wo es etwas zu prüfen gibt, und es im Plan ankündigen. Zwei Abweichungen vom Browser, in dem Sie Moodle sehen: Schriften von fremden Servern (etwa Google Fonts, die Theme oder Plugins einbinden) lädt die App nicht, dort erscheint eine Ersatzschrift; und Formeln wirken etwas kräftiger. Ob etwas gesetzt, vollständig und richtig umbrochen ist, zeigt das Bild trotzdem. Hat die Verwaltung Ihres Rechners die Fernsteuerung des Browsers abgeschaltet, gibt es keine Bildschirmfotos; die KI sagt es dann, und Sie sehen selbst nach. Ansehen kann die Bilder nur ein Modell mit Bildverständnis.
 
 **Im Arbeitsordner** `%TEMP%\moocp_arbeitsordner` legt die App ab, was sie aus Moodle liest, und von dort nimmt sie, was sie nach Moodle schreibt: jede gelesene Aktivität in einem Unterordner `cm-<Nummer>`, einen Abschnitt in `abschnitt-<id>`, eine Frage in `frage-<id>`. Die übrigen Dateien bearbeitet die KI; den Unterordner `.stand` bitte nicht anfassen – daran erkennt die App, ob sich die Seite in Moodle inzwischen geändert hat.
@@ -317,31 +320,33 @@ Was die KI hier ohne Klick anlegt, ist für Lernende nicht sichtbar. Eine Ausnah
 | `aktivitaet_anlegen` | Legt eine Aktivität aus der [Übersicht](#unterstützte-aktivitäten-und-fragetypen) an, mit Text, Bildern und Dateien aus dem Arbeitsordner. Verborgen, auf Wunsch sichtbar. | wenn sichtbar, sonst bei „alle" |
 | `abschnitt_anlegen` | Legt einen Abschnitt an, am Ende oder hinter einem anderen. Verborgen, auf Wunsch sichtbar. | wenn sichtbar, sonst bei „alle" |
 | `buchkapitel_anlegen` | Legt ein Kapitel oder Unterkapitel an. Ein Kapitel erscheint sofort, wenn das Buch für Lernende sichtbar ist. | wenn das Buch sichtbar ist, sonst bei „alle" |
-| `wikiseite_schreiben` | Legt eine Seite in einem gemeinsamen Wiki an oder ersetzt den Inhalt einer vorhandenen – auch das, was andere geschrieben haben. | Ersetzen: **ja**; Anlegen: wenn das Wiki sichtbar ist, sonst bei „alle" |
+| `wikiseite_schreiben` | Legt eine Seite in einem gemeinsamen Wiki an oder ersetzt den Inhalt einer vorhandenen – auch das, was andere geschrieben haben. | Ersetzen: **ja**, außer im gerade verborgen angelegten Wiki; Anlegen: wenn das Wiki sichtbar ist, sonst bei „alle" |
 | `duplizieren` | Kopiert eine Aktivität oder einen Abschnitt samt Inhalt, ohne Daten von Lernenden. Nummer und Name müssen zusammenpassen. | bei „alle" |
 | `kategorie_anlegen` | Legt in einer bestehenden Fragensammlung eine Kategorie an, auf Wunsch unter einer anderen. Eine neue Fragensammlung ist dagegen eine Aktivität (`aktivitaet_anlegen`, Typ `qbank`). | bei „alle" |
 | `fragen_importieren` | Legt Fragen aus einer XML-Datei im Arbeitsordner in einer Kategorie an, nach Prüfung der Datei. Lernende sehen sie erst in einem Test. | bei „alle", eine für die ganze Datei |
 
-#### Bestehendes ändern, verschieben, sichtbar schalten, löschen: immer mit Freigabe
+#### Bestehendes ändern, verschieben, sichtbar schalten, löschen: mit Freigabe
+
+Eine Ausnahme: Was die KI gerade selbst verborgen angelegt hat, ist noch nichts Bestehendes. Füllt oder ändert sie es, solange es verborgen ist – die Spalten eines neuen Boards, die Einträge einer neuen Fortschrittsliste, die Fragen eines neuen Tests, die Links zwischen den Blättern einer neuen Lernsituation –, gehört das zum Anlegen, und die App fragt erst bei „alle". Das gilt, bis die App beendet oder neu angemeldet wird. Kopien zählen nicht dazu, denn bei ihnen zeigt die Freigabe, was sich gegenüber dem Original ändert; und Verschieben, Sichtbarkeit und Löschen fragen immer.
 
 | Werkzeug | Was es tut | Freigabe |
 |---|---|---|
-| `aendern` | Schreibt einen gelesenen Ordner zurück: Aktivität, Abschnitt, Buchkapitel oder Frage – Text, Dateien, Einstellungen. Bricht ab, wenn Moodle nicht mehr den gelesenen Stand zeigt. Eine Frage bekommt dabei eine neue Version. | **ja** |
-| `aendern_mehrere` | Wie `aendern` für mehrere Seiten eines Abschnitts, mit einer Freigabe. | **ja** |
+| `aendern` | Schreibt einen gelesenen Ordner zurück: Aktivität, Abschnitt, Buchkapitel oder Frage – Text, Dateien, Einstellungen. Bricht ab, wenn Moodle nicht mehr den gelesenen Stand zeigt. Eine Frage bekommt dabei eine neue Version. | **ja**, außer bei gerade verborgen Angelegtem |
+| `aendern_mehrere` | Wie `aendern` für mehrere Seiten eines Abschnitts, mit einer Freigabe. | **ja**, außer bei gerade verborgen Angelegtem |
 | `claude_schreiben` | Schreibt die Konventionen eines Kurses oder eines Abschnitts in die Datei „CLAUDE.md". Fehlt das Verzeichnis „CLAUDE", legt die App es verborgen an – dann ohne Rückfrage, wie jedes neue, verborgene Objekt. | **ja**, wenn die Datei schon da ist |
-| `links_setzen` | Setzt die Links zwischen den Seiten eines Abschnitts, etwa einer Lernsituation. Der sichtbare Text bleibt gleich. Ist nichts zu tun, gibt es keine Freigabe. | **ja** |
+| `links_setzen` | Setzt die Links zwischen den Seiten eines Abschnitts, etwa einer Lernsituation: auf Blätter über ihre Kennung („Infoblatt 1“), auf andere Aktivitäten über ihren Namen in Anführungszeichen. Der sichtbare Text bleibt gleich. Ist nichts zu tun, gibt es keine Freigabe. | **ja**, außer bei gerade verborgen Angelegtem |
 | `sichtbarkeit_setzen` | Macht eine Aktivität oder einen Abschnitt für Lernende sichtbar oder verbirgt sie; ein Unterabschnitt samt allem darin. | **ja** |
 | `verschieben` | Verschiebt eine Aktivität in einen anderen Abschnitt oder einen Abschnitt hinter einen anderen. | **ja** |
 | `loeschen` | Löscht eine Aktivität oder einen Abschnitt samt Inhalt, auch eine Fragensammlung mit ihren Kategorien und Fragen. Zurückholen geht nur über den Papierkorb des Kurses, falls er eingeschaltet ist. | **ja** |
 | `buchkapitel_verschieben`, `buch_ordnen` | Verschieben ein Kapitel schrittweise bzw. bringen die Hauptkapitel eines Buchs in eine Reihenfolge. | **ja** |
 | `buchkapitel_loeschen` | Löscht ein Kapitel, ein Hauptkapitel samt Unterkapiteln. | **ja** |
 | `fragen_loeschen` | Löscht Fragen endgültig, jede mit allen Versionen. Steckt eine in einem Test, verbirgt Moodle sie nur. | **ja** |
-| `fortschrittsliste_aendern` | Legt Einträge an, ändert, löscht, ordnet und rückt sie ein. | **ja** |
-| `board_aendern` | Legt Spalten an, benennt sie um, verschiebt, sperrt und löscht sie (nur leere, außer es ist ausdrücklich verlangt); eigene Notizen. | **ja** |
-| `kanban_aendern` | Spalten und Karten des gemeinsamen Boards: anlegen, ändern, verschieben, löschen (nur leere Spalten, außer es ist ausdrücklich verlangt). | **ja** |
+| `fortschrittsliste_aendern` | Legt Einträge an, auf Wunsch gleich als Überschrift oder optional; ändert, löscht, ordnet und rückt sie ein. | **ja**, außer bei gerade verborgen Angelegtem |
+| `board_aendern` | Legt Spalten an, benennt sie um, verschiebt, sperrt und löscht sie (nur leere, außer es ist ausdrücklich verlangt); eigene Notizen. | **ja**, außer bei gerade verborgen Angelegtem |
+| `kanban_aendern` | Spalten und Karten des gemeinsamen Boards: anlegen, ändern, verschieben, löschen (nur leere Spalten, außer es ist ausdrücklich verlangt). | **ja**, außer bei gerade verborgen Angelegtem |
 | `wikiseite_loeschen` | Löscht eine Wikiseite, nie die Startseite. | **ja** |
-| `bewertungsschema_setzen` | Schreibt die Rubrik oder Bewertungsrichtlinie einer Aufgabe, mit Vorher-nachher-Vergleich. | **ja** |
-| `test_aendern` | Ändert die Zusammenstellung eines Tests: Fragen und Zufallsfragen einfügen, entfernen, Punkte, Reihenfolge, Seiten, Beste Bewertung, Fragen mischen. | **ja** |
+| `bewertungsschema_setzen` | Schreibt die Rubrik oder Bewertungsrichtlinie einer Aufgabe, mit Vorher-nachher-Vergleich. | **ja**, außer bei gerade verborgen Angelegtem |
+| `test_aendern` | Ändert die Zusammenstellung eines Tests: Fragen und Zufallsfragen einfügen, entfernen, Punkte, Reihenfolge, Seiten, Beste Bewertung, Fragen mischen. | **ja**, außer bei gerade verborgen Angelegtem |
 | `stack_varianten` | Ohne Angaben nur die eingesetzten Varianten einer STACK-Frage zeigen; mit `anzahl` oder `seed` Varianten einsetzen. | **ja**, wenn es etwas einsetzt |
 
 #### Ansehen
@@ -356,8 +361,8 @@ Das Feld **Bestätigungen** oben im Fenster hat drei Stufen; die Hilfe hinter de
 
 | Stufe | Wann die App fragt | Wofür |
 |---|---|---|
-| **alle** | vor jedem Vorgang, der in Moodle etwas schreibt – auch vor verborgen Angelegtem, Kopien, neuen Fragenkategorien und importierten Fragen | Für den Anfang, solange Sie sehen möchten, was die KI tut. Rechnen Sie mit vielen Fenstern: Eine Lernsituation mit zwölf Blättern sind zwölf Bestätigungen. |
-| **mittel** | vor allem, was Bestehendes anfasst oder sofort für Lernende sichtbar wird: Ändern, Verschieben, Sichtbarkeit, Löschen, sichtbar Anlegen | Die Voreinstellung. Neues entsteht verborgen und ohne Rückfrage. |
+| **alle** | vor jedem Vorgang, der in Moodle etwas schreibt – auch vor verborgen Angelegtem und dem, was die KI gleich danach hineinschreibt, vor Kopien, neuen Fragenkategorien und importierten Fragen | Für den Anfang, solange Sie sehen möchten, was die KI tut. Rechnen Sie mit vielen Fenstern: Eine Lernsituation mit zwölf Blättern sind zwölf Bestätigungen. |
+| **mittel** | vor allem, was Bestehendes anfasst oder sofort für Lernende sichtbar wird: Ändern, Verschieben, Sichtbarkeit, Löschen, sichtbar Anlegen | Die Voreinstellung. Neues entsteht verborgen und ohne Rückfrage, ebenso was die KI gleich danach hineinschreibt. |
 | **keine** | nie | Wenn Sie zügig arbeiten möchten. Das Feld ist dann rot. |
 
 Was die Stufe nicht ändert: Die KI kommt an keine Daten von Lernenden, nennt vor jedem Verschieben, Verbergen und Löschen den Namen, wie er jetzt in Moodle steht, und bricht ab, wenn er nicht passt; eine Änderung auf einem älteren Stand lehnt die App ab; jeder Vorgang steht im Protokoll; und jedes Bildschirmfoto braucht Ihren Klick – es entscheidet nicht über eine Änderung, sondern darüber, welches Bild aus Ihrem Kurs an die KI geht. Ebenso bleibt der Plan: Die KI legt immer erst vor, was sie tun will.
@@ -606,7 +611,7 @@ flutter test tool/bilder_test.dart --update-goldens
 4. **Durchspielen** im Testkurs, danach aufräumen. Befunde über Moodle als
    Kommentar an den Code.
 5. **Skill** ergänzen, der das Werkzeug benutzt; README und `CHANGELOG.md`
-   ergänzen, wenn sich für Benutzerinnen und Benutzer etwas ändert. Kommt eine Aktivität oder ein Fragetyp dazu oder ändert sich, was damit geht, immer auch die Übersicht „Unterstützte Aktivitäten und Fragetypen" in Teil 2 nachziehen – sie muss stets dem Code entsprechen. Ebenso die Werkzeugtabellen in Teil 3: Neues Werkzeug, geänderte Beschreibung oder geändertes Freigabeverhalten (Spalte „Freigabe", dazu „Wie viele Bestätigungen Sie bekommen", wenn sich die Stufen ändern), und bei jeder Änderung an Sperrliste, Positivliste oder Browserliste die Zusammenfassung unter „Sperrliste und Positivliste".
+   ergänzen, wenn sich für Benutzerinnen und Benutzer etwas ändert. Kommt eine Aktivität oder ein Fragetyp dazu, sagt der Skill auch, wofür sie sich anbietet – am Gerät, auf Papier, gemischt –, und eine Aktivität muss im Entwurf einer Lernsituation vorkommen können; sonst schlägt die KI sie nie vor. Kommt eine Aktivität oder ein Fragetyp dazu oder ändert sich, was damit geht, immer auch die Übersicht „Unterstützte Aktivitäten und Fragetypen" in Teil 2 nachziehen – sie muss stets dem Code entsprechen. Ebenso die Werkzeugtabellen in Teil 3: Neues Werkzeug, geänderte Beschreibung oder geändertes Freigabeverhalten (Spalte „Freigabe", dazu „Wie viele Bestätigungen Sie bekommen", wenn sich die Stufen ändern), und bei jeder Änderung an Sperrliste, Positivliste oder Browserliste die Zusammenfassung unter „Sperrliste und Positivliste".
 
 ### Die Skills
 
@@ -615,7 +620,7 @@ flutter test tool/bilder_test.dart --update-goldens
 | `skills/moodle/` | Kurse: Struktur, Aktivitäten, Abschnitte, Bücher, Wiki, Board, Kanban, Bewertungsraster |
 | `skills/moodle-fragen/` | Fragensammlungen, Fragetypen, STACK, CodeRunner, Tests |
 | `skills/lernsituation/` | Lernsituationen im Arbeitsordner entwerfen und prüfen, bevor `moodle` sie in den Kurs bringt; Kursabschnitte beurteilen; wählbar, für berufsbildende Schulen (`wahlSkills` in `lib/einrichtung.dart`) |
-| `skills/gemeinsam/` | Gleichanteile: Abschnitte, die in mehreren Skills gleich stehen (Plan, Lücken, Datenschutzbefund, erfundene Namen, Urheberrecht, HTML-Regeln, Hausstil für Zeichnungen …) |
+| `skills/gemeinsam/` | Gleichanteile: Abschnitte, die in mehreren Skills gleich stehen (Plan, Lücken, Datenschutzbefund, erfundene Namen, Urheberrecht, HTML-Regeln, Hausstil für Zeichnungen, Anregungen zum Einsatz der Aktivitäten …) |
 | `skills/build.py` | setzt die Gleichanteile ein, schnürt die Pakete einer Version nach `skills/dist/`, prüft sie aus dem fertigen Paket |
 | `skills/dist/` | die fertigen Pakete (`*.skill`), Bauergebnis und nicht versioniert; die App bringt sie als Assets mit und installiert sie nach Rückfrage (`lib/einrichtung.dart`) |
 | `skills/pruefung/` | Prüfskripte: Umlaute statt Ersatzschreibweisen, das Prüfskript der Lernsituationen |

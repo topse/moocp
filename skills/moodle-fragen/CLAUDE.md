@@ -4,6 +4,10 @@ Entwicklungsnotizen; nicht Teil des Pakets. Allgemeines zur Pflege der
 Skills: [../CLAUDE.md](../CLAUDE.md). Entscheidungen zu Fragen und Tests: E9
 der [Projekt-CLAUDE.md](../../CLAUDE.md).
 
+## Einen weiteren Fragetyp aufnehmen
+
+Gemessen nach dem Verfahren unten, dann in `zusatzAnlegbar` (`lib/moodle/fragen_xml.dart`), in die Tabelle im SKILL.md, mit seinem XML in `references/fragetypen.md` – und mit seinem Abschnitt in `references/einsatz.md`: wofür er sich anbietet, was er prüft, wie leicht er sich erraten lässt, ob er auf Papier geht ([../CLAUDE.md](../CLAUDE.md), „Einsatz").
+
 ## Die gemessenen XML-Muster
 
 Die XML-Muster je Fragetyp in `references/fragetypen.md`, `stack.md` und

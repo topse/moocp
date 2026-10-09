@@ -40,3 +40,5 @@ Und so, nicht anders:
 - Geschrieben wird erst nach einem Ja, mit `claude_schreiben` (Skill `moodle`).
   Gibt es schon eine Fassung, kommt die neue Zeile dazu — du schreibst den
   vorhandenen Text nicht um, weil du ihn anders formulieren würdest.
+
+Eine Ausnahme ist der **Steckbrief des Kurses** (Abschnitt „Kursspezifische Konventionen"): Seine Zeilen stehen schon im Plan, sobald du eine seiner Angaben erfragst, und zählen nicht als der eine Vorschlag der Sitzung.

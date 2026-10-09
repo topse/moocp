@@ -1036,7 +1036,8 @@ Future<void> bestaetigungenHilfe(BuildContext context) => showDialog<void>(
                 'alle',
                 null,
                 'Jeder Vorgang, der in Moodle etwas schreibt, wird gezeigt -- auch verborgen '
-                    'Angelegtes, Kopien, neue Fragenkategorien und importierte Fragen.',
+                    'Angelegtes und was die KI gleich danach hineinschreibt, Kopien, neue Fragenkategorien '
+                    'und importierte Fragen.',
                 'Für den Anfang, solange Sie sehen wollen, was die KI tut. Rechnen Sie mit vielen '
                     'Fenstern: Eine Lernsituation mit zwölf Blättern bedeutet zwölf Bestätigungen.',
               ),
@@ -1045,7 +1046,8 @@ Future<void> bestaetigungenHilfe(BuildContext context) => showDialog<void>(
                 null,
                 'Gezeigt wird, was Bestehendes anfasst oder sofort für Lernende sichtbar wird: '
                     'Ändern, Verschieben, Sichtbarkeit, Löschen, sichtbar Anlegen.',
-                'Die Voreinstellung. Neues entsteht verborgen und ohne Rückfrage -- sehen kann es '
+                'Die Voreinstellung. Neues entsteht verborgen und ohne Rückfrage, ebenso was die KI '
+                    'gleich danach hineinschreibt, etwa die Spalten eines neuen Boards -- sehen kann es '
                     'nur, wer den Kurs bearbeiten darf, und sichtbar wird es erst mit Ihrer Freigabe.',
               ),
               stufe(

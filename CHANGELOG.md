@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.14
+- Neu: Die KI schlägt vor, welche Aktivität und welcher Fragetyp sich wofür anbietet – auch Board, Kanban-Board, Wiki, Fortschrittsliste und Übungstest, am Gerät, auf Papier oder gemischt, etwa ein Schritt im Computerraum oder ein abfotografiertes Blatt als Abgabe.
+- Neu: Steckbrief des Kurses – Schulform, Anrede, Arbeitsweise und Ausstattung fragt die KI einmal und hält sie nach Ihrem Ja in den Konventionen des Kurses fest; auch für Lernsituationen.
+- Tests: Die KI klärt zuerst, wozu ein Test dient – Übung, Selbstkontrolle, Diagnose oder Leistungsfeststellung – und schlägt die Einstellungen danach vor.
+- Konventionen des Kurses: kein Fehlalarm mehr, nur weil darin von Bewertung, Abgabe oder Noten die Rede ist.
+- Freigaben: Was die KI gerade verborgen angelegt hat, füllt sie bei „mittel" ohne Rückfrage – etwa die Spalten eines neuen Boards oder die Links zwischen den Blättern einer neuen Lernsituation.
+- Fortschrittslisten: Neue Einträge entstehen auf Wunsch gleich als Überschrift oder optional.
+- Lernsituationen: Neben den Blättern gehört jetzt jede Aktivität dazu, die die KI anlegt – Board, Kanban-Board, Wiki, Fortschrittsliste, Test mit Fragen, Verzeichnis, Datei, Link –, und die Blätter verlinken sie mit ihrem Namen.
+- Fragen: Neue Fragen kommen in eine eigene Fragensammlung je Lernsituation oder Thema, nicht mehr in die Sammlung des ganzen Kurses.
+
 ## 0.9.12
 - Zeichnungen in STACK-Fragen: Eingaben mit Großbuchstaben im Namen (etwa „ansG") lassen sich an die Zeichnung binden; Regler zeigen die Einheit hinter dem Wert.
 

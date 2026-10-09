@@ -39,11 +39,13 @@ enum Bestaetigungen {
   keine('keine'),
 
   /// Alles, was Bestehendes anfasst oder sofort für Lernende sichtbar wird:
-  /// Ändern, Verschieben, Sichtbarkeit, Löschen, sichtbar Anlegen.
+  /// Ändern, Verschieben, Sichtbarkeit, Löschen, sichtbar Anlegen. Was die
+  /// App selbst gerade verborgen angelegt hat, ist kein Bestehendes; es zu
+  /// füllen fragt erst bei [alle] (fuellenAb in moodle/kurs.dart).
   mittel('mittel'),
 
   /// Dazu jeder Vorgang, der in Moodle etwas erzeugt -- auch verborgen
-  /// Angelegtes, Kopien, importierte Fragen.
+  /// Angelegtes und sein Füllen, Kopien, importierte Fragen.
   alle('alle');
 
   const Bestaetigungen(this.text);

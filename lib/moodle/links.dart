@@ -96,6 +96,12 @@ final _tagName = RegExp(r'^<\s*(/?)\s*([a-zA-Z][\w-]*)');
 /// Leerraum im Quelltext, auch als Entity.
 const _leer = r'(?:\s|&nbsp;|&#0*160;|&#[xX]0*[aA]0;)+';
 
+/// Anführungszeichen vor und hinter dem Namen einer Aktivität ohne Kennung,
+/// wie Lehrkräfte und Editoren sie schreiben: „…“, „…", "…", »…«, auch als
+/// Entity.
+const _auf = r'(?:„|“|"|»|&bdquo;|&ldquo;|&quot;|&raquo;|&#0*822[02];|&#[xX]0*201[cCeE];|&#0*34;|&#0*187;)';
+const _zu = r'(?:“|”|"|«|&ldquo;|&rdquo;|&quot;|&laquo;|&#0*822[01];|&#[xX]0*201[cCdD];|&#0*34;|&#0*171;)';
+
 String _klartext(String html) => nameNormal(html_parser.parseFragment(html).text ?? '');
 
 /// Die cmid, wenn [href] auf eine Aktivität dieser Moodle-Instanz zeigt.
@@ -181,6 +187,13 @@ String gezaehlt(List<String> texte) {
 ///      zuerst: So wird „Hilfe zu Arbeitsblatt 1" nie als „Arbeitsblatt 1"
 ///      verlinkt, „Arbeitsblatt 1" trifft nie „Arbeitsblatt 12", und eine
 ///      Nennung ohne Aktivität („Arbeitsblatt 5") fällt als Hinweis auf.
+///      Eine Aktivität ohne Kennung -- Board, Wiki, Test einer Lernsituation
+///      -- wird mit ihrem ganzen Namen in Anführungszeichen genannt („an die
+///      Pinnwand „Unsere Aufteilung""), und genau diese Nennung wird ein
+///      Link; die Anführungszeichen bleiben davor und dahinter. Nur in
+///      Anführungszeichen: Ein Test namens „Test" machte sonst jedes Wort
+///      „Test" zum Link. Beides sucht ein Muster, damit eine Kennung in einem
+///      zitierten Namen nicht noch einmal verlinkt wird.
 Verlinkung verlinken(String html,
     {required List<LinkZiel> ziele, required Uri basis, int? eigen, bool fuerLernende = false}) {
   final v = Verlinkung(html);
@@ -192,6 +205,11 @@ Verlinkung verlinken(String html,
     nachName.putIfAbsent(nameNormal(z.name), () => []).add(z);
   }
   final imAbschnitt = {for (final z in ziele) z.cmid: z};
+  // Aktivitäten ohne Kennung, nach ihrem ganzen Namen.
+  final vollnamen = <String, List<LinkZiel>>{};
+  for (final z in ziele.where((z) => z.hatSeite && z.kennung == null && nameNormal(z.name).isNotEmpty)) {
+    vollnamen.putIfAbsent(nameNormal(z.name), () => []).add(z);
+  }
 
   // Das eine Ziel zu einem Text, oder null -- mit Hinweis, wenn es einen
   // Grund gibt, den jemand wissen muss.
@@ -218,7 +236,7 @@ Verlinkung verlinken(String html,
     final cmid = h == null ? null : _aktivitaetIn(h.group(2)!, basis);
     if (cmid == null) return s;
     final text = _klartext(m.group(2)!);
-    final liste = nachKennung[text] ?? nachName[text];
+    final liste = nachKennung[text] ?? nachName[text] ?? vollnamen[text];
     if (liste == null) return s;
     final jetzt = imAbschnitt[cmid];
     if (jetzt != null) {
@@ -247,14 +265,27 @@ Verlinkung verlinken(String html,
     return '${m.group(1)}${r.group(1)}<a href="${linkAdresse(basis, z)}">${r.group(2)}</a>${r.group(3)}${m.group(4)}';
   });
 
-  // 3. Nennungen im Text.
-  if (nachKennung.isEmpty) return v;
+  // 3. Nennungen im Text: ein Name in Anführungszeichen (Gruppen 1 bis 3)
+  // oder eine Kennung.
+  if (nachKennung.isEmpty && vollnamen.isEmpty) return v;
   final staemme = {for (final k in nachKennung.keys) k.replaceFirst(RegExp(r'\s*\d+$'), '')}.toList()
     ..sort((a, b) => b.length.compareTo(a.length));
+  final namen = vollnamen.keys.toList()..sort((a, b) => b.length.compareTo(a.length));
   final nennung = RegExp(
-      '(?<![\\p{L}\\p{N}])(?:${staemme.map(_textMuster).join('|')})(?:$_leer)?\\d+(?![\\p{L}\\p{N}])',
+      [
+        if (namen.isNotEmpty) '($_auf)(${namen.map(_textMuster).join('|')})($_zu)',
+        if (staemme.isNotEmpty)
+          '(?<![\\p{L}\\p{N}])(?:${staemme.map(_textMuster).join('|')})(?:$_leer)?\\d+(?![\\p{L}\\p{N}])',
+      ].join('|'),
       unicode: true);
   String verlinkeText(String t) => t.replaceAllMapped(nennung, (m) {
+        if (namen.isNotEmpty && m.group(2) != null) {
+          final text = _klartext(m.group(2)!);
+          final z = waehle(text, vollnamen[text]!);
+          if (z == null) return m.group(0)!;
+          v.neu.add(text);
+          return '${m.group(1)}<a href="${linkAdresse(basis, z)}">${m.group(2)}</a>${m.group(3)}';
+        }
         final text = _klartext(m.group(0)!);
         final liste = nachKennung[text];
         if (liste == null) {

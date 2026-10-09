@@ -46,7 +46,7 @@ abgehakt hat.
 
 | `art` | Angaben |
 |---|---|
-| `neu` | `text`, `link?`, `tiefe?` (0 = Hauptebene) |
+| `neu` | `text`, `link?`, `tiefe?` (0 = Hauptebene), `zustand?` (`pflicht`, `optional`, `ueberschrift`; ohne Angabe, was Moodle vorgibt) |
 | `aendern` | `eintrag`, `text`, `link?` (weggelassen = behalten, `""` = entfernen) |
 | `loeschen`, `hoch`, `runter`, `einruecken`, `ausruecken` | `eintrag` |
 | `pflicht`, `optional`, `ueberschrift` | `eintrag` |
@@ -119,7 +119,8 @@ aktionen)`, alles nach einer Freigabe:
 Eine Spalte mit fremden Notizen löscht die App nur mit `mit_notizen: true` —
 den setzt du erst nach einem ausdrücklichen Ja. Ein Board wird meist aus einer
 **Vorlage** angelegt (Exit Ticket, SWOT, Kanban …) und bringt Spalten mit, die
-„Überschrift" heißen und umbenannt werden wollen. Im **Einzelnutzermodus**
+„Überschrift" heißen und umbenannt werden wollen; ohne Vorlage sind es drei
+solche Spalten (gemessen 09.10.2026). Im **Einzelnutzermodus**
 (`singleusermode` privat oder öffentlich) hat jede Person ein eigenes Board;
 dort arbeitet die App nicht.
 

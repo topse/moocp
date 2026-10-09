@@ -73,6 +73,47 @@ const String claudeBeschreibung = '''
 </div>
 ''';
 
+// Wortgrenzen, die Umlaute und ß als Buchstaben kennen: \b zählt nur ASCII,
+// und dann begänne in „Fußnoten" ein Wort „noten".
+const String _anfang = r'(?<![\p{L}\p{N}])';
+const String _ende = r'(?![\p{L}\p{N}])';
+
+// Bausteine des Musters für Personendaten.
+const String _begriffe = r'teilnehme\S*liste|schüler\S*daten|schueler\S*daten|noten(?:buch|übersicht|uebersicht)';
+const String _daten = 'noten|bewertungen|abgaben|testergebnisse|testversuche|leistungen|namen';
+const String _vonGruppe = r'\s+(?:der|von|aller|einzelner|jede[rsn]?|eines|einer)\s+(?:\S+\s+)?';
+const String _gruppe = 'schüler|schueler|lernende|teilnehme|kursteilnehme|klasse';
+const String _werNicht = r'wer\s+(?:noch\s+)?nicht';
+const String _werFrage = r'wer\s+(?:hat|haben|hatte)';
+const String _getan = 'abgegeben|abgehakt|bestanden|eingereicht|teilgenommen|gefehlt|geschrieben';
+const String _herauslesen = r'lies|lese|auslesen|exportier\S*|schick\S*|sende|übermittle|uebermittle';
+const String _imSatz = r'[^.?!\n]{0,40}';
+
+/// Was auf Personendaten zielt. Keine einzelnen Wortstämme: „note",
+/// „bewertung" und „abgabe" trafen auch „Bewertungsraster",
+/// „Leistungsbewertung", „Abgabe online", „Notebooks" und „Fußnote", und eine
+/// echte Konventionsdatei löste das Muster fast immer aus. Gemeldet werden
+/// Begriffe, die Personendaten benennen; Daten einer Lerngruppe („die Noten
+/// aller Schüler"); die Frage, wer etwas getan oder nicht getan hat; und das
+/// Herauslesen von Noten, Bewertungen oder Abgaben.
+///
+/// Mit Absicht nicht: „Ergebnisse", „Antworten" und „Versuche" -- sie stehen in
+/// Sätzen über Unterricht („Ergebnisse der Klasse im Plenum sichern",
+/// „Versuche im Labor") --, und der Relativsatz „Wer den Test bestanden hat,
+/// bekommt …", der eine Regel beschreibt statt nach Personen zu fragen. Ein
+/// Satz, der Personendaten verneint („Namen der Lernenden nie in
+/// Beispielen"), schlägt weiter an; das Muster ist ein Hinweis zum Nachfragen,
+/// keine Grenze -- die zieht die Sperrliste.
+final RegExp personendatenMuster = RegExp(
+    [
+      '$_anfang(?:$_begriffe)',
+      '$_anfang(?:$_daten)$_vonGruppe(?:$_gruppe)',
+      '$_anfang(?:$_werNicht|$_werFrage)$_ende$_imSatz$_anfang(?:$_getan)$_ende',
+      '$_anfang(?:$_herauslesen)$_ende$_imSatz$_anfang(?:noten|bewertungen|abgaben)$_ende',
+    ].join('|'),
+    caseSensitive: false,
+    unicode: true);
+
 final List<(RegExp, String)> verdachtsmuster = [
   (RegExp('ignorier|vergiss|missachte|überschreib|ueberschreib', caseSensitive: false), 'will Regeln aushebeln'),
   (RegExp(r'\bdu (musst|sollst|darfst jetzt|hast zu)\b', caseSensitive: false), 'formuliert Anweisungen an die KI'),
@@ -84,8 +125,7 @@ final List<(RegExp, String)> verdachtsmuster = [
       'behauptet Autorisierung'),
   (RegExp('https?://', caseSensitive: false), 'enthält externe Adressen'),
   (RegExp(r'\b(passwort|kennwort|token|api[- ]?key|zugangsdaten)\b', caseSensitive: false), 'nennt Zugangsdaten'),
-  (RegExp('note|bewertung|abgabe|schülerdaten|schuelerdaten|teilnehmerliste', caseSensitive: false),
-      'zielt auf Personendaten'),
+  (personendatenMuster, 'zielt auf Personendaten'),
 ];
 
 List<String> verdacht(String text) => [for (final (m, grund) in verdachtsmuster) if (m.hasMatch(text)) grund];

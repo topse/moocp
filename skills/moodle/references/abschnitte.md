@@ -66,6 +66,13 @@ Kommt sie als Entwurf aus dem Skill `lernsituation`, liegt alles bereit: `lernsi
 2. Die Einträge von `aktivitaeten` **in ihrer Reihenfolge** — neue Aktivitäten kommen ans Ende, so entsteht die Reihenfolge der Brücke ohne Verschieben: die Seite „SchuCu", die Lehrerhandreichung, die Handlungssituation, die Blätter, jede Lösung direkt hinter ihrem Blatt. Je Eintrag `aktivitaet_anlegen(kurs, abschnitt_id, typ, name, ordner: "<Entwurf>/<ordner>", einstellungen)`, alles verborgen. Zwei Sonderfälle:
    - **Buch** (`typ: "book"`): `aktivitaet_anlegen` ohne `ordner`, mit den Einstellungen des Eintrags; dann je Eintrag aus `kapitel.json`, in dieser Reihenfolge, `buchkapitel_anlegen(cmid, titel, unterkapitel, ordner: "<Entwurf>/<ordner>/kapitel-<id>")`.
    - **Unterabschnitt** (`typ: "subsection"`, ohne Ordner): anlegen, seine Abschnitts-id aus `kurs_uebersicht` holen und die folgenden Einträge dort anlegen, bis zum nächsten Unterabschnitt.
+   - **Weitere Aktivitäten** (`board`, `kanban`, `checklist`, `wiki`, `quiz`, `folder`, `resource`, `url`): `aktivitaet_anlegen` mit dem Ordner — er bringt die Beschreibung aus `introeditor.html` und die Dateien aus `bereiche/files/` mit — und den Einstellungen des Eintrags; ein Link ohne `ordner` ohne. Dann füllen, wie die Datei im Ordner es sagt (Aufbau: Skill `lernsituation`, `references/vorlagen.md`). Was die App gerade verborgen angelegt hat, füllt sie bei „mittel" ohne Rückfrage; bei „alle" kommt je Aufruf eine.
+     - **Board** (`board.json`): Ein neues Board ohne Vorlage hat drei Spalten namens „Überschrift" (gemessen 09.10.2026). `board_lesen`, dann **ein** `board_aendern`: die vorhandenen Spalten der Reihe nach umbenennen, überzählige löschen, fehlende mit `spalte_neu` anlegen, die Notizen mit `notiz_neu` dazu.
+     - **Kanban-Board** (`kanban.json`): Ein neues hat die Spalten „Zu erledigen", „In Arbeit", „Erledigt". `kanban_lesen`, dann **ein** `kanban_aendern`: Spalten angleichen wie beim Board, die Karten mit `karte_neu`.
+     - **Fortschrittsliste** (`eintraege.json`): **ein** `fortschrittsliste_aendern` mit je Eintrag `neu {text, tiefe, zustand}`, in der Reihenfolge der Datei.
+     - **Wiki** (`seiten.json`): Die Einstellungen des Eintrags tragen `firstpagetitle`; dann je Seite, in der Reihenfolge der Datei, `wikiseite_schreiben(cmid, titel, datei)` — die erste ist die Startseite.
+     - **Test** (`fragen.xml`): nach dem Skill `moodle-fragen`. Die Fragensammlung aus `fragen.sammlung` mit `fragensammlungen` suchen, sonst anlegen (`aktivitaet_anlegen`, Typ `qbank`); darin die Kategorie aus `fragen.kategorie` anlegen, falls es sie nicht gibt; `fragen_importieren` (die Nachweise für STACK und CodeRunner laufen dabei); dann **ein** `test_aendern`: die Fragen in der Reihenfolge der Datei einfügen, Punkte, `beste_bewertung: "summe"`, Mischen nach Plan.
+     - **Verzeichnis, Datei, Link**: nichts weiter.
 
    Ohne Entwurf gilt dieselbe Reihenfolge, und die Ordner entstehen beim Anlegen; bei Bedarf kommen `_Lehrerdateien` für Quelldateien (verborgen) und ein Verzeichnis (`folder`) mit Material für die Lernenden dazu.
 3. **die Links setzen** — erst jetzt hat jede Aktivität ihre Nummer:
@@ -73,13 +80,15 @@ Kommt sie als Entwurf aus dem Skill `lernsituation`, liegt alles bereit: `lernsi
    macht jede Nennung eines Blatts zum Link, mit der Kennung als Text, so wie
    sie im Satz steht (in „Lies"-, „Dazu"- und „Gehört zu"-Zeilen, „→ für",
    „Abb. 1 auf Arbeitsblatt 1", der Spalte Material im Ablaufplan); in der
-   Materialübersicht der Handreichung mit dem ganzen Namen. Sie lässt aus,
+   Materialübersicht der Handreichung mit dem ganzen Namen; eine weitere
+   Aktivität, wo ihr ganzer Name in Anführungszeichen steht. Sie lässt aus,
    was nicht verlinkt wird: die Seite „SchuCu", ein Textfeld als Ziel (es hat
    keine eigene Seite, die Handlungssituation steht ohnehin oben im
    Abschnitt) und eine Lösung auf einer Seite, die Lernende schon sehen. Sie
    prüft, dass sich am sichtbaren Text nichts ändert, und schreibt mit
    **einer** Freigabe, in der die Lehrkraft jede Seite mit ihren neuen Links
-   sieht — kündige sie im Chat an. Du öffnest dafür keine Seite und setzt
+   sieht — kündige sie im Chat an. Sind alle Seiten gerade verborgen angelegt,
+   kommt sie erst bei „alle"; bei „mittel" setzt die App die Links ohne. Du öffnest dafür keine Seite und setzt
    keinen Link von Hand. Was die Antwort unter „Nicht verlinkt" nennt, ist
    eine Nennung ohne passende Aktivität (eine Kennung, die es nicht gibt, oder
    zwei Aktivitäten mit derselben): Das behebst du am Text oder Namen und

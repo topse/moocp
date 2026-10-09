@@ -14,7 +14,7 @@
 <h3>Vorwissen, Anschluss und Anrede</h3>
 <p>Vorausgesetzt: IP-Adressen und Subnetzmasken lesen und vergeben; einen Switch in der Simulation anschließen und Ports benennen — beides aus der vorigen Lernsituation. Nicht vorausgesetzt: VLANs. Anschluss: Die folgende Lernsituation verbindet die VLANs über einen Router (Inter-VLAN-Routing); die Rückfrage nach dem eigenen Subnetz je VLAN leitet dorthin über. Anrede der Lernenden auf den Blättern: <strong>du</strong>.</p>
 <h3>Lernumgebung</h3>
-<p>Rechnerraum mit Netzsimulation (Packet Tracer 8 oder gleichwertig), ein Rechner je Gruppe, Beamer für die Vorstellung in Schritt 7, die Blätter auf Papier, Internetzugang für die Recherche der Switch-Befehle in Schritt 5. Vorzubereiten ist die Datei <code>netz-vorher.pkt</code> mit dem Netz aus Abb. 1 auf Arbeitsblatt 1 — sie bringt die Lehrkraft mit, der Skill liefert sie nicht. Ohne Simulation schreiben die Gruppen in Schritt 5 einen Konfigurationsplan auf Papier (VLANs und Ports je Switch); die Fremdkontrolle in Schritt 6 prüft ihn gegen dieselbe Prüfliste.</p>
+<p>Rechnerraum mit Netzsimulation (Packet Tracer 8 oder gleichwertig), ein Rechner je Gruppe, Beamer für die Vorstellung in Schritt 7, die Blätter auf Papier, Internetzugang für die Recherche der Switch-Befehle in Schritt 5. In Schritt 4 heftet jede Gruppe ihre Entscheidung am Rechner an das Board „Unsere VLAN-Aufteilung"; ohne Rechner tut es ein Plakat je Gruppe. Vorzubereiten ist die Datei <code>netz-vorher.pkt</code> mit dem Netz aus Abb. 1 auf Arbeitsblatt 1 — sie bringt die Lehrkraft mit, der Skill liefert sie nicht. Ohne Simulation schreiben die Gruppen in Schritt 5 einen Konfigurationsplan auf Papier (VLANs und Ports je Switch); die Fremdkontrolle in Schritt 6 prüft ihn gegen dieselbe Prüfliste.</p>
 <h3>Ablaufplan</h3>
 <table class="table table-bordered">
 <thead>
@@ -24,7 +24,7 @@
 <tr><td>1</td><td>Informieren</td><td>15</td><td>Einstieg: Handlungssituation, Auftrag klären, offene Fragen sammeln</td><td>Plenum</td><td>Arbeitsblatt 1</td></tr>
 <tr><td>2</td><td>Informieren</td><td>20</td><td>VLAN-Grundlagen lesen, Verständnisaufgaben 1–2 auf Arbeitsblatt 1</td><td>Einzel</td><td>Infoblatt 1</td></tr>
 <tr><td>3</td><td>Planen</td><td>30</td><td>Aufteilung entwerfen: Welche Abteilung in welches VLAN, welche Ports, wo Trunks</td><td>Gruppe (3)</td><td>Arbeitsblatt 1, Hilfe zu Arbeitsblatt 1</td></tr>
-<tr><td>4</td><td>Entscheiden</td><td>15</td><td>Gruppen legen sich fest und schreiben die Begründung; Lehrkraft als „Betriebsleiter" stellt Rückfragen</td><td>Gruppe (3)</td><td>Arbeitsblatt 1</td></tr>
+<tr><td>4</td><td>Entscheiden</td><td>15</td><td>Gruppen legen sich fest und schreiben die Begründung; Lehrkraft als „Betriebsleiter" stellt Rückfragen</td><td>Gruppe (3)</td><td>Arbeitsblatt 1, „Unsere VLAN-Aufteilung"</td></tr>
 <tr><td>5</td><td>Durchführen</td><td>50</td><td>Befehle recherchieren, Konfiguration in der Simulation nach eigenem Konzept</td><td>Gruppe (3)</td><td>Arbeitsblatt 2, Vertiefung zu Arbeitsblatt 2</td></tr>
 <tr><td>6</td><td>Kontrollieren</td><td>20</td><td>Fremdkontrolle: Gruppen tauschen und prüfen nach Prüfliste</td><td>Partner (Gruppentausch)</td><td>Arbeitsblatt 2</td></tr>
 <tr><td>7</td><td>Reflektieren</td><td>20</td><td>Kurzvorstellung je Gruppe (3 min), dann: Was war die schwerste Entscheidung?</td><td>Plenum</td><td>—</td></tr>
@@ -58,8 +58,8 @@
 <h4>Schritt 4: Entscheiden und begründen</h4>
 <ul>
 <li><strong>Ziel:</strong> Jede Gruppe hat sich festgelegt und kann es in drei Sätzen begründen.</li>
-<li><strong>Ablauf:</strong> Aufgabe 4 auf Arbeitsblatt 1. Die Lehrkraft tritt als Betriebsleiter auf und stellt jeder Gruppe eine Rückfrage („Und wenn die Entwicklung einen zweiten Drucker will?").</li>
-<li><strong>Material:</strong> Arbeitsblatt 1, Aufgabe 4.</li>
+<li><strong>Ablauf:</strong> Aufgabe 4 auf Arbeitsblatt 1. Jede Gruppe heftet ihre Aufteilung mit Begründung an die Pinnwand „Unsere VLAN-Aufteilung"; so liegen alle Entscheidungen nebeneinander, und die Klasse sieht, dass es mehr als eine vertretbare gibt. Die Lehrkraft tritt als Betriebsleiter auf und stellt jeder Gruppe eine Rückfrage („Und wenn die Entwicklung einen zweiten Drucker will?").</li>
+<li><strong>Material:</strong> Arbeitsblatt 1, Aufgabe 4; die Pinnwand „Unsere VLAN-Aufteilung".</li>
 <li><strong>Worauf achten:</strong> Begründung muss auf das Anliegen zurückgehen (Trennung, Sicherheit), nicht auf Bequemlichkeit („weniger Arbeit").</li>
 </ul>
 <h4>Schritt 5: Konfiguration</h4>
@@ -104,6 +104,7 @@
 <tr><td>Lösung zu Arbeitsblatt 2: Umsetzung und Prüfung</td><td>Lösung</td><td>— (Lehrkraft)</td><td>Musterkonfiguration</td></tr>
 <tr><td>Vertiefung zu Arbeitsblatt 2: Störungssuche</td><td>Vertiefung</td><td>5, ab min 35</td><td>Störungssuche</td></tr>
 <tr><td>Lösung zur Vertiefung zu Arbeitsblatt 2: Störungssuche</td><td>Lösung</td><td>— (Lehrkraft)</td><td></td></tr>
+<tr><td>„Unsere VLAN-Aufteilung"</td><td>Board</td><td>4</td><td>Entscheidungen der Gruppen nebeneinander, Grundlage der Rückfragen</td></tr>
 <tr><td>Infoblatt 1: VLAN-Grundlagen</td><td>Infoblatt</td><td>2</td><td>Begriffe VLAN, Access, Trunk, Tag</td></tr>
 <tr><td>Abb. 1 auf Infoblatt 1</td><td>Zeichnung</td><td>2</td><td>Ist-Zustand des Netzes, dieselbe Zeichnung als Abb. 1 auf Arbeitsblatt 1</td></tr>
 </tbody>

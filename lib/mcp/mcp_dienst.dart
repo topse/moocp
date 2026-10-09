@@ -43,9 +43,10 @@ const _stufenText = {
   Bestaetigungen.keine: 'Es kommt KEINE Freigabe; jede Änderung läuft sofort. Kündige keine an. '
       'Die Freigabe je Bildschirmfoto bleibt davon unberührt.',
   Bestaetigungen.mittel: 'Freigabe vor Ändern, Verschieben, Sichtbarkeit, Löschen und sichtbarem '
-      'Anlegen. Verborgen Anlegen, Duplizieren und Fragen importieren laufen ohne.',
+      'Anlegen. Verborgen Anlegen, Duplizieren und Fragen importieren laufen ohne -- ebenso das Füllen und '
+      'Ändern dessen, was die App gerade selbst verborgen angelegt hat, solange es verborgen ist.',
   Bestaetigungen.alle: 'Freigabe vor JEDEM Vorgang, der in Moodle etwas schreibt -- auch verborgen '
-      'Anlegen, Duplizieren, Kategorie anlegen und Fragen importieren. Sag im Plan, wie viele '
+      'Anlegen und das Füllen des gerade Angelegten, Duplizieren, Kategorie anlegen und Fragen importieren. Sag im Plan, wie viele '
       'Freigaben kommen (eine je Aufruf; Mehreres in einem Aufruf bündelt die App).',
 };
 
@@ -1026,7 +1027,8 @@ class McpDienst {
 
     _werkzeug(server, 'fortschrittsliste_aendern',
         titel: 'Fortschrittsliste ändern',
-        beschreibung: 'Ändert Einträge nach EINER Freigabe. aktionen, je {art, …}: neu {text, link?, tiefe?}; aendern '
+        beschreibung: 'Ändert Einträge nach EINER Freigabe. aktionen, je {art, …}: neu {text, link?, tiefe?, zustand? '
+            '(pflicht, optional, ueberschrift)}; aendern '
             '{eintrag, text, link?}; loeschen, hoch, runter, einruecken, ausruecken, pflicht, optional, ueberschrift '
             '{eintrag}.',
         parameter: {'cmid': cmidDer, 'name': _name, 'aktionen': aktionenSchema},

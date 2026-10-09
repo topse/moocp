@@ -245,6 +245,7 @@ Future<String> wikiseiteSchreiben(MoodleZugang moodle, Freigaben freigaben,
     final v = zeilenVergleich(vorhanden.text, (html_parser.parseFragment(html).text ?? '').replaceAll(RegExp(r'\s+'), ' ').trim());
     final ja = await freigaben.anfragen(FreigabeAnfrage(
       titel: 'Wikiseite überschreiben?',
+      ab: await fuellenAb(moodle, kurs, [cmid]),
       punkte: [
         'Seite „${vorhanden.titel}" in $wo',
         'Bisher ${vorhanden.text.length} Zeichen, neu ${html.length} Zeichen HTML. Der ganze Inhalt wird ersetzt -- '

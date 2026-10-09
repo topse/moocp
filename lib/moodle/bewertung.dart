@@ -305,6 +305,7 @@ Future<String> bewertungsschemaSetzen(MoodleZugang moodle, Freigaben freigaben,
   final nachherText = _schemaText(nameNeu, m, kriterien, optionen, s.optionenLabels);
   final ja = await freigaben.anfragen(FreigabeAnfrage(
     titel: 'Bewertungsschema ändern?',
+    ab: await fuellenAb(moodle, f0.kurs, [cmid]),
     punkte: [
       '${m == 'rubric' ? 'Bewertungsraster' : 'Bewertungsrichtlinie'} der Aufgabe „${f0.name}" (cmid $cmid'
           '${f0.kurs == null ? '' : ', ${await kursBezeichnung(moodle, f0.kurs!)}'})',

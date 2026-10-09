@@ -117,6 +117,17 @@ String listenaktionPruefen(String art, int id, List<Eintrag> vorher, List<Eintra
   };
 }
 
+/// Die Art, die ein neuer Eintrag bekommen soll (`zustand`), oder null für
+/// die Vorgabe. Unbekanntes bricht ab, bevor gefragt wird.
+String? _neuerZustand(Map<String, Object?> a) {
+  final z = a['zustand'];
+  if (z == null) return null;
+  if (z is! String || !const {'pflicht', 'optional', 'ueberschrift'}.contains(z)) {
+    throw MoodleFehler('zustand „$z" gibt es nicht. Möglich: pflicht, optional, ueberschrift.');
+  }
+  return z;
+}
+
 String _liste(List<Eintrag> l) => l.isEmpty
     ? '  (keine Einträge)'
     : [for (final e in l) '  ${'  ' * e.tiefe}${e.id} „${e.text}" [${e.zustand}]${e.link == null ? '' : ' -> ${e.link}'}'].join('\n');
@@ -138,14 +149,17 @@ Future<String> fortschrittslisteAendern(MoodleZugang moodle, Freigaben freigaben
     'Fortschrittsliste „${f0.name}" (cmid $cmid${kurs == null ? '' : ', ${await kursBezeichnung(moodle, kurs)}'})',
     for (final a in aktionen)
       switch (a['art']) {
-        'neu' => 'Neuer Eintrag „${a['text']}"${a['link'] == null ? '' : ' mit Link ${a['link']}'}',
+        'neu' => 'Neuer Eintrag „${a['text']}"${a['link'] == null ? '' : ' mit Link ${a['link']}'}'
+            '${_neuerZustand(a) == null ? '' : ' (${_neuerZustand(a)})'}',
         'aendern' => '„${text(a['eintrag'])}" wird „${a['text']}"',
         final String art when listenAktionen.containsKey(art) => '$art: „${text(a['eintrag'])}"',
         _ => throw MoodleFehler('Unbekannte Aktion „${a['art']}". Möglich: neu, aendern, ${listenAktionen.keys.join(", ")}.'),
       },
   ];
   final ja = await freigaben.anfragen(
-      FreigabeAnfrage(titel: 'Fortschrittsliste ändern?', punkte: punkte, vergleich: const [], knopf: 'Ändern'));
+      FreigabeAnfrage(
+          titel: 'Fortschrittsliste ändern?', punkte: punkte, vergleich: const [], knopf: 'Ändern',
+          ab: await fuellenAb(moodle, kurs, [cmid])));
   if (!ja) return 'Nicht geändert: in der App abgelehnt oder nicht rechtzeitig freigegeben.';
 
   final erg = <String>[];
@@ -168,6 +182,16 @@ Future<String> fortschrittslisteAendern(MoodleZugang moodle, Freigaben freigaben
         final nach = await eintraegeLesen(moodle, cmid);
         final neu = nach.where((e) => !jetzt.any((v) => v.id == e.id)).toList();
         erg.add('Neu „${a['text']}": ${neu.length == 1 ? 'id ${neu.single.id}, Tiefe ${neu.single.tiefe}' : 'NICHT eindeutig angekommen'}');
+        // Die Art setzt Moodle nicht beim Anlegen, sondern über dieselbe
+        // Aktion wie bei einem vorhandenen Eintrag -- jetzt, wo die id
+        // bekannt ist. So braucht eine Liste mit Überschriften keinen
+        // zweiten Aufruf und keine zweite Freigabe.
+        final zustand = _neuerZustand(a);
+        if (zustand != null && neu.length == 1 && neu.single.zustand != zustand) {
+          await moodle.aufrufen('/mod/checklist/edit.php?id=$cmid&sesskey=$s&itemid=${neu.single.id}'
+              '&action=${listenAktionen[zustand]}');
+          erg.add('$zustand ${neu.single.id}: ${listenaktionPruefen(zustand, neu.single.id, nach, await eintraegeLesen(moodle, cmid))}');
+        }
       case 'aendern':
         final alt = jetzt.where((e) => '${e.id}' == '${a['eintrag']}').firstOrNull;
         if (alt == null) throw MoodleFehler('Eintrag ${a['eintrag']} gibt es nicht.');

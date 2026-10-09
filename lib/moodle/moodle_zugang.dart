@@ -197,6 +197,15 @@ class MoodleZugang {
   int? _eigeneId;
   int? get eigeneId => _eigeneId;
 
+  /// Die Aktivitäten, die die App seit der Anmeldung verborgen angelegt hat
+  /// (aktivitaet_anlegen). Solange eine davon verborgen ist, gehört sie noch
+  /// der Arbeitssitzung: Sie zu füllen fragt erst bei „alle", wie das Anlegen
+  /// selbst ([fuellenAb] in kurs.dart). Nur im Speicher -- ein Neustart oder
+  /// eine neue Anmeldung vergisst sie, dann fragt die App wieder ab „mittel".
+  /// Kopien kommen nicht hinein: Bei ihnen ist der Zeilenvergleich zum
+  /// Original der Sinn der Freigabe.
+  final Set<int> selbstAngelegt = {};
+
   /// Moodle-AJAX-Dienste, die aufgerufen werden dürfen, mit einer Prüfung
   /// ihrer Argumente. Keiner liefert Daten anderer Personen.
   Map<String, bool Function(Map a)> get dienste => {
@@ -553,6 +562,7 @@ class MoodleZugang {
     _cookies.clear();
     _sesskey = null;
     _eigeneId = null;
+    selbstAngelegt.clear();
     _benutzer = null;
     _passwort = null;
     _angemeldet = false;
