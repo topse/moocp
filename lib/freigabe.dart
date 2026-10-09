@@ -22,6 +22,7 @@
 // Werkzeug muss ihn durchreichen.
 
 import 'dart:async';
+import 'dart:collection';
 
 import 'package:flutter/foundation.dart';
 
@@ -109,6 +110,12 @@ class FreigabeAnfrage {
   /// genau sie (Bildschirmfotos).
   final List<Uint8List> bilder;
 
+  /// Wann die Frist endet; gesetzt von [Freigaben.anfragen]. Sie läuft ab der
+  /// Anfrage, auch solange sie hinter einer anderen wartet -- der Dialog nennt
+  /// deshalb, was davon noch bleibt.
+  DateTime? get ablauf => _ablauf;
+  DateTime? _ablauf;
+
   final Completer<bool> _antwort = Completer<bool>();
   bool get offen => !_antwort.isCompleted;
 }
@@ -138,11 +145,13 @@ class Freigaben extends ChangeNotifier {
   FreigabeAnfrage? _aktuell;
   FreigabeAnfrage? get aktuell => _aktuell;
 
+  /// Die Anfragen hinter der offenen, in der Reihenfolge, in der sie kamen.
+  final _warteschlange = Queue<FreigabeAnfrage>();
+
   /// Wie viele Anfragen hinter der offenen warten. Der Dialog zeigt es, damit
   /// die Lehrkraft weiß, dass nach ihrer Entscheidung noch etwas kommt;
   /// Zuhörer erfahren jede Änderung.
-  int get wartend => _wartend;
-  int _wartend = 0;
+  int get wartend => _warteschlange.length;
 
   static const _abbruch = #freigabenAbbruch;
 
@@ -157,12 +166,21 @@ class Freigaben extends ChangeNotifier {
   /// Stellt eine Anfrage und wartet auf die Entscheidung, höchstens [frist]
   /// und nur, solange der Client wartet ([mitAbbruch]). Es gibt immer nur eine
   /// offene Anfrage; eine zweite reiht sich ein ([wartend], mit Eintrag im
-  /// Protokoll) und wartet, bis die erste entschieden ist. Ihre Frist beginnt
-  /// erst, wenn sie offen ist.
+  /// Protokoll) und ist dran, sobald die erste beantwortet ist.
+  ///
+  /// Die Frist läuft ab der Anfrage, auch während sie wartet. Sie soll vor dem
+  /// Zeitlimit des Clients enden (`bionicZeitlimit`, einrichtung.dart), und
+  /// das läuft ab dem Werkzeugaufruf; begänne sie erst mit dem Dialog, könnte
+  /// eine lange wartende Anfrage noch freigegeben werden, wenn der Client
+  /// schon aufgibt, und Moodle würde geändert, während die KI den Vorgang für
+  /// gescheitert hält.
   ///
   /// Liegt die eingestellte Stufe unter der der Anfrage, wird nicht gefragt:
   /// Die Lehrkraft hat das so eingestellt, das Protokoll hält es fest (A4),
-  /// und der Werkzeugaufruf läuft durch.
+  /// und der Werkzeugaufruf läuft durch. Entschieden wird das beim Anfragen;
+  /// für Wartende ändert sich daran nichts mehr, und das muss es auch nicht:
+  /// Solange ein Freigabedialog offen ist, sperrt er die Titelzeile mit dem
+  /// Feld für die Stufe, und ohne offenen Dialog wartet keine Anfrage.
   Future<bool> anfragen(FreigabeAnfrage a) async {
     if (!fragt(a)) {
       ausgelassen++;
@@ -170,54 +188,55 @@ class Freigaben extends ChangeNotifier {
       a._antwort.complete(true);
       return true;
     }
-    var abgebrochen = false;
-    final abbruch = (Zone.current[_abbruch] as Future<void>?)?.then((_) => abgebrochen = true);
-    if (_aktuell != null) {
-      // Einreihen. Die Wartenden wachen in der Reihenfolge auf, in der sie
-      // kamen; wer zuerst sieht, dass keine Anfrage mehr offen ist, ist dran.
-      final davor = 1 + _wartend;
-      protokoll.eintrag(Art.info,
-          'Freigabe wartet hinter ${davor == 1 ? 'einer anderen' : '$davor anderen'}: ${a.titel}');
-      _wartend++;
-      notifyListeners();
-      while (_aktuell != null && !abgebrochen) {
-        await Future.any([_aktuell!._antwort.future, ?abbruch]);
-      }
-      // Kein eigenes notifyListeners: Beide Wege unten melden sich ohnehin.
-      _wartend--;
-    }
-    // Abgebrochen, während eine andere Anfrage offen war: gar nicht erst
-    // fragen.
-    if (abgebrochen) {
-      protokoll.eintrag(Art.info, 'Die KI wartet nicht mehr -- nicht gefragt, nicht gespeichert: ${a.titel}');
-      a._antwort.complete(false);
-      notifyListeners();
-      return false;
-    }
-    _aktuell = a;
-    protokoll.eintrag(Art.info, 'Freigabe angefragt: ${a.titel} (Frist ${_dauer(frist)})');
-    notifyListeners();
+    a._ablauf = DateTime.now().add(frist);
     // Die Frist hängt an einem eigenen Timer, nicht am Warten auf die Antwort:
     // So läuft sie sicher ab, auch wenn niemand den Dialog sieht.
-    final uhr = Timer(frist, () {
-      if (a.offen) {
-        protokoll.eintrag(Art.info, 'Frist abgelaufen -- nicht gespeichert');
-        a._antwort.complete(false);
-      }
-    });
-    abbruch?.then((_) {
-      if (a.offen) {
-        protokoll.eintrag(Art.info, 'Die KI wartet nicht mehr -- nicht gespeichert');
-        a._antwort.complete(false);
-      }
-    });
+    final uhr = Timer(frist, () => _verfallen(a, 'Frist abgelaufen'));
+    (Zone.current[_abbruch] as Future<void>?)?.then((_) => _verfallen(a, 'Die KI wartet nicht mehr'));
+    if (_aktuell == null) {
+      _oeffnen(a);
+    } else {
+      final davor = 1 + _warteschlange.length;
+      protokoll.eintrag(Art.info,
+          'Freigabe wartet hinter ${davor == 1 ? 'einer anderen' : '$davor anderen'}: ${a.titel}');
+      _warteschlange.add(a);
+    }
+    notifyListeners();
     try {
       return await a._antwort.future;
     } finally {
       uhr.cancel();
-      _aktuell = null;
-      notifyListeners();
     }
+  }
+
+  void _oeffnen(FreigabeAnfrage a) {
+    _aktuell = a;
+    protokoll.eintrag(Art.info, 'Freigabe angefragt: ${a.titel} (Frist ${_dauer(a._ablauf!.difference(DateTime.now()))})');
+  }
+
+  /// Beantwortet [a], ob offen oder wartend; ist sie die offene, ist die
+  /// nächste wartende dran. Im selben Zug, damit die Oberfläche nie „keine
+  /// Anfrage offen" sieht, während noch eine wartet.
+  void _beantworten(FreigabeAnfrage a, bool speichern) {
+    a._antwort.complete(speichern);
+    if (identical(a, _aktuell)) {
+      _aktuell = null;
+      if (_warteschlange.isNotEmpty) _oeffnen(_warteschlange.removeFirst());
+    } else {
+      _warteschlange.remove(a);
+    }
+    notifyListeners();
+  }
+
+  /// Frist oder Abbruch: Eine wartende Anfrage wird gar nicht erst gefragt.
+  void _verfallen(FreigabeAnfrage a, String grund) {
+    if (!a.offen) return;
+    protokoll.eintrag(
+        Art.info,
+        identical(a, _aktuell)
+            ? '$grund -- nicht gespeichert'
+            : '$grund -- nicht gefragt, nicht gespeichert: ${a.titel}');
+    _beantworten(a, false);
   }
 
   void entscheiden(bool speichern) {
@@ -225,10 +244,14 @@ class Freigaben extends ChangeNotifier {
     if (a != null && a.offen) {
       protokoll.eintrag(speichern ? Art.schreiben : Art.info,
           'Freigabe ${speichern ? "erteilt" : "abgelehnt"}');
-      a._antwort.complete(speichern);
+      _beantworten(a, speichern);
     }
   }
 
-  static String _dauer(Duration d) =>
-      d.inMinutes >= 1 ? '${d.inMinutes} min' : '${d.inSeconds} s';
+  /// Gerundet: Die Restfrist einer Anfrage, die gerade drankommt, ist um
+  /// Bruchteile kürzer als [frist] und soll trotzdem „30 min" heißen.
+  static String _dauer(Duration d) {
+    final s = (d.inMilliseconds / 1000).round();
+    return s >= 60 ? '${(s / 60).round()} min' : '$s s';
+  }
 }

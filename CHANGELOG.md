@@ -2,6 +2,7 @@
 
 ## 0.9.22
 - Freigaben: Warten weitere Anfragen hinter der offenen, zeigt der Dialog, wie viele, und das Protokoll nennt jede, die sich einreiht.
+- Freigaben: Ein abgelaufener Dialog bleibt nicht mehr stehen, wenn schon die nächste Anfrage wartet, und die 30 Minuten zählen ab der Anfrage, auch während sie wartet.
 
 ## 0.9.21
 - import_from_github.sh hinzugefügt

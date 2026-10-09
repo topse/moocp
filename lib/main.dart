@@ -289,7 +289,6 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
     super.initState();
     windowManager.addListener(this);
     widget.protokoll.addListener(_aktualisieren);
-    widget.freigaben.addListener(_freigabeZeigen);
     WidgetsBinding.instance.addPostFrameCallback((_) => _starten());
   }
 
@@ -577,36 +576,6 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
     }
   }
 
-  // Eine neue Freigabeanfrage erscheint als Dialog. Die Entscheidung geht an
-  // das wartende Werkzeug; schliesst die Frist den Dialog, zählt das als Nein.
-  FreigabeAnfrage? _gezeigt;
-  void _freigabeZeigen() {
-    final a = widget.freigaben.aktuell;
-    if (a == null) {
-      if (_gezeigt != null && mounted) {
-        Navigator.of(context, rootNavigator: true).maybePop();
-      }
-      _gezeigt = null;
-      return;
-    }
-    if (identical(a, _gezeigt) || !mounted) return;
-    _gezeigt = a;
-    // Nach vorn und dort bleiben, bis entschieden ist -- ein Dialog hinter
-    // anderen Fenstern wird übersehen, und dann läuft nur die Frist ab.
-    _nachVorn(true);
-    showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => FreigabeDialog(a, widget.freigaben),
-    ).then((ja) {
-      if (identical(widget.freigaben.aktuell, a)) {
-        widget.freigaben.entscheiden(ja ?? false);
-      }
-      _gezeigt = null;
-      _nachVorn(false);
-    });
-  }
-
   Future<void> _nachVorn(bool an) async {
     try {
       if (an) {
@@ -624,7 +593,6 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
   @override
   void dispose() {
     windowManager.removeListener(this);
-    widget.freigaben.removeListener(_freigabeZeigen);
     widget.protokoll.removeListener(_aktualisieren);
     _adresse.dispose();
     _benutzer.dispose();
@@ -684,7 +652,13 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => FreigabeDialoge(
+    freigaben: widget.freigaben,
+    nachVorn: _nachVorn,
+    child: _seite(context),
+  );
+
+  Widget _seite(BuildContext context) {
     final angemeldet = widget.moodle.angemeldet;
     final klein = Theme.of(context).textTheme.bodySmall;
     return Scaffold(
@@ -1081,6 +1055,84 @@ Future<void> bestaetigungenHilfe(BuildContext context) => showDialog<void>(
   },
 );
 
+/// Zeigt die offene Freigabeanfrage als Dialog, immer genau einen. Die
+/// Entscheidung geht an das wartende Werkzeug; beantwortet die App die Anfrage
+/// selbst (Frist, Abbruch), schließt sich der Dialog, und die nächste
+/// wartende Anfrage öffnet ihren.
+class FreigabeDialoge extends StatefulWidget {
+  const FreigabeDialoge({super.key, required this.freigaben, required this.nachVorn, required this.child});
+  final Freigaben freigaben;
+
+  /// Nach vorn und dort bleiben, solange ein Dialog offen ist -- ein Dialog
+  /// hinter anderen Fenstern wird übersehen, und dann läuft nur die Frist ab.
+  final Future<void> Function(bool an) nachVorn;
+
+  final Widget child;
+
+  @override
+  State<FreigabeDialoge> createState() => _FreigabeDialogeState();
+}
+
+class _FreigabeDialogeState extends State<FreigabeDialoge> {
+  FreigabeAnfrage? _gezeigt;
+  Route<bool>? _dialog;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.freigaben.addListener(_zeigen);
+  }
+
+  @override
+  void dispose() {
+    widget.freigaben.removeListener(_zeigen);
+    super.dispose();
+  }
+
+  void _zeigen() {
+    final a = widget.freigaben.aktuell;
+    if (identical(a, _gezeigt)) return;
+    // Die App hat die gezeigte Anfrage selbst beantwortet: genau deren Dialog
+    // schließen. Ein pop() träfe, was gerade oben liegt, oder bliebe ganz
+    // aus, wenn sich darüber inzwischen etwas geändert hat -- und die nächste
+    // Anfrage kommt im selben Zug.
+    final alt = _dialog;
+    _gezeigt = null;
+    _dialog = null;
+    if (alt != null && alt.isActive) alt.navigator!.removeRoute(alt);
+    if (a == null || !mounted) {
+      if (alt != null) widget.nachVorn(false);
+      return;
+    }
+    _gezeigt = a;
+    widget.nachVorn(true);
+    // Eine eigene Route statt showDialog, damit sich genau sie wieder
+    // entfernen lässt; eingestellt wie bei showDialog.
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final route = DialogRoute<bool>(
+      context: context,
+      builder: (_) => FreigabeDialog(a, widget.freigaben),
+      barrierDismissible: false,
+      themes: InheritedTheme.capture(from: context, to: navigator.context),
+      traversalEdgeBehavior: TraversalEdgeBehavior.closedLoop,
+    );
+    _dialog = route;
+    navigator.push(route).then((ja) {
+      // Oben entfernt: Die Anfrage ist schon beantwortet.
+      if (!identical(_dialog, route)) return;
+      _gezeigt = null;
+      _dialog = null;
+      widget.nachVorn(false);
+      if (identical(widget.freigaben.aktuell, a)) {
+        widget.freigaben.entscheiden(ja ?? false);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
 class FreigabeDialog extends StatelessWidget {
   const FreigabeDialog(this.anfrage, this.freigaben, {super.key});
   final FreigabeAnfrage anfrage;
@@ -1088,6 +1140,15 @@ class FreigabeDialog extends StatelessWidget {
   /// Für die Frist und den Zähler der wartenden Anfragen, der sich ändert,
   /// während der Dialog offen ist.
   final Freigaben freigaben;
+
+  /// Was von der Frist bleibt: Sie läuft ab der Anfrage, und wer gewartet
+  /// hat, hat weniger. Ohne [FreigabeAnfrage.ablauf] (nicht über
+  /// Freigaben.anfragen gestellt, etwa im Bild fürs Handbuch) die volle.
+  String _restfrist() {
+    final rest = anfrage.ablauf?.difference(DateTime.now()) ?? freigaben.frist;
+    final minuten = (rest.inSeconds / 60).round();
+    return minuten <= 1 ? 'einer Minute' : '$minuten Minuten';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1114,13 +1175,17 @@ class FreigabeDialog extends StatelessWidget {
     final gross = anfrage.vergleich.isNotEmpty || anfrage.bilder.isNotEmpty;
     return AlertDialog(
       title: Text(anfrage.titel),
+      // Der kleine Dialog braucht Platz für eine volle Liste, den Satz zur
+      // Frist und den Zähler darunter, auch bei 125 % Schriftgröße
+      // (freigabe_test.dart); die großen fangen den Zähler im Zeilenvergleich
+      // oder in den Bildern auf.
       content: SizedBox(
         width: gross ? 900 : 620,
         height: anfrage.bilder.isNotEmpty
             ? 680
             : gross
             ? 560
-            : 240,
+            : 264,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1194,7 +1259,7 @@ class FreigabeDialog extends StatelessWidget {
               const Spacer(),
             const SizedBox(height: 8),
             Text(
-              'Ohne Entscheidung innerhalb von ${freigaben.frist.inMinutes} Minuten ${anfrage.ohneEntscheidung}.',
+              'Ohne Entscheidung innerhalb von ${_restfrist()} ${anfrage.ohneEntscheidung}.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
             // Nach der Entscheidung kommt der nächste Dialog -- die Lehrkraft

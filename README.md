@@ -217,14 +217,7 @@ der Seite:
 
 > Erstelle aus Abschnitt 2 einen Test mit acht Fragen zum Abschluss.
 
-Die KI legt zuerst einen Plan vor und wartet auf Ihr Ja. Soll Bestehendes
-geändert, verschoben, sichtbar geschaltet oder gelöscht werden, erscheint
-danach in der App der **Freigabedialog**: Er nennt Kurs und Objekt, was sich
-ändert, und zeigt bei Texten den Quelltext vorher (rot) und nachher (grün).
-„Speichern" schreibt, „Abbrechen" verwirft. Entscheiden Sie nicht innerhalb
-von 30 Minuten oder wartet das KI-Werkzeug nicht mehr, wird nichts gespeichert. Die App holt sich dafür nach vorn.
-Es ist immer nur ein Dialog offen; kommen weitere Anfragen dazu, sagt er unten, wie viele danach warten („1 weitere Anfrage wartet"), und das Protokoll nennt jede, die sich einreiht.
-Wie oft der Dialog kommt, stellen Sie selbst ein: siehe [Wie viele Bestätigungen Sie bekommen](#wie-viele-bestätigungen-sie-bekommen).
+Die KI legt zuerst einen Plan vor und wartet auf Ihr Ja. Soll Bestehendes geändert, verschoben, sichtbar geschaltet oder gelöscht werden, erscheint danach in der App der **Freigabedialog**: Er nennt Kurs und Objekt, was sich ändert, und zeigt bei Texten den Quelltext vorher (rot) und nachher (grün). „Speichern" schreibt, „Abbrechen" verwirft. Entscheiden Sie nicht innerhalb von 30 Minuten oder wartet das KI-Werkzeug nicht mehr, wird nichts gespeichert. Die App holt sich dafür nach vorn. Es ist immer nur ein Dialog offen; kommen weitere Anfragen dazu, sagt er unten, wie viele danach warten („1 weitere Anfrage wartet"), und das Protokoll nennt jede, die sich einreiht. Die 30 Minuten zählen ab der Anfrage, auch während sie wartet; ihr Dialog nennt, wie viel davon noch bleibt. Wie oft der Dialog kommt, stellen Sie selbst ein: siehe [Wie viele Bestätigungen Sie bekommen](#wie-viele-bestätigungen-sie-bekommen).
 
 **Der Steckbrief des Kurses.** Was jede Arbeit in einem Kurs wieder braucht – Schulform und Bildungsgang, ob die Lernenden mit „du" oder „Sie" angeredet werden, wie meistens gearbeitet wird (auf Papier, am Gerät, gemischt) und welche Räume und Geräte es gibt –, fragt die KI einmal und schlägt im Plan vor, es im verborgenen Verzeichnis „CLAUDE" des Kurses festzuhalten. Danach fragt sie nicht mehr. Die Arbeitsweise ist für sie eine Ausgangslage, keine Grenze: Sie darf vorschlagen, einen Schritt anders zu machen.
 

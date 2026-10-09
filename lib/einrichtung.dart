@@ -524,7 +524,8 @@ String tomlBlockEntfernen(String text, String name) => _zeilenweise(text, (zeile
 /// der Verbindung („KI-Werkzeug verbunden" im Protokoll); der Dialog sagt
 /// deshalb „eingetragen", nicht mehr.
 /// Das Zeitlimit, das die App in ihren Eintrag in Bionic schreibt. Länger als
-/// die Frist einer Freigabe (`Freigaben.fristVorgabe`): So endet die Freigabe
+/// die Frist einer Freigabe (`Freigaben.fristVorgabe`), die wie das Zeitlimit
+/// ab der Anfrage läuft, auch hinter einer anderen: So endet die Freigabe
 /// zuerst und meldet das selbst, und nach einer späten Freigabe bleibt Zeit
 /// zum Schreiben und Zurücklesen. Bionics Vorgabe von 60 Sekunden bräche
 /// fast jede Freigabe ab.

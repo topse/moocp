@@ -3,7 +3,8 @@
 // Stelle, an der das entschieden wird (Freigaben.anfragen), damit kein
 // Werkzeug die Einstellung übersehen kann, und das Feld in der Titelzeile;
 // dazu, dass eine Anfrage verfällt, wenn der Client nicht mehr wartet, und
-// dass weitere Anfragen sich sichtbar einreihen (Protokoll, Zähler im Dialog).
+// dass weitere Anfragen sich sichtbar einreihen (Protokoll, Zähler im Dialog),
+// ihre Frist ab der Anfrage läuft und immer nur ein Dialog offen ist.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -159,6 +160,26 @@ void main() {
     expect(prot.eintraege.map((e) => e.text), isNot(contains('Freigabe angefragt: Zweite? (Frist 30 min)')));
   });
 
+  test('Die Frist läuft ab der Anfrage, auch während sie wartet', () async {
+    // Sonst endete sie bei einer wartenden Anfrage nach dem Zeitlimit des
+    // Clients, das ab dem Werkzeugaufruf läuft.
+    final prot = Protokoll();
+    final f = Freigaben(prot, frist: const Duration(milliseconds: 400));
+    final vorher = DateTime.now();
+    final a2 = anfrage(titel: 'Zweite?');
+    final erste = f.anfragen(anfrage(titel: 'Erste?'));
+    final zweite = f.anfragen(a2);
+    expect(a2.ablauf!.difference(vorher).inMilliseconds, inInclusiveRange(400, 450), reason: 'ab der Anfrage');
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    f.entscheiden(true);
+    expect(f.aktuell, same(a2), reason: 'gleich dran, ohne Lücke');
+    final offen = Stopwatch()..start();
+    expect(await zweite, isFalse);
+    expect(offen.elapsedMilliseconds, lessThan(300), reason: 'nicht die volle Frist ab dem Öffnen');
+    expect(await erste, isTrue);
+    expect(prot.eintraege.last.text, 'Frist abgelaufen -- nicht gespeichert');
+  });
+
   test('Ohne Abbruch bleibt alles, wie es war; ein Abbruch nach der Entscheidung ändert nichts', () async {
     final f = Freigaben(Protokoll());
     final abbruch = Completer<void>();
@@ -200,6 +221,73 @@ void main() {
     f.entscheiden(true);
     await tester.pumpAndSettle();
     expect([await erste, await zweite, await dritte], [true, true, false]);
+  });
+
+  testWidgets('Der kleine Dialog hat Platz für den Zähler, auch bei 125 % Schriftgröße', (tester) async {
+    // Löschen, Sichtbarkeit, Verschieben: kein Zeilenvergleich, aber eine
+    // volle Liste der Mitbetroffenen. Ein Überlauf schnitte den Zähler ab.
+    final f = Freigaben(Protokoll());
+    final punkte = [for (var i = 1; i <= 30; i++) 'Mitbetroffen: Textseite $i'];
+    final erste = f.anfragen(FreigabeAnfrage(titel: 'Endgültig löschen?', punkte: punkte, vergleich: const []));
+    final zweite = f.anfragen(anfrage());
+    for (final skala in [1.0, 1.25]) {
+      await tester.pumpWidget(MaterialApp(
+        home: Builder(
+          builder: (context) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(skala)),
+            child: Scaffold(body: FreigabeDialog(f.aktuell!, f)),
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull, reason: 'kein Überlauf bei ${(skala * 100).round()} %');
+      expect(find.text('1 weitere Anfrage wartet.'), findsOneWidget);
+    }
+    f.entscheiden(false);
+    f.entscheiden(false);
+    expect([await erste, await zweite], [false, false]);
+  });
+
+  testWidgets('Schließt die App die offene Anfrage, ist danach nur der Dialog der nächsten offen', (tester) async {
+    final f = Freigaben(Protokoll());
+    final vorn = <bool>[];
+    Bestaetigungen? gewaehlt;
+    await tester.pumpWidget(MaterialApp(
+      home: FreigabeDialoge(
+        freigaben: f,
+        nachVorn: (an) async => vorn.add(an),
+        child: Scaffold(
+          appBar: AppBar(actions: [BestaetigungenFeld(stufe: f.stufe, aendern: (x) async => gewaehlt = x)]),
+        ),
+      ),
+    ));
+    final abbruch = Completer<void>();
+    final erste = Freigaben.mitAbbruch(abbruch.future, () => f.anfragen(anfrage(titel: 'Erste?')));
+    final zweite = f.anfragen(anfrage(titel: 'Zweite?'));
+    await tester.pumpAndSettle();
+    expect(find.byType(FreigabeDialog), findsOneWidget);
+    expect(find.text('Erste?'), findsOneWidget);
+
+    // Der Dialog sperrt die Titelzeile: Solange eine Anfrage offen ist oder
+    // wartet, lässt sich die Stufe nicht umstellen.
+    await tester.tap(find.byType(BestaetigungenFeld), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(find.text('alle'), findsNothing, reason: 'das Menü der Stufen geht nicht auf');
+    expect(gewaehlt, isNull);
+
+    // Wie nach der Frist: Die App beantwortet die erste selbst, und die zweite
+    // kommt im selben Zug dran.
+    abbruch.complete();
+    await tester.pumpAndSettle();
+    expect(await erste, isFalse);
+    expect(find.byType(FreigabeDialog), findsOneWidget, reason: 'der Dialog der ersten ist zu');
+    expect(find.text('Zweite?'), findsOneWidget);
+
+    await tester.tap(find.text('Speichern'));
+    await tester.pumpAndSettle();
+    expect(await zweite, isTrue);
+    expect(find.byType(FreigabeDialog), findsNothing);
+    expect(vorn, [true, true, false], reason: 'nach vorn, solange ein Dialog offen ist');
   });
 
   testWidgets('Das Feld zeigt die Stufe, bei „keine" in Warnfarbe', (tester) async {
