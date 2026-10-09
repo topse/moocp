@@ -22,7 +22,8 @@
 //     ein gewöhnliches <script src>. Anfragen an Moodle stellt sie
 //     selbst (MoodleZugang.fuerBrowser, mit Protokoll); der Browser bekommt
 //     nur die Antwort und nie das Sitzungscookie. Als Seite lädt er nur die
-//     eine, die aufgenommen wird.
+//     eine, die aufgenommen wird; als Rahmen darin auch interaktive Elemente
+//     (elemente.dart), deren Skriptfehler die Seite einsammelt.
 //   - Nur Ansichten, die Inhalte zeigen und keine Personen, und davon nur
 //     der Inhalt selbst ([_inhalt]) -- was auch die Textwerkzeuge liefern,
 //     ohne Kopf, Navigation, Blöcke, Aktivitätskopf und, in der
@@ -51,6 +52,7 @@ import 'package:path/path.dart' as p;
 
 import '../freigabe.dart';
 import '../protokoll.dart';
+import 'auswertung.dart' show kurz;
 import 'browserliste.dart';
 import 'formular_schreiben.dart';
 import 'kurs.dart';
@@ -376,10 +378,24 @@ String _bereich((String, String?) inhalt) => '''
 })()
 ''';
 
+/// Fehler in interaktiven Elementen: Der Kopf jedes Elements meldet sie mit
+/// postMessage an die Seite (elemente.dart); hier hört die Seite zu. Der
+/// Rahmen ist ein eigenes Ziel in eigenem Prozess -- an seine Konsole kommt
+/// die Seite nicht heran, an seine Nachrichten schon.
+const String _elementFehlerSammeln = r'''
+window.__moocpFehler = [];
+addEventListener('message', function (e) {
+  if (e.data && typeof e.data.moocpFehler === 'string' && window.__moocpFehler.length < 20) {
+    window.__moocpFehler.push(e.data.moocpFehler);
+  }
+});
+''';
+
 class _Aufnahme {
   final bilder = <Uint8List>[];
   int ueberApp = 0, direkt = 0;
   final gesperrt = <String>[];
+  final elementFehler = <String>{};
   String browser = '';
   String ausschnitt = '';
   String formeln = '';
@@ -550,6 +566,7 @@ Future<_Aufnahme> _aufnehmen(
           {'urlPattern': '*', 'requestStage': 'Request'}
         ]
       });
+      await cdp.senden('Page.addScriptToEvaluateOnNewDocument', {'source': _elementFehlerSammeln});
       await cdp.senden('Page.navigate', {'url': adresse.toString()});
       await geladen.future.timeout(const Duration(seconds: 90),
           onTimeout: () => throw MoodleFehler('Die Seite lädt nicht zu Ende (90 s).'));
@@ -559,6 +576,8 @@ Future<_Aufnahme> _aufnehmen(
           (laufend > 0 || DateTime.now().difference(zuletzt) < const Duration(milliseconds: 1500))) {
         await Future<void>.delayed(const Duration(milliseconds: 200));
       }
+      final fehler = jsonDecode(await _auswerten(cdp, 'JSON.stringify(window.__moocpFehler || [])')) as List;
+      a.elementFehler.addAll(fehler.map((e) => kurz('$e', 300)));
       final f = await _auswerten(cdp, _warteAufFormeln);
       final fz = jsonDecode(f) as Map;
       a.formeln = fz['huellen'] == 0
@@ -803,6 +822,7 @@ Future<String> bildschirmfoto(MoodleZugang moodle, Freigaben freigaben, Protokol
   return [
     ...wo,
     'Formeln: ${a.formeln}',
+    for (final f in a.elementFehler) 'Fehler im Element: $f',
     'Browser: ${a.browser}; Anfragen: ${a.ueberApp} über die App, ${a.direkt} direkt (MathJax), '
         '${a.gesperrt.length} nicht geladen',
     // „Nicht geladen", nicht „Gesperrt": So melden die Lesewerkzeuge eine

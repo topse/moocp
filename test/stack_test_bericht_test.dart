@@ -35,4 +35,26 @@ void main() {
     expect(RegExp('nicht übernommen').allMatches(b).length, 2, reason: 'der Hinweis oben und Testfall 2');
     expect(b.indexOf('! Eingabe ans1'), greaterThan(b.indexOf('Testfall 2:')));
   });
+
+  // So zeigt questiontestrun.php eine Frage ohne Fragetests: zwischen zwei
+  // <hr> ein Beispiel mit den Musterantworten, kein Gesamtergebnis, nur den
+  // Hinweis, dass Tests fehlen.
+  String ohneTests({required String punkte}) => '<div id="region-main"><h2>Stack Test</h2>'
+      '<hr/>If you add the test, its output will look like this:'
+      '${fall('Testfall Beispiel', uebernommen: 'x', punkte: punkte, hinweis: 'prt1-1-T')}<hr/>'
+      '<h2>Fragetests für Variante 1</h2><p>Question is missing tests or variants. No test cases have been added yet.</p></div>';
+
+  test('Ohne Fragetests: das Beispiel von STACK zählt nicht als Testfall', () {
+    final b = stackTestBericht(ohneTests(punkte: '1'), frage: 995);
+    expect(b, contains('KEINE Testfälle -- nicht überprüfbar. verified: false'));
+    expect(b, isNot(contains('NICHT bestanden')));
+    expect(b, isNot(contains('Testfall Beispiel')));
+    expect(b, contains('Musterantworten eingesetzt: volle Punkte'));
+  });
+
+  test('Ohne Fragetests und das Beispiel scheitert: gesagt, aber weiter keine Testfälle', () {
+    final b = stackTestBericht(ohneTests(punkte: '0'), frage: 995);
+    expect(b, contains('KEINE Testfälle'));
+    expect(b, contains('NICHT volle Punkte'));
+  });
 }

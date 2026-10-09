@@ -18,6 +18,7 @@ Der Umbruch misst die Höhe jedes Blocks und entscheidet, was auf eine Seite pas
 - **Tabellen mit flachen Zeilen.** Tabellenzeilen werden ebenfalls nie zerteilt; eine Zeile, die höher als eine Seite ist, läuft über. Viel Text gehört deshalb nicht in eine Tabellenzelle, sondern in Absätze darunter.
 - **Rahmenlinien** an Tabellenzellen, die `references/html.md` erlaubt, stören die Messung nicht und kommen so in den Druck, wie sie am Bildschirm stehen (gemessen 25.09.2026).
 - **Formeln** (`references/html.md`, „Formeln") kommen gesetzt in den Druck. Eine abgesetzte Formel ist ein Absatz und wird umbrochen wie einer; gemessen an einer Seite mit 13 abgesetzten Formeln auf vier Druckseiten, keine stand zerschnitten am Umbruch (01.10.2026).
+- **Interaktive Elemente** (`references/elemente.md`) ersetzt die Druckaufbereitung durch „[Eingebetteter Inhalt – nur online verfügbar]" (gemessen 09.10.2026). Der Satz davor muss gedruckt allein tragen.
 
 ## Querformat für eine breite Zeichnung
 

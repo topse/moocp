@@ -597,6 +597,8 @@ Wer nur fragt „Was soll ich anlegen?", bekommt immer Textseite und Aufgabe. Du
 
 Moodle und Papier sind kein Entweder-oder. Der Steckbrief des Kurses nennt, wie meistens gearbeitet wird und welche Geräte es gibt, und das ist die Ausgangslage, keine Grenze: Ein Board im Computerraum in einem Kurs, der sonst auf Papier läuft, ist einen Vorschlag wert, eine Skizze von Hand in einem Kurs am Gerät ebenso. Steht dazu nichts im Steckbrief und hängt der Vorschlag davon ab, fragst du und schreibst die Antwort mit dem Plan in den Steckbrief.
 
+**Interaktive Elemente** kennen die wenigsten: kleine Anwendungen mitten in einer Seite, zum Ausprobieren und Üben, ohne Bewertung und ohne Gedächtnis — ein Regler, an dem man sieht, was sich ändert, eine Aufgabe, die bei jedem Klick neu gewürfelt wird und sofort antwortet. Wo so etwas an einer Stelle mehr bringt als Text und Bild, schlag es im Plan vor (`references/einsatz.md`, „Interaktive Elemente"). **Bevor du eins baust, lies `references/elemente.md`**: Ein Element steht als eigene Datei in einem abgeschotteten Rahmen, und nur so schreibt die App es.
+
 <!-- <<< gemeinsam/html-kurz.md - von build.py erzeugt, hier nicht bearbeiten -->
 ## HTML schreiben
 
@@ -612,6 +614,7 @@ Alles, was in Moodle steht, ist HTML: Textseite, Textfeld, Aufgabe, Buchkapitel,
 - **Bilder** liegen als Datei in `dateien/` und stehen im Text als `<img src="@@PLUGINFILE@@/<name>" alt="…" class="img-fluid">` — nie mit einer `pluginfile.php`-Adresse, nie vom fremden Server. `alt` beschreibt, was zu sehen ist, nicht den Dateinamen.
 - **Links** sagen mit ihrem Text, wohin sie führen, nie „hier" oder „Link"; eine Adresse, die gedruckt zählt, steht ausgeschrieben, ganz und ohne Kurzlink; immer `https://`, nie `//`. Ein Link auf eine Aktivität im Kurs ist absolut, `https://<Moodle aus status>/mod/<typ>/view.php?id=<cmid>`, mit ihrem Namen als Text — innerhalb einer Lernsituation mit ihrer Kennung („Infoblatt 1"), und diese Links setzt die App mit `links_setzen`.
 - **Formeln** in LaTeX, `\( … \)` im Text und `\[ … \]` abgesetzt — erst, wenn `kurs_filter(kurs)` „Formeln: JA" meldet. `<` als `&lt;`, `&` als `&amp;`, Dezimalkomma `2{,}5`. Ein rohes `<` zerstört die Formel; an solchen Formelfehlern bricht die App das Schreiben ab, auch an alten, und die Reparatur gehört in den Plan.
+- **Kein Code im Text:** kein `<script>`, keine `on…`-Attribute, kein `javascript:`, kein `srcdoc`. Code im Text liefe ohne Abschottung bei jedem Betrachter, auch bei der Lehrkraft; die App weist neuen ab. Interaktives kommt als Element in einen abgeschotteten Rahmen — in Kursinhalten, nicht in Fragen (Skill `moodle`, `references/elemente.md`).
 - **Kein Kopf, kein Fuß, keine Seitenzahl, kein Feld für Name und Datum** im Inhalt: Moodle zeigt den Namen darüber, und beim Drucken setzt der Druck Kopf und Fuß.
 - **Umlaute bleiben Umlaute** — „Uebertragungsmedium" auf einem Blatt ist ein Mangel, kein Ausweg.
 

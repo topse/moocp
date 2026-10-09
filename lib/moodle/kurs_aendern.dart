@@ -34,6 +34,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import '../freigabe.dart';
+import 'elemente.dart';
 import 'formular_lesen.dart';
 import 'formular_schreiben.dart';
 import 'kurs.dart';
@@ -627,6 +628,15 @@ Future<String> loeschen(MoodleZugang moodle, Freigaben freigaben,
 // abschnitt_anlegen
 // ---------------------------------------------------------------------------
 
+/// Die Meldung, wenn der Abschnitt [id] angelegt ist, Name und Beschreibung
+/// aber nicht gespeichert sind ([grund]: die Meldung des Formulars).
+String halbAngelegt(int id, int kurs, String grund, {required bool verborgen}) =>
+    'Abschnitt angelegt (id $id, ${verborgen ? 'verborgen' : 'SICHTBAR'}), aber Name und Beschreibung sind nicht '
+    'gespeichert: $grund\n'
+    'Er steht jetzt ohne Namen in Kurs $kurs. Nicht noch einmal anlegen: entweder mit abschnitt_lesen($id) lesen '
+    'und mit aendern füllen, oder mit loeschen(kurs: $kurs, abschnitt_id: $id) entfernen -- beides gehört in den '
+    'Plan.';
+
 Future<String> abschnittAnlegen(MoodleZugang moodle, Freigaben freigaben,
     {required int kurs,
     required String name,
@@ -636,7 +646,7 @@ Future<String> abschnittAnlegen(MoodleZugang moodle, Freigaben freigaben,
     bool sichtbar = false,
     Map<String, Object?> einstellungen = const {}}) async {
   final quelle = ordner == null ? null : imArbeitsordner(ordner, arbeitsordner);
-  final inhalt = quelleLesen(quelle);
+  final inhalt = quelleLesen(quelle, kopf: elementKopfFuer(moodle));
   var k = await kursLesen(moodle, kurs);
   if (nachAbschnittId != null && k.nachId[nachAbschnittId] == null) {
     throw MoodleFehler('Abschnitt id $nachAbschnittId gibt es in Kurs $kurs nicht.');
@@ -684,11 +694,20 @@ Future<String> abschnittAnlegen(MoodleZugang moodle, Freigaben freigaben,
     return e;
   }
 
+  // Der Abschnitt steht schon im Kurs, ohne Namen. Scheitert das Füllen --
+  // eine unbekannte Einstellung (das Formular gibt es erst jetzt), HTTP 403,
+  // weil ein Filter vor der Instanz den Inhalt abweist --, muss die Meldung
+  // das sagen; sonst hält die KI den Abschnitt für nicht angelegt und legt
+  // beim nächsten Versuch einen zweiten an.
   (Map<String, String>, List<dynamic>) e;
   try {
-    e = await fuellen();
-  } on SitzungAbgelaufen {
-    e = await fuellen();
+    try {
+      e = await fuellen();
+    } on SitzungAbgelaufen {
+      e = await fuellen();
+    }
+  } on MoodleFehler catch (x) {
+    throw MoodleFehler(halbAngelegt(id, kurs, x.meldung, verborgen: !sichtbar));
   }
   final g = await formularLesen(moodle, ziel, arbeitsordner);
   final probe = await zuruecklesen(g,

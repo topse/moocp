@@ -25,7 +25,7 @@ Ein Wechsel kostet etwas, und das gehört in den Plan: Raum buchen, Geräte hole
 |---|---|---|
 | Einstieg, Problem erfassen | Textfeld mit der Handlungssituation; Board „Was wissen wir, was fehlt?" | Situation vorlesen, Fragen an der Tafel sammeln |
 | Vorwissen aktivieren, Diagnose | kurzer Test ohne Bewertung (Skill `moodle-fragen`); Board | Blitzlicht, Kartenabfrage |
-| Informieren | Textseite als Infoblatt, Buch bei langem Stoff, Link, Video, Recherche | Infoblatt, Lehrbuch, Tabellenbuch |
+| Informieren | Textseite als Infoblatt, Buch bei langem Stoff, Link, Video, Recherche; ein interaktives Element zum Ausprobieren | Infoblatt, Lehrbuch, Tabellenbuch |
 | Begriffe gemeinsam klären | Wiki als Begriffssammlung der Klasse | Plakat, Glossar im Heft |
 | Planen | Kanban-Board mit Arbeitspaketen; Board für Ideen | Planungsraster auf dem Arbeitsblatt |
 | Entscheiden | Board mit Spalten „dafür" und „dagegen" oder einer Vorlage wie SWOT | Entscheidungstabelle |
@@ -33,7 +33,7 @@ Ein Wechsel kostet etwas, und das gehört in den Plan: Raum buchen, Geräte hole
 | Kontrollieren | Fortschrittsliste als Prüfliste; Bewertungsraster, das vorher sichtbar ist | Prüfliste auf dem Blatt |
 | Präsentieren | Board als Galeriegang, jede Gruppe heftet ihr Ergebnis an | Plakate, Galeriegang |
 | Reflektieren, Rückmeldung | Board als Exit-Ticket | Ein-Satz-Rückmeldung, Zielscheibe |
-| Üben, Festigen | Test mit mehreren Versuchen und sofortiger Rückmeldung | Übungsblatt mit Lösung zum Vergleich |
+| Üben, Festigen | Test mit mehreren Versuchen und sofortiger Rückmeldung; ein interaktives Element, das Aufgaben würfelt und sofort antwortet | Übungsblatt mit Lösung zum Vergleich |
 | Selbst steuern | Fortschrittsliste als Laufzettel bei Stationenarbeit; Unterabschnitte je Phase | Laufzettel |
 | Leistung feststellen | Aufgabe mit Bewertungsraster; Test (Skill `moodle-fragen`) | Klassenarbeit, Produktbewertung |
 
@@ -92,4 +92,10 @@ Wofür welcher Test und welcher Fragetyp taugt, steht im Skill `moodle-fragen` (
 ### Kanban-Board (`kanban`)
 
 **Bewährt für** Arbeit in Paketen: eine Projektphase, in der Gruppen Aufgaben verteilen, ziehen und abschließen. Die Lehrkraft legt Vorlagenkarten an, die Lernenden ziehen sie. Im Betrieb ist das eine verbreitete Arbeitsweise; wer sie in der Schule übt, übt sie für den Beruf. **Denkbar auch** als Fahrplan einer Lernsituation, an dem die Klasse sieht, was erledigt ist. **Grenzen:** Die App arbeitet nur am gemeinsamen Kursboard, ohne Ersteller und Zuweisung; Termine, Farben und Zuweisungen bleiben der Oberfläche. Ob Lernende sehen, wer eine Karte angelegt hat, steuert `showauthors`. **Papier und Gerät:** Auf Papier sind es Spalten an der Tafel mit Haftnotizen; das Board lohnt, wenn über mehrere Stunden geplant wird.
+
+## Interaktive Elemente
+
+Ein interaktives Element ist eine kleine Anwendung mitten in einer Seite: etwas, das die Lernenden anklicken, verschieben, eintippen oder durchspielen, und das sofort antwortet. Es steht neben dem Text, zu dem es gehört — in einer Textseite, einem Buchkapitel, einem Textfeld oder der Beschreibung eines Abschnitts oder einer Aktivität. Die meisten Lehrkräfte wissen nicht, dass es so etwas in ihrem Kurs geben kann. Schlag eins vor, wo es an einer Stelle mehr bringt als Text und Bild; wie man es baut, steht in `references/elemente.md`.
+
+**Bewährt für** Üben mit sofortiger Rückmeldung — eine Aufgabe, die bei jedem Klick neu gewürfelt wird und bei einem Fehler einen Hinweis gibt statt nur „falsch" — und für Veranschaulichungen, die man bewegen kann: einen Regler verschieben und sehen, was sich ändert, einen Vorgang Schritt für Schritt aufdecken. **Denkbar auch** überall, wo Ausprobieren mehr lehrt als Lesen: eine Simulation, ein Sortier- oder Zuordnungsspiel, Karteikarten für Vokabeln oder Fachbegriffe, ein Rechner für eine Formel aus dem Unterricht, eine Zeitleiste zum Durchklicken. Das sind Beispiele, keine Liste; ein Element kann sein, was sich im Browser bauen lässt und an der Stelle hilft. **Grenzen:** Ein Element merkt sich nichts. Beim Neuladen beginnt es von vorn, und niemand sieht, was ein Lernender darin getan hat; was zählen oder festgehalten werden soll, gehört in einen Test, eine Aufgabe oder eine STACK-Frage. Es lädt nichts von außen — kein Video, keine Karte, keine Schrift von einem fremden Server — und steht nicht in Fragen und Wikis. Ob es in der Moodle-App läuft, prüft die Lehrkraft vor dem Einsatz. **Papier und Gerät:** Gedruckt fehlt es; die Druckaufbereitung mancher Instanzen setzt an seine Stelle „[Eingebetteter Inhalt – nur online verfügbar]". Der Satz davor sagt deshalb, was man damit tut, und was man zum Lernen braucht, steht auch im Text. Am Handy taugt es, wenn es für den Finger gebaut ist. **Im Plan** steht es als Vorschlag mit Grund: was es an dieser Stelle leistet, was die Lernenden damit tun und wie es antwortet, in zwei, drei Sätzen — so kann die Lehrkraft Nein sagen, bevor es gebaut ist. Nicht jede Seite braucht eins; ein Element, das nur dasteht, damit sich etwas bewegt, kostet Zeit und lenkt ab.
 <!-- >>> gemeinsam/einsatz.md -->

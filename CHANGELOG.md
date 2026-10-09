@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.18
+- Neu: interaktive Elemente – kleine Anwendungen zum Ausprobieren und Üben mitten in einer Seite, abgeschottet vom Rest von Moodle; die KI schlägt sie vor, wo sie passen, und Bildschirmfotos zeigen sie samt Fehlern im Skript.
+- Seiten: Code direkt im Text schreibt die KI nicht mehr; was schon dasteht, bleibt und wird beim Lesen genannt.
+- Abschnitte: Weist Moodle beim Anlegen Name oder Beschreibung ab, erfährt die KI, dass der Abschnitt trotzdem ohne Namen im Kurs steht, und legt keinen zweiten an.
+
+## 0.9.16
+- STACK: Rechnungen vorab im CAS ausprobieren geht jetzt auch ohne Administratorrechte; eine Frage ohne Fragetests gilt bei der Prüfung als „ohne Testfälle", nicht mehr als „nicht bestanden".
+- STACK: Neue Fragen prüfen auf Wunsch, ob ein Bruch gekürzt oder wie abgezählt angegeben ist, zeigen Geldbeträge mit festen Nachkommastellen (1,50 €) und erkennen ein verrutschtes Komma; Zufallswerte baut die KI so, dass keine trivialen Aufgaben entstehen.
+- Blätter übernehmen: Einen fachlichen Fehler im Material nennt die KI im Plan, mit einer Korrektur als Vorschlag.
+
 ## 0.9.14
 - Neu: Die KI schlägt vor, welche Aktivität und welcher Fragetyp sich wofür anbietet – auch Board, Kanban-Board, Wiki, Fortschrittsliste und Übungstest, am Gerät, auf Papier oder gemischt, etwa ein Schritt im Computerraum oder ein abfotografiertes Blatt als Abgabe.
 - Neu: Steckbrief des Kurses – Schulform, Anrede, Arbeitsweise und Ausstattung fragt die KI einmal und hält sie nach Ihrem Ja in den Konventionen des Kurses fest; auch für Lernsituationen.

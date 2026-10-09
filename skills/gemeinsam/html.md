@@ -33,6 +33,8 @@ Das Theme setzt das Aussehen global. Jedes Inline-Style hebelt es für diesen ei
 
 **Zwei Ausnahmen.** Die **SchuCu-Tabelle einer Lernsituation** (`<table class="lernsituation">`, Skill `lernsituation`) folgt einer fein abgestimmten Vorlage mit `style`-Angaben und `&nbsp;` in den Abstandszellen; sie wird Zeichen für Zeichen übernommen, und nichts daran wird „aufgeräumt" — auch nicht beim Ändern der Seite. Und **Rahmenlinien an Tabellenelementen**, wo die Linie die Aussage trägt und die Randklassen nicht reichen — eng umgrenzt, unten unter „Wenn die Linien die Aussage tragen".
 
+Ein **interaktives Element** ist keine Ausnahme davon, sondern ein eigenes Dokument in seinem Rahmen: Dort trägt ein `<style>`-Block die Anordnung, Farben und Schriften kommen auch dort vom Theme (Skill `moodle`, `references/elemente.md`). Für die Seite, in der es steht, gilt alles hier.
+
 ## Überschriften: Inhalt beginnt bei h3
 
 **`<h1>` und `<h2>` sind Moodle vorbehalten.** `h1` trägt den Namen der Aktivität oder den Seitentitel, `h2` gehört zur Seitenstruktur des Themes. Wer sie im Inhalt verwendet, konkurriert mit der Seitengliederung: Die Dokumentstruktur wird für Screenreader unbrauchbar, und im Theme sieht die Überschrift aus wie ein Seitentitel.
@@ -257,4 +259,5 @@ Wo geantwortet wird und wie groß der Platz ist, gehört als Vorschlag in den Pl
 - Kopf- und Fußzeile, Logo, Seitenzahl, Feld für Name und Datum;
 - Markdown — `**fett**`, `# Überschrift`, `[Text](Adresse)`, `` `Code` `` —, das im HTML als Zeichen stehen bleibt;
 - Formeln als Bild, mit `<sup>` und `<sub>` nachgebaut oder zwischen einfachen `$`;
+- Code: `<script>`, `on…`-Attribute (`onclick` …), `javascript:`-Adressen und `<iframe srcdoc>`. Code im Text läuft ohne Abschottung in der Sitzung jedes Betrachters, auch der Lehrkraft; die App weist neuen ab und nennt alten beim Lesen. Interaktives kommt als Element in einen abgeschotteten Rahmen (Skill `moodle`, `references/elemente.md`), in Fragen gar nicht;
 - Umschreibungen von Umlauten: „Uebertragungsmedium" auf einem Blatt ist ein Mangel, kein Ausweg.

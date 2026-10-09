@@ -37,6 +37,7 @@ import 'package:path/path.dart' as p;
 import '../freigabe.dart';
 import '../log.dart';
 import 'auswertung.dart';
+import 'elemente.dart';
 import 'formeln.dart';
 import 'formular.dart';
 import 'formular_lesen.dart';
@@ -423,9 +424,19 @@ Future<Antwort> absenden(MoodleZugang moodle, Formular f, {List<String> knoepfe 
     final name = zeile?.querySelector('[name]')?.attributes['name'];
     meldungen.add(feld.isEmpty ? text : '„$feld"${name == null ? '' : ' ($name)'}: $text');
   }
-  throw MoodleFehler('Moodle hat das Formular nicht angenommen (HTTP ${antwort.status})'
-      '${meldungen.isEmpty ? "" : ": ${meldungen.join(" | ")}"}');
+  throw MoodleFehler(formularAbgelehnt(antwort.status, meldungen));
 }
+
+/// Die Meldung, wenn Moodle ein Formular nicht annimmt. Bei HTTP 403 ohne
+/// Hinweise aus dem Formular kann es Moodle selbst gewesen sein (ein Recht
+/// fehlt) oder ein Filter vor der Instanz, der Formulare mit bestimmten
+/// Inhalten abweist -- auf der Testinstanz etwa srcdoc und <script> in
+/// Abschnitt und Buchkapitel (elemente.dart). Die Antwort selbst sagt dann
+/// nichts Brauchbares.
+String formularAbgelehnt(int status, Iterable<String> meldungen) =>
+    'Moodle hat das Formular nicht angenommen (HTTP $status)'
+    '${meldungen.isNotEmpty ? ': ${meldungen.join(' | ')}' : status == 403 ? ': abgelehnt von Moodle, weil ein Recht '
+        'fehlt, oder von einem Filter vor der Instanz, der Formulare mit bestimmten Inhalten abweist' : ''}';
 
 // ---------------------------------------------------------------------------
 // Rückleseprobe
@@ -494,12 +505,14 @@ String wichtigeText(FormularGelesen g) {
 }
 
 /// Liest den Inhalt eines Quellordners für ein neues Objekt und prüft, dass
-/// jede eingebundene Datei da ist.
+/// jede eingebundene Datei da ist. Elementdateien bekommen dabei [kopf]
+/// (elemente.dart).
 ({Map<String, String> felder, Map<String, Map<String, List<int>>> bereiche, Map<String, List<int>> dateien})
-    quelleLesen(String? quelle) {
+    quelleLesen(String? quelle, {required String kopf}) {
   if (quelle == null) return (felder: const {}, bereiche: const {}, dateien: const {});
   final felder = felderIn(quelle);
   formelnPruefen(felder);
+  skripteImTextPruefen(felder);
   final fehlend = {
     for (final h in felder.values)
       for (final n in eingebunden(h))
@@ -508,6 +521,7 @@ String wichtigeText(FormularGelesen g) {
   if (fehlend.isNotEmpty) {
     throw MoodleFehler('Im Quelltext eingebunden, aber nicht in dateien/: ${fehlend.join(", ")}');
   }
+  elementeVorbereiten(quelle, felder, kopf);
   return (
     felder: felder,
     bereiche: bereicheIn(quelle),
@@ -590,7 +604,7 @@ Future<String> aktivitaetAnlegen(
         '${MoodleZugang.schreibbareModule.map((t) => '$t (${typName(t)})').join(", ")}.');
   }
   final quelle = ordner == null ? null : imArbeitsordner(ordner, arbeitsordner);
-  final inhalt = quelleLesen(quelle);
+  final inhalt = quelleLesen(quelle, kopf: elementKopfFuer(moodle));
   final pflicht = pflichtfeld[typ];
   if (pflicht != null && (inhalt.felder[pflicht] ?? '').trim().isEmpty) {
     throw MoodleFehler('Im Ordner fehlt $pflicht.html -- der Inhalt der ${typName(typ)}.');
@@ -837,6 +851,12 @@ Future<_Aenderung?> _vorbereiten(
   if (fehlend.isNotEmpty) {
     throw MoodleFehler('Im Quelltext eingebunden, aber nicht in dateien/: ${fehlend.join(", ")}');
   }
+  // Kein neuer Code im Text, und Elemente nur im abgeschotteten Rahmen, mit
+  // dem Kopf der App -- eingesetzt, bevor verglichen wird (elemente.dart).
+  // In einer Frage gibt es keine Elemente; dort zeichnet STACK.
+  final istFrage = ziel.art == Zielart.frage;
+  skripteImTextPruefen(lokal, alt: alt, elementeErlaubt: !istFrage);
+  if (!istFrage) elementeVorbereiten(quelle, lokal, elementKopfFuer(moodle), stand: stand);
   final neu = <String>{}, geaendert = <String>{};
   final dateien = <String, List<int>>{};
   for (final n in namen) {
@@ -862,7 +882,7 @@ Future<_Aenderung?> _vorbereiten(
   formelnPruefen({for (final k in zuSchreiben) k: lokal[k]!});
   // In einer Frage wirken STACK-Blöcke; nichts davon darf von außen laden
   // (stack_skripte.dart).
-  if (ziel.art == Zielart.frage) stackSkriptePruefen({for (final k in zuSchreiben) k: lokal[k]!});
+  if (istFrage) stackSkriptePruefen({for (final k in zuSchreiben) k: lokal[k]!});
   final nichtMehr = {for (final h in alt.values) ...eingebunden(h)}.difference(namen).toList()..sort();
 
   final lokaleBereiche = bereicheIn(quelle);
@@ -895,6 +915,19 @@ Future<_Aenderung?> _vorbereiten(
   }
   if (neu.isNotEmpty) einzelheiten.add('Neue Dateien: ${neu.join(", ")}');
   if (geaendert.isNotEmpty) einzelheiten.add('Geänderte Dateien (werden ersetzt): ${geaendert.join(", ")}');
+  // Ein Element ist Code, der bei jedem Betrachter läuft: Die Freigabe zeigt
+  // seine Zeilen wie die einer Seite, nicht nur den Namen.
+  for (final n in [...geaendert, ...neu].where(istElementdatei)) {
+    final s = File(p.join(stand, 'dateien', n));
+    final vorher = s.existsSync() ? alsText(await s.readAsBytes()) : '';
+    final jetzt = alsText(dateien[n]!);
+    if (vorher == null || jetzt == null) continue;
+    final v = zeilenVergleich(vorher, jetzt);
+    if (v.gleich) continue;
+    vergleich
+      ..add(Zeile(ZeilenArt.ausgelassen, '──── dateien/$n ────'))
+      ..addAll(v.zeilen);
+  }
   if (nichtMehr.isNotEmpty) {
     einzelheiten.add('Nicht mehr eingebunden (bleiben in Moodle gespeichert): ${nichtMehr.join(", ")}');
   }

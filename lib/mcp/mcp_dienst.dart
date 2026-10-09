@@ -397,7 +397,9 @@ class McpDienst {
         titel: 'Änderung speichern',
         beschreibung: 'Schreibt einen gelesenen Ordner zurück (Aktivität, Abschnitt, Buchkapitel, '
             'Frage -- der Ordner weiß, was er ist): geänderte <feld>.html, neue oder geänderte '
-            'Dateien in dateien/ (neue Bilder als src="@@PLUGINFILE@@/<name>"), Dateibereiche in '
+            'Dateien in dateien/ (neue Bilder als src="@@PLUGINFILE@@/<name>", interaktive Elemente als '
+            '<iframe sandbox="allow-scripts" src="@@PLUGINFILE@@/<name>.html">, ihren Kopf setzt die App), '
+            'Dateibereiche in '
             'bereiche/<feld>/ (hinzufügen, ersetzen, entfernen) und Einstellungen als Parameter. '
             'Prüft zuerst, dass Moodle noch den Stand vom Lesen zeigt, zeigt der Lehrkraft in der '
             'App eine Änderungsübersicht mit Zeilenvergleich und schreibt nur nach ihrer Freigabe. '
@@ -481,7 +483,9 @@ class McpDienst {
             'Inhalt aus einem Ordner im Arbeitsordner (optional; Textseite und Textfeld brauchen '
             'ihn): <feld>.html (Textseite: page.html; sonst introeditor.html für die Beschreibung, '
             'Aufgabe zusätzlich activityeditor.html für die Arbeitsanweisungen), eingebundene '
-            'Bilder in dateien/ als src="@@PLUGINFILE@@/<name>", Dateibereiche in bereiche/<feld>/ '
+            'Bilder in dateien/ als src="@@PLUGINFILE@@/<name>" (interaktive Elemente als <iframe '
+            'sandbox="allow-scripts" src="@@PLUGINFILE@@/<name>.html">, ihren Kopf setzt die App), '
+            'Dateibereiche in bereiche/<feld>/ '
             '(Verzeichnis: bereiche/files/, Aufgabe: bereiche/introattachments/, Datei: '
             'bereiche/files/). Eine Fragensammlung (qbank) legt Moodle immer im allgemeinen '
             'Abschnitt an, einerlei welcher angegeben ist. Einstellungen wie Fristen als Parameter (Schlüssel: nach dem '
@@ -514,7 +518,7 @@ class McpDienst {
         titel: 'Abschnitt anlegen',
         beschreibung: 'Legt einen Abschnitt an -- am Ende oder hinter einem anderen --, benennt '
             'ihn und setzt optional die Beschreibung aus einem Ordner (summary_editor.html, '
-            'Bilder in dateien/). Legt verborgen an; sichtbar nur nach Freigabe. Einen '
+            'Bilder und interaktive Elemente in dateien/ wie bei aktivitaet_anlegen). Legt verborgen an; sichtbar nur nach Freigabe. Einen '
             'Unterabschnitt legt man als Aktivität vom Typ subsection an.',
         parameter: {
           'kurs': _kurs,
@@ -649,7 +653,7 @@ class McpDienst {
     _werkzeug(server, 'buchkapitel_anlegen',
         titel: 'Buchkapitel anlegen',
         beschreibung: 'Legt ein Kapitel oder Unterkapitel an -- am Ende oder hinter einem Kapitel --, mit '
-            'Inhalt aus einem Ordner (content_editor.html, Bilder in dateien/ als src="@@PLUGINFILE@@/<name>"). '
+            'Inhalt aus einem Ordner (content_editor.html, Bilder und interaktive Elemente in dateien/ wie bei aktivitaet_anlegen). '
             'Ist das Buch für Lernende sichtbar, nur nach Freigabe (das Kapitel erscheint sofort). Liest '
             'danach zurück und prüft Position und Ebene.',
         parameter: {
@@ -915,17 +919,25 @@ class McpDienst {
     _werkzeug(server, 'stack_cas',
         titel: 'Maxima ausprobieren',
         beschreibung: 'Rechnet einen Maxima-Ausdruck im CAS-Notizblock von STACK -- vorher ausprobieren statt '
-            'vermuten (etwa ob es eine Funktion gibt). Nur rechnen, nichts speichern.',
+            'vermuten (etwa ob es eine Funktion gibt). Nur rechnen, nichts speichern. STACK öffnet den Notizblock '
+            'Lehrkräften nur über eine STACK-Frage, die sie bearbeiten dürfen: frage ist irgendeine STACK-Frage der '
+            'Sammlung (aus fragen_lesen); sie wird weder gelesen noch geändert, gerechnet wird nur mit variablen.',
         parameter: {
+          'sammlung': sammlung,
+          'frage': JsonSchema.integer(description: 'questionid einer STACK-Frage der Sammlung (aus fragen_lesen)'),
           'ausdruck': JsonSchema.string(
               description: 'CAS-Text: gerechnet wird, was in {@…@} steht, etwa "Ergebnis {@diff(x^2,x)@}"'),
           'variablen': JsonSchema.string(description: 'Optional: Variablen, etwa a:3; b:4;'),
           'vereinfachen': JsonSchema.boolean(description: 'Auto-Vereinfachung (Standard true)'),
         },
-        pflicht: ['ausdruck'],
+        pflicht: ['sammlung', 'frage', 'ausdruck'],
         nurLesen: true,
         ausfuehren: (a) => stackCas(moodle,
-            ausdruck: _text(a, 'ausdruck'), variablen: (a['variablen'] as String?) ?? '', vereinfachen: a['vereinfachen'] != false));
+            sammlung: _zahl(a, 'sammlung'),
+            frage: _zahl(a, 'frage'),
+            ausdruck: _text(a, 'ausdruck'),
+            variablen: (a['variablen'] as String?) ?? '',
+            vereinfachen: a['vereinfachen'] != false));
 
     // ---- Verzeichnis CLAUDE, Fortschrittsliste, Wiki, Board, Kanban, Bewertung
     final cmidDer = JsonSchema.integer(description: 'cmid der Aktivität, die Zahl hinter mod/<typ>/view.php?id=');
@@ -983,7 +995,7 @@ class McpDienst {
     _werkzeug(server, 'bildschirmfoto',
         titel: 'Bildschirmfoto',
         beschreibung: 'Zeigt, wie eine Seite im Browser aussieht, um Geschriebenes zu prüfen: gesetzte Formeln, '
-            'Umbruch im Druck, eine Frage in der Vorschau (auch eine JSXGraph-Zeichnung, im Ausgangszustand). Nie zum Lesen von Inhalten (dafür die Lesewerkzeuge) '
+            'Umbruch im Druck, eine Frage in der Vorschau (auch eine JSXGraph-Zeichnung, im Ausgangszustand), interaktive Elemente im Ausgangszustand samt ihren Skriptfehlern. Nie zum Lesen von Inhalten (dafür die Lesewerkzeuge) '
             'und nicht routinemäßig -- jedes Bild ist ein Klick der Lehrkraft. Bild nur vom Inhalt selbst, lange '
             'Seiten in Teilen. Die Lehrkraft sieht jedes Bild mit dem grund in der App und gibt es frei; ohne '
             'Freigabe wird es verworfen. Entweder cmid (Textseite, Buch mit optional kapitel, gemeinsames Wiki '

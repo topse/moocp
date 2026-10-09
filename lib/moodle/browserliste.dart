@@ -27,7 +27,9 @@
 // und keine Personen -- und davon nur die eine, die aufgenommen wird, samt
 // ihrer Umleitung. Auch ein eingebetteter Rahmen (iframe) ist ein Dokument;
 // ohne diese Grenze holte er jede andere erlaubte Ansicht ins Bild, etwa die
-// Seite eines Wikis, das bildschirmfoto.dart abgewiesen hätte. Was von der
+// Seite eines Wikis, das bildschirmfoto.dart abgewiesen hätte. Die Ausnahme
+// sind interaktive Elemente ([elementDokument]): Dateien des Inhalts, keine
+// Ansichten. Was von der
 // Seite auf dem Bild landet, schneidet bildschirmfoto.dart auf den Inhalt
 // zu, und die Lehrkraft sieht jedes Bild, bevor es weitergeht.
 
@@ -70,6 +72,14 @@ String? ansichtErlaubt(Uri uri) {
     _ => null,
   };
 }
+
+/// Ein interaktives Element: eine HTML-Datei aus dem Dateibereich eines
+/// Editorfelds (`pluginfile.php/<ctx>/<komponente>/<bereich>/…/<name>.html`),
+/// das Dokument eines Rahmens in der Seite (elemente.dart). Inhalt wie ein
+/// Bild der Seite; was es selbst lädt, geht wieder über diese Liste.
+bool elementDokument(Uri uri) => RegExp(r'^/pluginfile\.php/\d+/(?:mod_[a-z0-9]+|course)/[a-z_]+/.+\.html?$',
+        caseSensitive: false)
+    .hasMatch(uri.path);
 
 /// Moodle-Dienste, die nur Vorlagen, Sprachtexte und Symbole liefern.
 const Set<String> browserDienste = {
@@ -160,6 +170,7 @@ bool veraendertBild(String grund, String? art) =>
   final regel = sperrregel(uri);
   if (regel != null) return (BrowserWeg.gesperrt, 'Datenschutz-Sperre (Regel $regel)');
   if (dokument) {
+    if (methode == 'GET' && elementDokument(uri)) return (BrowserWeg.ueberApp, 'Element');
     final a = ansichtErlaubt(uri);
     if (methode != 'GET' || a == null) return (BrowserWeg.gesperrt, 'keine erlaubte Ansicht');
     return seiten.contains(uri.toString()) ? (BrowserWeg.ueberApp, a) : (BrowserWeg.gesperrt, 'nicht die aufgenommene Seite');

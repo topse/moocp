@@ -119,6 +119,7 @@ const werkzeugGet = [
   '/pluginfile.php/7001/mod_assign/introattachment/0/vorlage.pdf',
   '/pluginfile.php/7001/mod_assign/intro/bild.png',
   '/pluginfile.php/7449/question/questiontext/1/2/3/bild.png',
+  '/question/type/stack/adminui/caschat.php?questionid=995&cmid=2384',
   '/question/bank/deletequestion/delete.php?cmid=2384&deleteselected=1&deleteall=1&returnurl=%2Fquestion%2Fedit.php%3Fcmid%3D2384&q14961=1&q14962=1',
 ];
 

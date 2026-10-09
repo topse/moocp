@@ -40,10 +40,10 @@ const Set<String> _jsxgraphLaedt = {'version', 'overridejs', 'overridecss'};
 final RegExp _jsxgraphBlock = RegExp(r'\[\[\s*jsxgraph\b([^\]]*)\]\]([\s\S]*?)\[\[\s*/\s*jsxgraph\s*\]\]');
 final RegExp _attribut = RegExp(r'''([A-Za-z][\w-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')''');
 
-/// Netzzugriffe im Code, je mit dem Wort für die Meldung.
-final List<(RegExp, String)> _netz = [
-  (RegExp(r'https?://', caseSensitive: false), 'eine Adresse (http…)'),
-  (RegExp('''["'`]\\s*//[A-Za-z0-9]'''), 'eine Adresse („//…")'),
+/// Netzzugriffe im Code, je mit dem Wort für die Meldung. Dieselben prüft
+/// die App in interaktiven Elementen (elemente.dart); Adressen prüft sie
+/// dort eigens, weil ein Element SVG-Namensräume nennen darf.
+final List<(RegExp, String)> netzSchnittstellen = [
   (RegExp(r'(^|[;{}\s])import\b', multiLine: true), 'import'),
   (RegExp(r'\bfetch\s*\('), 'fetch'),
   (RegExp(r'\bXMLHttpRequest\b'), 'XMLHttpRequest'),
@@ -51,6 +51,12 @@ final List<(RegExp, String)> _netz = [
   (RegExp(r'\bEventSource\b'), 'EventSource'),
   (RegExp(r'\bsendBeacon\b'), 'sendBeacon'),
   (RegExp(r'\bimportScripts\b'), 'importScripts'),
+];
+
+final List<(RegExp, String)> _netz = [
+  (RegExp(r'https?://', caseSensitive: false), 'eine Adresse (http…)'),
+  (RegExp('''["'`]\\s*//[A-Za-z0-9]'''), 'eine Adresse („//…")'),
+  ...netzSchnittstellen,
 ];
 
 /// Ein [[jsxgraph]]-Block: Attribute (Namen wie geschrieben) und Code.

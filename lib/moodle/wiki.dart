@@ -39,6 +39,7 @@ import 'package:html/parser.dart' as html_parser;
 import 'package:path/path.dart' as p;
 
 import '../freigabe.dart';
+import 'elemente.dart';
 import 'formeln.dart';
 import 'formular.dart';
 import 'formular_schreiben.dart';
@@ -236,6 +237,9 @@ Future<String> wikiseiteSchreiben(MoodleZugang moodle, Freigaben freigaben,
   final w = await _wiki(moodle, cmid, mitInhalt: true, einstellungen: f0);
   final html = await dateiAusArbeitsordner(datei, arbeitsordner);
   formelnPruefen({p.basenameWithoutExtension(datei): html});
+  // Den alten Quelltext hat die App hier nicht, also zählt jede Stelle als
+  // neu; Elemente brauchen eingebundene Dateien, die dieser Weg nicht schreibt.
+  skripteImTextPruefen({p.basenameWithoutExtension(datei): html}, elementeErlaubt: false);
   final vorhanden = w.seiten.where((s) => s.titel == titel.trim()).firstOrNull;
   final kurs = f0.kurs;
   final wo = 'Wiki „${f0.name}" (cmid $cmid${kurs == null ? '' : ', ${await kursBezeichnung(moodle, kurs)}'})';

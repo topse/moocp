@@ -112,6 +112,29 @@ void main() {
     expect(post('$d?cmid=2384', bestaetigt), isFalse, reason: 'Parameter in der Adresse');
   });
 
+  test('CAS-Notizblock: nur über eine Frage, nur rechnen, nie speichern', () {
+    const c = 'https://m.example/question/type/stack/adminui/caschat.php';
+    const mitFrage = '$c?questionid=995&cmid=2384';
+    expect(get(mitFrage), isTrue);
+    expect(get(c), isFalse, reason: 'ohne Frage nur für Administratoren');
+    expect(get('$c?questionid=995'), isFalse);
+    expect(get('$mitFrage&initialise=1'), isFalse, reason: 'füllte das Formular mit Variablen und Feedback der Frage');
+    final rechnen = [
+      const MapEntry('maximavars', 'x : 3;'),
+      const MapEntry('simp', 'on'),
+      const MapEntry('cas', 'Ergebnis {@x@}'),
+      const MapEntry('action', 'go'),
+    ];
+    expect(post(mitFrage, rechnen), isTrue);
+    expect(post(c, rechnen), isFalse, reason: 'ohne Frage');
+    // Mit questionid schreibt „Speichern" Variablen und Feedback ohne neue
+    // Version in die Frage.
+    expect(post(mitFrage, [...rechnen]..[3] = const MapEntry('action', 'Speichern')), isFalse);
+    expect(post(mitFrage, [...rechnen, const MapEntry('action', 'Speichern')]), isFalse, reason: 'zweites action');
+    expect(post(mitFrage, rechnen.where((e) => e.key != 'action').toList()), isFalse, reason: 'ohne action');
+    expect(post(mitFrage, [...rechnen, const MapEntry('inputs', 'ans1:3;')]), isFalse, reason: 'fremdes Feld');
+  });
+
   test('Moodle-Dienste: nur die freigegebenen, nur mit passenden Argumenten', () {
     bool dienst(String info, String methode, Map<String, Object?> args, {String? key = 'x'}) =>
         z.erlaubt(

@@ -22,6 +22,7 @@ import 'package:path/path.dart' as p;
 import 'package:xml/xml.dart';
 
 import 'auswertung.dart';
+import 'elemente.dart';
 import 'formeln.dart';
 import 'moodle_zugang.dart';
 import 'stack_skripte.dart';
@@ -611,6 +612,14 @@ class FrageImXml {
       final text = feld.getElement('text')?.innerText ?? '';
       for (final f in formelFehler(text)) {
         fehler.add('$wer, <${feld.name.local}>: $f');
+      }
+      // Kein Code im Text und keine Elemente (elemente.dart): Er liefe bei
+      // jedem Versuch in der Sitzung der Lernenden; gezeichnet wird mit STACK.
+      for (final s in skriptstellen(text)) {
+        fehler.add('$wer, <${feld.name.local}>: Code im Text (${kurz(s, 60)}) -- nicht in Fragen');
+      }
+      for (final r in elementRahmen(text)) {
+        fehler.add('$wer, <${feld.name.local}>: Element ${r.datei} -- nicht in Fragen; Zeichnungen mit STACK');
       }
     }
     final fragetext = q.getElement('questiontext')?.getElement('text')?.innerText ?? '';

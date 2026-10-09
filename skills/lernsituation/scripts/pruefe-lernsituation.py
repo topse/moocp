@@ -1259,6 +1259,54 @@ MARKDOWN = [
 ]
 
 
+# Interaktive Elemente: dieselbe Prüfung wie elementFehler in
+# lib/moodle/elemente.dart, an der die App das Schreiben abbricht -- hier
+# fällt es schon am Entwurf auf. Den Kopf (Content-Security-Policy, Wächter)
+# setzt erst die App bei der Übertragung; im Entwurf fehlt er.
+ELEMENT_KOPF = re.compile(r'<!-- moocp: Kopf des Elements, setzt die App -->[\s\S]*?<!-- /moocp -->\n?')
+ELEMENT_ADRESSE = re.compile(r'(?:[=("\'`]\s*|@import\s+)((?:https?:)?//[^\s"\'`)<>]+)', re.I)
+ELEMENT_NETZ = [
+    (re.compile(r'(^|[;{}\s])import\b', re.M), 'import'),
+    (re.compile(r'\bfetch\s*\('), 'fetch'),
+    (re.compile(r'\bXMLHttpRequest\b'), 'XMLHttpRequest'),
+    (re.compile(r'\bWebSocket\b'), 'WebSocket'),
+    (re.compile(r'\bEventSource\b'), 'EventSource'),
+    (re.compile(r'\bsendBeacon\b'), 'sendBeacon'),
+    (re.compile(r'\bimportScripts\b'), 'importScripts'),
+]
+ELEMENT_SONST = [
+    (re.compile(r'\b(?:localStorage|sessionStorage|indexedDB)\b|document\s*\.\s*cookie'),
+     'Speichern im Browser: Ein Element merkt sich nichts, und der Rahmen sperrt es.'),
+    (re.compile(r'(?<![\w$.])(?:window\s*\.\s*)?(?:parent|top|opener)\s*\.'),
+     'Zugriff auf die Moodle-Seite (parent/top/opener): Der Rahmen sperrt ihn.'),
+    (re.compile(r'<script\b[^>]*\bsrc\s*=', re.I), 'Nachgeladenes Skript (<script src>): Der Code steht im Element selbst.'),
+    (re.compile(r'<(?:iframe|frame|object|embed)\b', re.I), 'Rahmen oder Einbettung im Element: Ein Element bettet nichts ein.'),
+    (re.compile(r'<meta\b[^>]*http-equiv', re.I), '<meta http-equiv> setzt nur die App (im Kopf).'),
+    (re.compile(r'<base\b', re.I), '<base> verbiegt Adressen und ist gesperrt.'),
+]
+
+
+def element_fehler(text):
+    """Was in einem interaktiven Element nicht geht, je als Satz
+    (references/elemente.md)."""
+    t = ELEMENT_KOPF.sub('', text)
+    raus = []
+    if not re.search(r'<head\b', t, re.I):
+        raus.append('braucht ein Gerüst mit <head> (<!DOCTYPE html><html lang="de"><head>…</head><body>…)')
+    for m in ELEMENT_ADRESSE.finditer(t):
+        if not re.match(r'(?:https?:)?//www\.w3\.org/', m.group(1), re.I):
+            raus.append('Adresse „%s": Ein Element lädt nichts und verweist nirgendwohin -- Bilder als SVG im '
+                        'Element, Verweise in den Text der Seite' % m.group(1)[:60])
+            break
+    for muster, was in ELEMENT_NETZ:
+        if muster.search(t):
+            raus.append('Im Code steht %s: Ein Element lädt und sendet nichts.' % was)
+    for muster, satz in ELEMENT_SONST:
+        if muster.search(t):
+            raus.append(satz)
+    return raus
+
+
 # Formelfehler: dieselbe Prüfung wie formelFehler in lib/moodle/formeln.dart,
 # die das Schreiben in Moodle abbricht -- hier fällt der Fehler schon am
 # Entwurf auf. Ein Block ist ein Absatz, eine Zelle, ein Listenpunkt; ein
@@ -1418,6 +1466,26 @@ class HtmlRegeln(HTMLParser):
             return                # eine eingebettete Zeichnung hat eigene Elemente
         if tag in BLOCK:
             self.text.append('\n')
+        # Code im Text: dieselbe Grenze wie skripteImTextPruefen in
+        # lib/moodle/elemente.dart -- die App schriebe das Blatt nicht.
+        if tag == 'script':
+            self.befund('Code im Text (<script>) -- Interaktives als Element in einen Rahmen '
+                        '(references/elemente.md)')
+            return
+        for k, w in a.items():
+            if k.startswith('on'):
+                self.befund('Code im Text (%s an <%s>) -- Interaktives als Element (references/elemente.md)' % (k, tag))
+            elif k == 'srcdoc':
+                self.befund('<%s srcdoc>: Der Moodle-Editor löscht ihn -- als Elementdatei in dateien/ einbinden' % tag)
+            elif re.sub(r'[\s\x00-\x1f]', '', w or '').lower().startswith('javascript:'):
+                self.befund('javascript:-Adresse an <%s> -- Code gehört in ein Element' % tag)
+        if tag == 'iframe':
+            src = a.get('src') or ''
+            if src.startswith('@@PLUGINFILE@@/') and re.search(r'\.html?$', src, re.I):
+                if ' '.join(sorted(set((a.get('sandbox') or '-').split()))) != 'allow-scripts':
+                    self.befund('Element %s ohne sandbox="allow-scripts" -- die App schreibt es so nicht' % src[15:])
+                if not (a.get('title') or '').strip():
+                    self.befund('Element %s ohne title -- er sagt Screenreadern, was es ist' % src[15:])
         if tag not in HTML_ELEMENTE:
             self.befund('Platzhalter steht noch da: %s' % norm(roh)[:60])
             return
@@ -1525,6 +1593,9 @@ def lies_entwurf(ordner):
             if n not in da_ist:
                 befund(wo, '%s liegt nicht in %s/dateien/ -- jedes Blatt bringt seine Bilder selbst mit'
                        % (n, rel(o)))
+            elif re.search(r'\.html?$', n, re.I):
+                for t in element_fehler(io.open(os.path.join(da, n), encoding='utf-8', errors='replace').read()):
+                    befund(wo, 'Element %s: %s' % (n, t))
         for f in da_ist:
             if f not in r.dateien:
                 befund(wo, '%s/dateien/%s wird nicht eingebunden' % (rel(o), f))

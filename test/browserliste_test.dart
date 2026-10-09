@@ -47,6 +47,27 @@ void main() {
     expect(weg('POST', '/mod/page/view.php?id=15730', dokument: true), BrowserWeg.gesperrt);
   });
 
+  test('Rahmen: interaktive Elemente aus dem Dateibereich eines Felds, sonst nichts', () {
+    final seiten = {'https://moodle.schule.example/mod/page/view.php?id=15961'};
+    for (final a in [
+      '/pluginfile.php/26822/mod_page/content/1/wuerfel.html',
+      '/pluginfile.php/26823/mod_label/intro/wuerfel.html',
+      '/pluginfile.php/26824/mod_book/chapter/228/wuerfel.htm',
+      '/pluginfile.php/26825/course/section/4883/wuerfel.html',
+    ]) {
+      expect(weg('GET', a, dokument: true, seiten: seiten), BrowserWeg.ueberApp, reason: a);
+    }
+    for (final a in [
+      '/pluginfile.php/26822/mod_page/content/1/bild.png',
+      '/pluginfile.php/5/user/icon/boost/f1.html',
+      '/mod/page/view.php?id=15962',
+    ]) {
+      expect(weg('GET', a, dokument: true, seiten: seiten), BrowserWeg.gesperrt, reason: a);
+    }
+    expect(weg('POST', '/pluginfile.php/26822/mod_page/content/1/wuerfel.html', dokument: true, seiten: seiten),
+        BrowserWeg.gesperrt);
+  });
+
   test('Seiten: nur die aufgenommene und ihre Umleitung, auch nicht im Rahmen', () {
     const vorschau = 'https://moodle.schule.example/question/bank/previewquestion/preview.php?id=15287&cmid=2384';
     final seiten = {vorschau};

@@ -82,8 +82,9 @@ Das fachliche Wissen – wie Testfragen Können prüfen statt Auswendiggelerntes
 - **Tests zusammenstellen**: Fragen und Zufallsfragen einfügen, Punkte,
   Reihenfolge, Seiten, Fragen mischen, Beste Bewertung angleichen.
 - **Verschieben, sichtbar schalten, löschen.**
+- **Interaktive Elemente** in Seiten einbauen: kleine Anwendungen zum Ausprobieren und Üben – ein Regler, an dem man sieht, was sich ändert, eine Aufgabe, die bei jedem Klick neu gewürfelt wird und sofort antwortet. Ohne Bewertung, und gespeichert wird nichts. Die KI schlägt eins vor, wo es an einer Stelle mehr bringt als Text und Bild; jedes läuft abgeschottet vom Rest von Moodle.
 - **Vorschlagen, was sich wofür anbietet**: neben Textseite und Aufgabe auch Board, Kanban-Board, Wiki, Fortschrittsliste oder ein Übungstest – am Gerät, auf Papier oder gemischt, etwa ein Schritt im Computerraum in einem Kurs, der sonst auf Papier läuft, oder ein Blatt, das die Lernenden abfotografieren und in der Aufgabe abgeben. Entscheiden tun Sie.
-- **Selbst nachsehen**: Die KI kann sich ansehen, wie eine Textseite, ein Buchkapitel, eine Wikiseite oder eine Frage im Browser aussieht – ob die Formeln gesetzt sind, wie ein Blatt im Ausdruck umbricht, ob eine Frage in der Vorschau läuft. Jedes Bild sehen Sie zuerst, zusammen mit dem Grund, warum die KI es braucht.
+- **Selbst nachsehen**: Die KI kann sich ansehen, wie eine Textseite, ein Buchkapitel, eine Wikiseite oder eine Frage im Browser aussieht – ob die Formeln gesetzt sind, wie ein Blatt im Ausdruck umbricht, ob eine Frage in der Vorschau läuft, ob ein interaktives Element startet. Jedes Bild sehen Sie zuerst, zusammen mit dem Grund, warum die KI es braucht.
 
 ### Unterstützte Aktivitäten und Fragetypen
 
@@ -140,6 +141,7 @@ Welche Werkzeuge die KI hat und welche davon Ihre Freigabe brauchen, steht im Be
 - Ihr Passwort an die KI geben oder in ein Protokoll schreiben.
 - Beliebige Adressen aufrufen oder beliebigen Code ausführen – es gibt nur
   ihre Werkzeuge.
+- Code in eine Kursseite schreiben, der an die Moodle-Sitzung der Betrachter kommt. Interaktive Elemente stehen nur in einem abgeschotteten Rahmen.
 - Ohne Ihr Ja einen anderen Rechner als Ihr Moodle anfragen. Die einzige
   Ausnahme ist die Suche nach Updates, und die fragt Sie beim ersten Start.
 - Bestehendes ändern, verschieben, sichtbar schalten oder löschen, ohne dass
@@ -267,6 +269,7 @@ Der Arbeitsordner lebt so lange wie die App: Beim Start und beim Beenden leert s
   Adresse, die Ihre Moodle-Instanz dafür eingestellt hat. Nach jedem Bild
   wird er beendet und sein Profil gelöscht.
 - **Zeichnungen in STACK-Fragen** laufen im Browser Ihrer Lernenden. Die App lässt dort nur zu, was von Ihrem Moodle kommt: JSXGraph, wie STACK es mitbringt. Was eine Frage von einem fremden Server laden würde – eine andere JSXGraph-Version, ein GeoGebra-Applet, Bilder oder Daten –, weist sie beim Anlegen und Ändern ab, denn jeder solche Aufruf verriete dem fremden Server, dass gerade jemand die Frage bearbeitet.
+- **Interaktive Elemente** laufen im Browser Ihrer Lernenden und in Ihrem. Die App schreibt sie nur als eigene Datei in einen abgeschotteten Rahmen: Das Element kommt nicht an die Moodle-Seite, Ihre Sitzung, Cookies oder den Speicher des Browsers, und es lädt und sendet nichts außer dem Aussehen Ihres Moodle. Öffnet jemand die Datei außerhalb des Rahmens, hält sie an. Code direkt im Text einer Seite (`<script>` und Ähnliches) liefe ohne diese Abschottung bei jedem Betrachter; die App schreibt ihn nicht, und was schon da ist, nennt sie beim Lesen.
 - Außer Ihrem Moodle fragt die App nur eine einzige Stelle an: GitHub, für
   die **Suche nach Updates** – und das nur, wenn Sie beim ersten Start
   zugestimmt haben. Was dabei übertragen wird, steht unter
@@ -308,7 +311,7 @@ Gelesenes legt die App im Arbeitsordner ab, an die KI geht eine Übersicht. Lese
 | `fragen_lesen` | Die Kategorien einer Sammlung und die Fragen einer Kategorie als Moodle-XML, ohne „Erstellt von". | – |
 | `frage_lesen` | Eine Frage vollständig aus ihrem Bearbeitungsformular. | – |
 | `stack_testen` | Lässt die Fragetests einer STACK-Frage laufen und wertet sie aus. | – |
-| `stack_cas` | Rechnet einen Ausdruck im Maxima-Notizblock von STACK. Speichert nichts. | – |
+| `stack_cas` | Rechnet einen Ausdruck im Maxima-Notizblock von STACK. Speichert nichts. Braucht als Zugang eine STACK-Frage der Sammlung, die Sie bearbeiten dürfen – so öffnet STACK den Notizblock Lehrkräften; die Frage bleibt unverändert. | – |
 | `stack_xml`, `coderunner_xml` | Bauen aus einer knappen Beschreibung Moodle-XML für STACK- bzw. CodeRunner-Fragen und schreiben die Datei in den Arbeitsordner. Eine Eingabe, die nur die Lage in einer Zeichnung hält, setzt `stack_xml` selbst verborgen ein. Angelegt wird erst mit `fragen_importieren`. | – |
 
 #### Neu anlegen: verborgen, und mit „alle" auch mit Rückfrage
@@ -317,7 +320,7 @@ Was die KI hier ohne Klick anlegt, ist für Lernende nicht sichtbar. Eine Ausnah
 
 | Werkzeug | Was es tut | Freigabe |
 |---|---|---|
-| `aktivitaet_anlegen` | Legt eine Aktivität aus der [Übersicht](#unterstützte-aktivitäten-und-fragetypen) an, mit Text, Bildern und Dateien aus dem Arbeitsordner. Verborgen, auf Wunsch sichtbar. | wenn sichtbar, sonst bei „alle" |
+| `aktivitaet_anlegen` | Legt eine Aktivität aus der [Übersicht](#unterstützte-aktivitäten-und-fragetypen) an, mit Text, Bildern, interaktiven Elementen und Dateien aus dem Arbeitsordner. Verborgen, auf Wunsch sichtbar. | wenn sichtbar, sonst bei „alle" |
 | `abschnitt_anlegen` | Legt einen Abschnitt an, am Ende oder hinter einem anderen. Verborgen, auf Wunsch sichtbar. | wenn sichtbar, sonst bei „alle" |
 | `buchkapitel_anlegen` | Legt ein Kapitel oder Unterkapitel an. Ein Kapitel erscheint sofort, wenn das Buch für Lernende sichtbar ist. | wenn das Buch sichtbar ist, sonst bei „alle" |
 | `wikiseite_schreiben` | Legt eine Seite in einem gemeinsamen Wiki an oder ersetzt den Inhalt einer vorhandenen – auch das, was andere geschrieben haben. | Ersetzen: **ja**, außer im gerade verborgen angelegten Wiki; Anlegen: wenn das Wiki sichtbar ist, sonst bei „alle" |
@@ -353,7 +356,7 @@ Eine Ausnahme: Was die KI gerade selbst verborgen angelegt hat, ist noch nichts 
 
 | Werkzeug | Was es tut | Freigabe |
 |---|---|---|
-| `bildschirmfoto` | Zeigt, wie eine Textseite, ein Buchkapitel, eine Wikiseite oder eine Frage in der Vorschau im Browser aussieht, nur den Inhalt, nicht die Seite drumherum. Jeder Aufruf nennt einen Grund. Moodle protokolliert den Aufruf unter Ihrem Konto; die Fragenvorschau legt einen Vorschauversuch an. | **ja, je Bild, auf jeder Stufe** – das Bild geht erst nach Ihrem Klick an die KI |
+| `bildschirmfoto` | Zeigt, wie eine Textseite, ein Buchkapitel, eine Wikiseite oder eine Frage in der Vorschau im Browser aussieht, nur den Inhalt, nicht die Seite drumherum; interaktive Elemente im Anfangszustand, samt Fehlern in ihrem Skript. Jeder Aufruf nennt einen Grund. Moodle protokolliert den Aufruf unter Ihrem Konto; die Fragenvorschau legt einen Vorschauversuch an. | **ja, je Bild, auf jeder Stufe** – das Bild geht erst nach Ihrem Klick an die KI |
 
 #### Wie viele Bestätigungen Sie bekommen
 
@@ -421,7 +424,7 @@ Dazu entfernt die App beim Lesen von Formularen Felder wie Autor, Ersteller, Nam
   - Buchkapitel speichern, löschen, verschieben;
   - Dateien in den eigenen Entwurfsbereich hochladen und ersetzen – die App nimmt sie nur aus dem Arbeitsordner.
 
-Für den Browser der **Bildschirmfotos** gilt eine eigene, noch engere Liste ([lib/moodle/browserliste.dart](lib/moodle/browserliste.dart)): Als Seite lädt er nur die eine, die aufgenommen wird, dazu Stylesheets, Schriften, Bilder, die Skripte, die STACK seinen Zeichnungen mitgibt, und einige Dienste für Vorlagen und Sprachtexte, alles über die App und hinter der Sperrliste.
+Für den Browser der **Bildschirmfotos** gilt eine eigene, noch engere Liste ([lib/moodle/browserliste.dart](lib/moodle/browserliste.dart)): Als Seite lädt er nur die eine, die aufgenommen wird, als Rahmen darin die interaktiven Elemente dieser Seite, dazu Stylesheets, Schriften, Bilder, die Skripte, die STACK seinen Zeichnungen mitgibt, und einige Dienste für Vorlagen und Sprachtexte, alles über die App und hinter der Sperrliste.
 
 Die **Suche nach Updates** geht an GitHub statt an Moodle und hat deshalb ihre eigene Liste ([lib/update/updateliste.dart](lib/update/updateliste.dart)): erlaubt sind genau die Auskunft über das neueste Release dieses Repositorys und die Installationsdatei daraus, jeweils nur über `https` und samt jedem Umleitungsziel. Die Verbindung ist eine andere als die zu Moodle, Ihre Moodle-Sitzung geht also nicht mit.
 
@@ -505,6 +508,7 @@ skills/  (Wissen: Didaktik, Regeln,        moocp (Flutter, Windows)
 | `lib/moodle/kurshinweise.dart` | das Verzeichnis `CLAUDE` je Kurs und je Abschnitt: Konventionen lesen und schreiben, mit Verdachtsprüfung |
 | `lib/moodle/kursfilter.dart` | Textfilter eines Kurses: setzt er Formeln (MathJax)? |
 | `lib/moodle/formeln.dart` | Formelfehler im HTML; an ihnen bricht jedes Schreiben ab |
+| `lib/moodle/elemente.dart` | Interaktive Elemente: Kopf mit Content-Security-Policy und Wächter, Prüfung der Elementdatei; neuer Code im Text und Rahmen ohne Abschottung brechen jedes Schreiben ab |
 | `lib/moodle/stack_skripte.dart` | Skriptblöcke in STACK-Fragen: nur `[[jsxgraph]]` ohne fremde Quelle; an allem anderen bricht Bauen, Import und Ändern einer Frage ab |
 | `lib/moodle/bildschirmfoto.dart`, `browserliste.dart` | Bildschirmfotos: den Browser steuern, jede seiner Anfragen prüfen, nur den Inhalt aufnehmen |
 | `lib/moodle/zeilenvergleich.dart` | Zeilenvergleich für den Freigabedialog |
@@ -570,7 +574,7 @@ Schalter von `moocp.exe`; die Auskünfte schreiben nach stdout, und weil `moocp.
 
 ### Bildschirmfotos
 
-`bildschirmfoto` rendert mit Microsoft Edge, sonst Google Chrome, ohne Fenster und steuert ihn über das DevTools-Protokoll; ein Paket braucht es dafür nicht. Jede Anfrage des Browsers hält die App an, und zwar auf der Ebene des Browsers, nicht der Seite: Abgeschottete Rahmen wie die Zeichnungen in STACK-Fragen laufen als eigene Ziele, deren Anfragen sonst direkt ins Netz gingen. Sie stellt sie selbst – geprüft gegen Sperrliste und eine eigene, enge Liste (`lib/moodle/browserliste.dart`) und mit Eintrag im Protokoll; der Browser bekommt das Sitzungscookie nie und lädt als Seite nur die eine, die aufgenommen wird, auch nicht in einem eingebetteten Rahmen. Nur MathJax lädt er selbst, von der Adresse, die die Seite dafür einstellt. Aufgenommen wird nur der Inhalt selbst, also was auch die Textwerkzeuge liefern; ein Wiki nur, wenn es gemeinsam ist und nicht im Gruppenmodus steht. Mit `druck: true` wird jede Seite der Druckaufbereitung ein Bild, ohne sie der Inhalt mit den Druck-Stylesheets. Jeder Aufruf braucht einen Grund (`grund`), der im Freigabedialog über dem Bild steht. Das Ansehen hat dieselben Nebenwirkungen wie im Browser: Moodle protokolliert den Aufruf unter dem eigenen Konto, und die Fragenvorschau legt einen Vorschauversuch an. Freigegebene Bilder legt die App als PNG in den Arbeitsordner; die Antwort nennt die Pfade. Beim Entwickeln ersetzt das Werkzeug Bildschirmfotos von Hand: Claude sieht sich Messungen im Testkurs selbst an.
+`bildschirmfoto` rendert mit Microsoft Edge, sonst Google Chrome, ohne Fenster und steuert ihn über das DevTools-Protokoll; ein Paket braucht es dafür nicht. Jede Anfrage des Browsers hält die App an, und zwar auf der Ebene des Browsers, nicht der Seite: Abgeschottete Rahmen wie die Zeichnungen in STACK-Fragen laufen als eigene Ziele, deren Anfragen sonst direkt ins Netz gingen. Sie stellt sie selbst – geprüft gegen Sperrliste und eine eigene, enge Liste (`lib/moodle/browserliste.dart`) und mit Eintrag im Protokoll; der Browser bekommt das Sitzungscookie nie und lädt als Seite nur die eine, die aufgenommen wird, auch nicht in einem eingebetteten Rahmen. Nur MathJax lädt er selbst, von der Adresse, die die Seite dafür einstellt. Interaktive Elemente lädt er als Rahmen, ebenfalls über die App; Fehler in ihrem Skript meldet ihr Kopf per `postMessage` an die Seite, wo die App sie einsammelt und in der Antwort nennt. Aufgenommen wird nur der Inhalt selbst, also was auch die Textwerkzeuge liefern; ein Wiki nur, wenn es gemeinsam ist und nicht im Gruppenmodus steht. Mit `druck: true` wird jede Seite der Druckaufbereitung ein Bild, ohne sie der Inhalt mit den Druck-Stylesheets. Jeder Aufruf braucht einen Grund (`grund`), der im Freigabedialog über dem Bild steht. Das Ansehen hat dieselben Nebenwirkungen wie im Browser: Moodle protokolliert den Aufruf unter dem eigenen Konto, und die Fragenvorschau legt einen Vorschauversuch an. Freigegebene Bilder legt die App als PNG in den Arbeitsordner; die Antwort nennt die Pfade. Beim Entwickeln ersetzt das Werkzeug Bildschirmfotos von Hand: Claude sieht sich Messungen im Testkurs selbst an.
 
 ### Installer bauen
 

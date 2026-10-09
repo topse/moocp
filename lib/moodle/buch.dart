@@ -35,6 +35,7 @@ import 'package:path/path.dart' as p;
 
 import '../freigabe.dart';
 import 'formular.dart';
+import 'elemente.dart';
 import 'formular_lesen.dart';
 import 'formular_schreiben.dart';
 import 'kurs.dart';
@@ -119,7 +120,7 @@ Future<String> buchkapitelAnlegen(MoodleZugang moodle, Freigaben freigaben,
     bool unterkapitel = false,
     String? ordner}) async {
   final quelle = ordner == null ? null : imArbeitsordner(ordner, arbeitsordner);
-  final inhalt = quelleLesen(quelle);
+  final inhalt = quelleLesen(quelle, kopf: elementKopfFuer(moodle));
   final vorher = await kapitelLesen(moodle, cmid);
   // pagenum ist die Stelle, HINTER der eingefügt wird; 0 = an den Anfang.
   var pagenum = vorher.length;

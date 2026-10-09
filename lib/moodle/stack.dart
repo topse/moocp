@@ -20,7 +20,6 @@ import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
 
 import '../freigabe.dart';
-import 'formular.dart';
 import 'moodle_zugang.dart';
 
 const String _stack = '/question/type/stack/';
@@ -73,8 +72,27 @@ String stackTestBericht(String html, {required int frage, int? seed}) {
   var verworfen = false;
   final verdacht = <String, List<String>>{};
   final gerechnet = <String>{};
-  for (final tab in haupt.querySelectorAll('table.stacktestsuite')) {
+  // Hat die Frage keinen einzigen Fragetest, zeigt STACK zwischen zwei <hr>
+  // ein Beispiel („If you add the test, its output will look like this"): die
+  // Musterantworten eingesetzt, mit Überschrift „Testfall Beispiel". Das ist
+  // kein Test der Frage; gezählt, hieß es „NICHT bestanden" statt „KEINE
+  // Testfälle", denn ein Gesamtergebnis gibt es dann nicht (questiontestrun.php).
+  // Die Elemente kommen in Dokumentreihenfolge, jedes <hr> schaltet um.
+  var imBeispiel = false;
+  bool? beispielBestanden;
+  for (final tab in haupt.querySelectorAll('hr, table.stacktestsuite')) {
+    if (tab.localName == 'hr') {
+      imBeispiel = !imBeispiel;
+      continue;
+    }
     final spalten = tab.querySelectorAll('thead th').length;
+    if (imBeispiel) {
+      if (spalten >= 7) {
+        final zeilen = tab.querySelectorAll('tbody tr');
+        beispielBestanden = (beispielBestanden ?? true) && zeilen.isNotEmpty && zeilen.every(_pass);
+      }
+      continue;
+    }
     final titel = _ueberschrift(tab);
     // Sechs Spalten: die Eingaben des Testfalls -- Name, Wert aus dem
     // Testfall, übernommener Wert, Anzeige, Status, Fehler. Ist der
@@ -118,6 +136,10 @@ String stackTestBericht(String html, {required int frage, int? seed}) {
   final b = StringBuffer('STACK-Frage $frage${seed == null ? '' : ', Variante $seed'}: '
       '${anzahl == 0 ? 'KEINE Testfälle -- nicht überprüfbar' : bestanden ? 'alle $anzahl Testfälle bestanden' : 'NICHT bestanden'}. '
       'verified: $bestanden\n');
+  if (anzahl == 0 && beispielBestanden != null) {
+    b.writeln('STACK hat zur Probe die Musterantworten eingesetzt: ${beispielBestanden ? 'volle Punkte' : 'NICHT volle Punkte'}. '
+        'Das ersetzt keine Testfälle.');
+  }
   if (verworfen) {
     b.writeln('Mindestens eine Testeingabe hat STACK nicht übernommen; dieser Testfall prüft dann nichts. '
         'Bei Auswahllisten (dropdown, radio) muss die Testeingabe eine der Optionen sein, wie sie dasteht.');
@@ -189,30 +211,65 @@ Future<String> stackVarianten(MoodleZugang moodle, Freigaben freigaben,
 /// Maxima-Code im CAS-Notizblock ausprobieren, bevor er in eine Frage kommt.
 /// simp (Auto-Vereinfachung) ist Vorgabe: Ohne wertet Maxima nichts aus, und
 /// man hält die unausgewertete Formel für ein kaputtes CAS.
-Future<String> stackCas(MoodleZugang moodle, {required String ausdruck, String variablen = '', bool vereinfachen = true}) async {
-  final adresse = '${_stack}adminui/caschat.php';
+///
+/// Der Notizblock (adminui/caschat.php) hat zwei Zugänge. Ohne questionid
+/// verlangt STACK qtype/stack:usediagnostictools auf Systemebene -- das haben
+/// nur Administratoren, Lehrkräfte bekommen 404. Mit questionid genügt das
+/// Recht, diese Frage zu bearbeiten; gerechnet wird trotzdem nur mit den
+/// mitgesendeten Variablen, die Frage liefert bloß den Zugang. Deshalb immer
+/// mit Frage.
+///
+/// In diesem Zugang hat das Formular aber einen Knopf „Speichern" (action =
+/// savechat), der Variablen und allgemeines Feedback ohne neue Version direkt
+/// in die Datenbank der Frage schreibt. Die Felder werden deshalb nicht aus
+/// dem Formular übernommen, sondern hier vollständig gesetzt, mit action =
+/// go; die Positivliste lässt nichts anderes durch. Das Feld inputs (von
+/// STACK mit der Musterantwort vorbelegt) und pslash gehen nicht mit.
+Future<String> stackCas(MoodleZugang moodle,
+    {required int sammlung, required int frage, required String ausdruck, String variablen = '', bool vereinfachen = true}) async {
+  final adresse = '${_stack}adminui/caschat.php?questionid=$frage&cmid=$sammlung';
   final r = await moodle.lesen(adresse);
   final d = html_parser.parse(r.text);
   final form = d.querySelectorAll('form').where((f) => f.querySelector('textarea[name="cas"]') != null).firstOrNull;
-  if (form == null) throw MoodleFehler('CAS-Notizblock nicht gefunden (erwartet unter $adresse).');
-  final f = formularFelder(form);
-  // Die Auto-Vereinfachung kommt angehakt; zum Abschalten muss sie ausdrücklich weg.
-  f.removeWhere((e) => e.key == 'simp');
-  if (vereinfachen) f.add(const MapEntry('simp', 'on'));
-  setze(f, 'maximavars', variablen);
-  setze(f, 'cas', ausdruck);
-  setze(f, 'action', 'go');
+  if (form == null) {
+    throw MoodleFehler('CAS-Notizblock zu Frage $frage nicht erreichbar. STACK öffnet ihn Lehrkräften nur über eine '
+        'STACK-Frage, die sie bearbeiten dürfen (sammlung = cmid der Fragensammlung, frage = questionid aus '
+        'fragen_lesen) -- welche, ist gleich, sie wird weder gelesen noch geändert.');
+  }
+  final f = <MapEntry<String, String>>[
+    MapEntry('maximavars', variablen),
+    if (vereinfachen) const MapEntry('simp', 'on'),
+    MapEntry('cas', ausdruck),
+    const MapEntry('action', 'go'),
+  ];
   final a = await moodle.senden(adresse, f);
-  final rd = html_parser.parse(a.text);
+  return stackCasBericht(a.text);
+}
+
+/// Die Antwort des CAS-Notizblocks als Bericht; ohne Moodle prüfbar
+/// (test/stack_cas_bericht_test.dart).
+String stackCasBericht(String html) {
+  final rd = html_parser.parse(html);
   final haupt = rd.querySelector('#region-main');
-  // Das Ergebnis steht im selben div VOR dem Formular -- im Elternknoten des
-  // Formulars suchen, nicht in #region-main.
+  // Das Ergebnis steht als Kasten (.box) im selben div VOR dem Formular --
+  // im Elternknoten des Formulars suchen, nicht in #region-main. Davor stehen
+  // mit Frage auch ihr Name, ihre Version und ihr Text; die gehören nicht
+  // zum Ergebnis.
   final formular = haupt?.querySelector('form');
   final teile = <String>[];
   for (var k = formular?.parent?.children.firstOrNull; k != null && k != formular; k = k.nextElementSibling) {
-    if (!RegExp(r'^h[1-6]$').hasMatch(k.localName ?? '')) teile.add(_text(k));
+    if (k.classes.contains('box') || k.classes.contains('generalbox')) teile.add(_text(k));
   }
-  final meldungen = [for (final e in rd.querySelectorAll('.alert-danger, .notifyproblem, .error')) _text(e)];
+  // Fehler in den Variablen (etwa ein Syntaxfehler) setzt STACK als
+  // schlichten Absatz ohne Fehlerklasse ins Formular, über das Feld der
+  // Variablen (caschat.php). Ohne sie käme nur ein leeres Ergebnis zurück.
+  // Darum zählen auch die Absätze des Formulars, die kein Eingabefeld haben;
+  // der Absatz mit dem Haken „pslash" hat eins.
+  final meldungen = <String>{
+    for (final e in rd.querySelectorAll('.alert-danger, .notifyproblem, .error')) _text(e),
+    for (final p in formular?.children.where((e) => e.localName == 'p') ?? const <dom.Element>[])
+      if (p.querySelector('textarea, input, select, button') == null) _text(p),
+  }..removeWhere((t) => t.isEmpty);
   return 'Ergebnis: ${teile.where((t) => t.isNotEmpty).join(' ')}'
       '${meldungen.isEmpty ? '' : '\nMeldungen: ${meldungen.join(' | ')}'}\n'
       '(Bleibt ein Ausdruck unausgewertet stehen, ist die Funktion unbekannt oder simp war aus.)';

@@ -33,7 +33,12 @@ SID=$(grep -i "^mcp-session-id:" "$K" | tr -d '\r' | awk '{print $2}')
 S=(-H "Authorization: Bearer $T" -H "Mcp-Session-Id: $SID" -H "MCP-Protocol-Version: 2025-06-18")
 curl -s -o /dev/null -X POST $U "${S[@]}" "${H[@]}" -d '{"jsonrpc":"2.0","method":"notifications/initialized"}'
 # Die Anfrage baut Python (json.dumps): Bash halbierte Backslashes in Pfaden.
-python -c "import json,sys;print(json.dumps({'jsonrpc':'2.0','id':2,'method':'tools/call','params':{'name':sys.argv[1],'arguments':json.loads(sys.argv[2])}}))" "$1" "${2:-{\}}" > "$ANF"
+# Die Argumente gehen als UTF-8-Datei hinüber, nicht über die Kommandozeile:
+# Dort kommen sie über die Codepage an, und was nicht in Latin-1 liegt, ging
+# verloren (… wurde zum Steuerzeichen U+0085, € verschwand).
+ARG=$(cygpath -m "$TMPD")/argumente.json
+printf '%s' "${2:-{\}}" > "$ARG"
+python -c "import json,sys;print(json.dumps({'jsonrpc':'2.0','id':2,'method':'tools/call','params':{'name':sys.argv[1],'arguments':json.loads(open(sys.argv[2],'rb').read().decode('utf-8'))}}))" "$1" "$ARG" > "$ANF"
 curl -s -X POST $U "${S[@]}" "${H[@]}" --data-binary @"$ANF" > "$ANT"
 python -c "
 import sys, json

@@ -22,12 +22,14 @@ das nicht, lässt sich die Frage zwar importieren, sie rendert aber nicht und
 bewertet nicht. Prüfen kostet einen Aufruf:
 
 ```
-stack_cas(ausdruck: "Ergebnis {@x@}", variablen: "x : 3.5*2;")
+stack_cas(sammlung, frage, ausdruck: "Ergebnis {@x@}", variablen: "x : 3.5*2;")
 ```
 
 Gerechnet wird, was in `{@…@}` steht. Kommt `7.0` zurück, ist alles in
 Ordnung. Bleibt `3.5*2` unausgewertet stehen, ist entweder die
 Auto-Vereinfachung aus (`vereinfachen: false`) oder das CAS antwortet nicht.
+
+**Der Notizblock braucht eine STACK-Frage.** STACK öffnet ihn Lehrkräften nur über eine Frage, die sie bearbeiten dürfen; `frage` ist deshalb irgendeine STACK-Frage der Sammlung aus `fragen_lesen`. Welche, ist gleich: Sie wird weder gelesen noch geändert, gerechnet wird nur mit `variablen`. Gibt es in der Sammlung noch keine, entfällt Schritt 1 für die erste Frage – dann prüfen ihre Testfälle die Rechnung, und ab da ist der Notizblock über sie erreichbar.
 
 ## Der Arbeitsablauf
 
@@ -135,7 +137,32 @@ zu würfeln und das Ergebnis rechnen zu lassen: Aus `U : 10*(rand(8)+16)` und
 unbrauchbar. **Umgekehrt vorgehen:** die Werte würfeln, die glatt sein sollen,
 und den Rest daraus ausrechnen.
 
-Ob das gelungen ist, sieht man erst an den eingesetzten Varianten (Schritt 5).
+**Ganzzahlig konstruieren, erst für die Anzeige teilen.** Wer Dezimalzahlen braucht, würfelt ganze Zahlen in der kleinsten Stelle – Zehntel, Cent – und teilt erst am Ende durch 10 oder 100. Maxima rechnet ganze Zahlen und Brüche exakt; eine Kommazahl, die früh entsteht, trägt Rundungsfehler in jeden weiteren Schritt. Das Ergebnis wird zuerst festgelegt und die Aufgabe daraus gebaut, so geht eine Division immer auf:
+
+```
+d  : 2+rand(8);                                  /* Divisor 2 … 9 */
+q0 : 2+rand(39);                                 /* Quotient in Zehnteln */
+q  : if is(mod(d*q0,10)=0) then q0+1 else q0;    /* kein glatter Dividend */
+a  : d*q/10;                                     /* Dividend, etwa 36/5 */
+ta : q/10;                                       /* Quotient, etwa 12/5 */
+```
+
+`a` und `ta` bleiben Brüche; im Text steht `{@dispdp(a,1)@}`, das zeigt 7,2 (siehe „Fragetext").
+
+**Randfälle ausschließen statt neu würfeln.** Manche Würfe ergeben eine Aufgabe, die keine ist: Bei `d = 5` und geradem `q0` geht der Dividend glatt auf – eine Kommaaufgabe ohne Komma. Statt neu zu würfeln (eine Schleife mit `rand()` kostet Rechenzeit auf dem Server und endet nicht sicher) verschiebt die dritte Zeile um 1. Das genügt immer: `d*(q0+1)` unterscheidet sich von `d*q0` um `d`, und weil `d` zwischen 2 und 9 liegt, können nicht beide durch 10 teilbar sein. Ohne diese Zeile wären 64 der 312 möglichen Würfe trivial, mit ihr keiner (gemessen 09.10.2026).
+
+**Alle Würfe durchrechnen, wo es überschaubar viele sind.** Ein Randfall in jedem fünften Wurf entgeht fünf eingesetzten Varianten in etwa einem Drittel der Fälle. `stack_cas` rechnet stattdessen alle durch: jedes `rand()` durch eine Laufvariable ersetzen und die schlechten Fälle zählen.
+
+```
+kor : flatten(makelist(makelist(if is(mod(d*q0,10)=0) then d*(q0+1) else d*q0, q0, 2, 40), d, 2, 9));
+schlecht : length(sublist(kor, lambda([x], is(mod(x,10)=0))));
+```
+
+Mit dem Ausdruck `{@schlecht@} von {@length(kor)@}` kommt `0 von 312` zurück.
+
+**`rand()` nicht in Verzweigungen.** In `if is(rand(2)=0) then a elseif is(rand(2)=0) then b else c` würfelt das zweite `rand` nur, wenn das erste nicht getroffen hat: `a` kommt in der Hälfte der Varianten, `b` und `c` je in einem Viertel. Jede Zufallszahl wird deshalb vorher für sich gewürfelt. Soll eine Auswahl gewichtet sein, dann ausdrücklich über eine Zahl mit Schwellen: `w : rand(10);` und dann `if w < 4 then … elseif w < 7 then … else …`.
+
+Ob das alles gelungen ist, sieht man an den eingesetzten Varianten (Schritt 5).
 
 ## Fragetext
 
@@ -150,6 +177,8 @@ Ob das gelungen ist, sieht man erst an den eingesetzten Varianten (Schritt 5).
 
 Formeln in LaTeX: `\(…\)` inline, `\[…\]` abgesetzt. In JSON den Backslash
 verdoppeln.
+
+**Feste Nachkommastellen.** `{@x@}` zeigt eine Zahl so kurz wie möglich, 1,5 statt 1,50, und einen Bruch als Bruch. Für Geldbeträge und überall, wo die Stellenzahl etwas sagt, steht `{@dispdp(x,2)@}` im Text: Es zeigt 1,50 und 2,00, mit Komma wie der übrige Text, auch wenn `x` ein Bruch ist (gemessen 09.10.2026). `dispdp` ist nur Anzeige – gerechnet und gewertet wird mit `x` selbst.
 
 Eine Zeichnung aus den Aufgabenvariablen oder zum Ziehen steht als Block `[[jsxgraph]]` im Fragetext. Wann sie sich lohnt, wie sie gebaut und bewertet wird und was die App dabei abweist: `jsxgraph.md`.
 
@@ -201,6 +230,8 @@ Die Regel steht im SKILL.md („Zahlenergebnisse: Einheit und Genauigkeit stehen
 
 **Einheit hinter dem Feld – die Vorgabe.** Eingabe `numerical`, die Einheit steht im Fragetext nach dem Platzhalter: `<p>\(I =\) [[input:ans1]] mA [[validation:ans1]]</p>`. Wer in der falschen Größenordnung antwortet, bekommt einen eigenen Knoten: `NumRelative` mit `sans: "1000*ans1"` gegen den Wert in mA erkennt die Antwort in A (0,0667) und gibt Teilpunkte mit dem Satz „Der Wert passt zur Einheit A – gefragt war mA."
 
+**Komma an der falschen Stelle ist derselbe Fehler.** Bei Dezimalaufgaben stimmen oft die Ziffern und nur die Zehnerpotenz nicht: 0,72 oder 72 statt 7,2. Das fängt dasselbe Muster ab, je Richtung ein Knoten mit `NumRelative` gegen die Musterantwort, `sans: "10*ans1"` für ein Komma zu weit links und `sans: "ans1/10"` für eines zu weit rechts, mit der Rückmeldung „Die Ziffern stimmen, aber das Komma steht an der falschen Stelle." Ein Fehler um zwei Stellen (`100*ans1`) bekommt einen eigenen Knoten, wo er in der Aufgabe naheliegt, etwa beim Umrechnen von Flächeneinheiten. Testfälle: je Knoten der verschobene Wert (`ta/10`, `10*ta`).
+
 **Einheit eingeben lassen – nur, wenn sie selbst geprüft wird.** Eingabe `units`, Musterantwort aus `stackunits_make(…)`, Knoten `UnitsRelative`: Er rechnet Vorsätze um. Gemessen: `66.7*mA` und `0.0667*A` sind beide richtig, `66.7*A` ist falsch (Vorsatz vergessen), `66.7*mV` passt nicht (`ATUnits_incompatible_units`). `UnitsStrictRelative` verlangt dagegen genau die Einheit der Musterantwort – nur, wenn der Text diese Einheit ausdrücklich verlangt („in mA"), sonst wird richtiges Umrechnen bestraft. Die Testfälle enthalten mindestens eine Antwort mit anderem Vorsatz als die Musterantwort.
 
 Getippt wird, wie man es schreibt: `stack_xml` setzt bei `units` die Eingabeoption `insertstars` auf `4`, Sterne für Leerzeichen und für implizite Multiplikation. Gemessen: `66,7 mA`, `66,7mA` und `0,0667 A` werden angenommen und richtig gewertet; mit der STACK-Vorgabe `0` wären die ersten beiden ungültig, und Lernende müssten `66,7*mA` tippen.
@@ -218,6 +249,17 @@ Getippt wird, wie man es schreibt: `stack_xml` setzt bei `units` die Eingabeopti
 Zu grob gerundet (66,7 bei verlangten zwei Nachkommastellen) fällt durch die enge Toleranz; ein weiterer Knoten mit `NumRelative` und `0.01` erkennt es und gibt Teilpunkte mit „Richtig gerechnet, aber nicht auf zwei Nachkommastellen gerundet." Ebenso nach `NumSigFigs`: ein Knoten mit `NumRelative` `0.005` für „richtig, aber anders gerundet". Der Knoten mit `NumSigFigs` ist dann **leise**: Sonst zeigt STACK zusätzlich „Ihre Antwort hat die falsche Anzahl an Dezimalstellen" – doppelt, und bei geltenden Ziffern auch noch falsch benannt (gemessen 08.10.2026). Ob genauer als verlangt voll zählt oder Teilpunkte bekommt, ist eine Entscheidung der Lehrkraft; der Vorschlag im Plan ist „voll", außer das Runden selbst ist Lernziel.
 
 **Testfälle:** der richtig gerundete Wert, ein genauerer, ein zu grober und – bei fester Einheit – der Wert in der falschen Größenordnung. Testeingaben stehen in Maxima-Schreibweise mit Punkt (`66.67`); was Lernende mit Komma tippen (`66,67`), deutet die Anzeigeoption `decimals`, die `stack_xml` auf Komma stellt (gemessen 08.10.2026).
+
+## Brüche: gekürzt oder wie abgezählt
+
+Eine Eingabe `algebraic` mit `forbidfloat: 1` nimmt Brüche und keine Dezimalzahl. Ob gekürzt werden muss, sagt der Text, und der Baum prüft es in zwei Knoten: erst den Wert, dann die Form. Gemessen am 09.10.2026 mit 2 von 6 Teilen:
+
+| Der Text verlangt | Knoten 1 (Wert) | Knoten 2 (Form) | Was zählt |
+|---|---|---|---|
+| vollständig gekürzt | `AlgEquiv` gegen `ta` | `LowestTerms` gegen `ta` | `1/3` voll; `2/6` ist wertgleich, aber nicht gekürzt (`ATLowestTerms_entries`) |
+| den Bruch, wie abgezählt | `AlgEquiv` gegen `z/n` | `EqualComAss` gegen `z/n`, der Baum mit `vereinfachen: false` | `2/6` voll; `1/3` ist wertgleich, aber gekürzt |
+
+Im zweiten Fall rechnet der Baum ohne Vereinfachung, sonst wird aus `z/n` mit `z : 2; n : 6;` schon `1/3`, und die ungekürzte Form ist nicht mehr zu prüfen. Knoten 2 sagt im falschen Zweig, was an der Form nicht stimmt („Der Wert stimmt, aber der Bruch ist nicht vollständig gekürzt."); ob das Teilpunkte gibt oder keine, entscheidet die Lehrkraft. Testfälle: die verlangte Form, die andere Form, ein falscher Wert.
 
 ## Rückmeldebäume (PRT)
 
@@ -301,6 +343,7 @@ Eine Frage mit nur einem Teil braucht das nicht: Bleibt sie leer, zeigt Moodle s
 | `String` | Zeichenkette, exakt | — |
 | `StringSloppy` | Zeichenkette, Groß-/Kleinschreibung und Leerzeichen egal | — |
 | `EqualComAss` | gleich bis auf Kommutativität und Assoziativität | — |
+| `LowestTerms` | Brüche vollständig gekürzt („Brüche: gekürzt oder wie abgezählt") | — |
 | `SameType` | nur die Bauart der Antwort (Menge, Liste, Gleichung …) | — |
 
 Die Einheitentests liefern eigene Hinweise mit — `ATUnits_incompatible_units`,

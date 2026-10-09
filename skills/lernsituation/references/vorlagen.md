@@ -54,7 +54,7 @@ Regeln:
 - **`einstellungen`** nur, wenn der Plan welche nennt: Frist und Abgabetypen einer Aufgabe, beim Buch die Kapitelgliederung. Schlüssel wie bei `aktivitaet_anlegen`.
 - **Ein Unterabschnitt** ist ein Eintrag ohne Ordner, `{"typ": "subsection", "name": "<Phase>"}`; die Einträge danach kommen hinein, bis zum nächsten. Nur bei Bedarf (Brücke).
 - **Die Ordnernamen** sind kurz, klein, mit Bindestrichen und ohne Umlaute. Sie sind nur für dich und die Übertragung da: In Moodle gibt es sie nicht, und im Text steht keiner — ein Blatt wird immer mit seiner Kennung genannt. `ab-01-…`, `ib-01-…` sortiert sie nach dem ersten Einsatz. Wird später ein Blatt geteilt, bekommt der neue Teil die nächste freie Nummer; alle übrigen umzunummerieren, riefe nur Verwechslungen hervor.
-- **Jede Datei, die ein Blatt einbindet, liegt in `dateien/` seines Ordners** und steht im Text als `@@PLUGINFILE@@/<name>`. Dieselbe Zeichnung auf zwei Blättern liegt in beiden `dateien/`, unter demselben Namen.
+- **Jede Datei, die ein Blatt einbindet, liegt in `dateien/` seines Ordners** und steht im Text als `@@PLUGINFILE@@/<name>`. Dieselbe Zeichnung auf zwei Blättern liegt in beiden `dateien/`, unter demselben Namen. Ebenso ein interaktives Element (unten).
 - **Sonst liegt nichts im Entwurf** — keine Notizen, keine Kopien, kein Ordner, der nicht in `lernsituation.json` steht. Was dort fehlt, käme nicht in den Kurs.
 
 ## Weitere Aktivitäten im Entwurf
@@ -339,6 +339,10 @@ Die Abschnitte sind nummeriert, damit eine „Lies"-Zeile genau einen nennen kan
 Eine Datei in `dateien/` jedes Blatts, das sie einbindet. Hausstil, Muster und Maße: `references/zeichnungen.md`. Jede Zeichnung hat eine Bildunterschrift im Blatt („Abb. 1: Netz der Muster GmbH vor der Umstellung") und wird im Text erwähnt.
 
 „Abb. n" zählt je Blatt, nicht je Lernsituation: Dieselbe Datei `Z-03-….svg` kann auf Infoblatt 2 „Abb. 1" sein und auf Arbeitsblatt 4 wieder „Abb. 1". Die Nummer im Dateinamen zählt die Zeichnungen der Lernsituation und erscheint nie im Text eines Blatts.
+
+## `dateien/<kurztitel>.html` — interaktives Element
+
+Eine eigene HTML-Datei in `dateien/` des Blatts, das sie trägt, eingebunden mit `<iframe sandbox="allow-scripts" src="@@PLUGINFILE@@/<kurztitel>.html" title="…" class="w-100 border-0" height="…">` und einem Satz davor, was man damit tut. Wie sie gebaut wird und was darin nicht geht: `references/elemente.md`; den Anfang ihres Kopfs setzt die App bei der Übertragung, im Entwurf fehlt er. Ein Element ergänzt das Blatt, es ersetzt keine Aufgabe: Was die Lernenden damit herausfinden sollen, steht als Auftrag im Blatt, und gedruckt trägt der Text allein. Im Ablaufplan steht es nicht als eigenes Material — es gehört zum Blatt —, wohl aber, wenn der Schritt dafür ein Gerät braucht.
 
 ## Quellen und fremde Inhalte — am Ende der Handreichung
 

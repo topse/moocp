@@ -228,6 +228,18 @@ def eine_weitere(nr, **aenderung):
     return lambda ordner: weitere(ordner, [(o, typ, aenderung.get('name', name), dateien, extra)])
 
 
+ELEMENT_GUT = ('<!DOCTYPE html><html lang="de"><head><title>Z</title></head>'
+               '<body><button type="button" class="btn btn-primary">Z</button></body></html>')
+
+
+def mit_element(rahmen, datei=ELEMENT_GUT):
+    """Ein interaktives Element auf Arbeitsblatt 1 (references/elemente.md)."""
+    def f(o):
+        ersetze(o, AB1, '<p>Erkläre in je einem Satz', rahmen + '\n<p>Erkläre in je einem Satz')
+        schreib(o, 'ab-01-auftrag/dateien/zz-element.html', datei)
+    return f
+
+
 FAELLE = [
     ('Lösung gelöscht', lambda o: weg(o, 'ab-02-umsetzung-vertiefung-loesung'),
      r'Lösung fehlt: „Lösung zur Vertiefung zu Arbeitsblatt 2: …"'),
@@ -488,6 +500,15 @@ FAELLE = [
     ('Datei: zwei Dateien', eine_weitere(5, dateien={'bereiche/files/zweite.pkt': 'y'}), r'genau eine Datei .*gefunden: 2'),
     ('Link ohne https', eine_weitere(6, extra={'einstellungen': {'externalurl': 'http://example.org'}}),
      r'Link ohne Adresse'),
+    ('Skript im Text', lambda o: ersetze(o, AB1, '<p>Erkläre in je einem Satz',
+                                         '<script>los()</script>\n<p>Erkläre in je einem Satz'),
+     r'Code im Text \(<script>\)'),
+    ('Element ohne sandbox', mit_element('<iframe src="@@PLUGINFILE@@/zz-element.html" title="Z"></iframe>'),
+     r'Element zz-element.html ohne sandbox'),
+    ('Element lädt', mit_element('<iframe sandbox="allow-scripts" src="@@PLUGINFILE@@/zz-element.html" title="Z" '
+                                 'height="100"></iframe>',
+                                 ELEMENT_GUT.replace('</body>', '<script>fetch("/x");</script></body>')),
+     r'Element zz-element.html: Im Code steht fetch'),
 ]
 
 
