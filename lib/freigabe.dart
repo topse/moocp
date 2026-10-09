@@ -124,8 +124,9 @@ class Freigaben extends ChangeNotifier {
   final Duration frist;
 
   /// Die eingestellte Stufe (Titelzeile, gespeichert in den Einstellungen).
-  /// Bewusst ohne notifyListeners: Die Zuhörer warten auf eine neue Anfrage,
-  /// und die Oberfläche, die sie setzt, baut sich selbst neu auf.
+  /// Bewusst ohne notifyListeners: Die Zuhörer folgen den Anfragen und dem
+  /// Zähler [wartend], und die Oberfläche, die die Stufe setzt, baut sich
+  /// selbst neu auf.
   Bestaetigungen stufe;
 
   /// Wie oft eine Freigabe wegen der Stufe ausgelassen wurde. Der MCP-Dienst
@@ -136,6 +137,12 @@ class Freigaben extends ChangeNotifier {
 
   FreigabeAnfrage? _aktuell;
   FreigabeAnfrage? get aktuell => _aktuell;
+
+  /// Wie viele Anfragen hinter der offenen warten. Der Dialog zeigt es, damit
+  /// die Lehrkraft weiß, dass nach ihrer Entscheidung noch etwas kommt;
+  /// Zuhörer erfahren jede Änderung.
+  int get wartend => _wartend;
+  int _wartend = 0;
 
   static const _abbruch = #freigabenAbbruch;
 
@@ -149,7 +156,9 @@ class Freigaben extends ChangeNotifier {
 
   /// Stellt eine Anfrage und wartet auf die Entscheidung, höchstens [frist]
   /// und nur, solange der Client wartet ([mitAbbruch]). Es gibt immer nur eine
-  /// offene Anfrage; eine zweite wartet, bis die erste entschieden ist.
+  /// offene Anfrage; eine zweite reiht sich ein ([wartend], mit Eintrag im
+  /// Protokoll) und wartet, bis die erste entschieden ist. Ihre Frist beginnt
+  /// erst, wenn sie offen ist.
   ///
   /// Liegt die eingestellte Stufe unter der der Anfrage, wird nicht gefragt:
   /// Die Lehrkraft hat das so eingestellt, das Protokoll hält es fest (A4),
@@ -163,14 +172,26 @@ class Freigaben extends ChangeNotifier {
     }
     var abgebrochen = false;
     final abbruch = (Zone.current[_abbruch] as Future<void>?)?.then((_) => abgebrochen = true);
-    while (_aktuell != null && !abgebrochen) {
-      await Future.any([_aktuell!._antwort.future, ?abbruch]);
+    if (_aktuell != null) {
+      // Einreihen. Die Wartenden wachen in der Reihenfolge auf, in der sie
+      // kamen; wer zuerst sieht, dass keine Anfrage mehr offen ist, ist dran.
+      final davor = 1 + _wartend;
+      protokoll.eintrag(Art.info,
+          'Freigabe wartet hinter ${davor == 1 ? 'einer anderen' : '$davor anderen'}: ${a.titel}');
+      _wartend++;
+      notifyListeners();
+      while (_aktuell != null && !abgebrochen) {
+        await Future.any([_aktuell!._antwort.future, ?abbruch]);
+      }
+      // Kein eigenes notifyListeners: Beide Wege unten melden sich ohnehin.
+      _wartend--;
     }
     // Abgebrochen, während eine andere Anfrage offen war: gar nicht erst
     // fragen.
     if (abgebrochen) {
       protokoll.eintrag(Art.info, 'Die KI wartet nicht mehr -- nicht gefragt, nicht gespeichert: ${a.titel}');
       a._antwort.complete(false);
+      notifyListeners();
       return false;
     }
     _aktuell = a;

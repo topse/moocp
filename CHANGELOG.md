@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.9.22
+- Freigaben: Warten weitere Anfragen hinter der offenen, zeigt der Dialog, wie viele, und das Protokoll nennt jede, die sich einreiht.
+
 ## 0.9.21
 - import_from_github.sh hinzugefügt
 

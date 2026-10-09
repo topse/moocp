@@ -597,7 +597,7 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
     showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => FreigabeDialog(a, widget.freigaben.frist),
+      builder: (context) => FreigabeDialog(a, widget.freigaben),
     ).then((ja) {
       if (identical(widget.freigaben.aktuell, a)) {
         widget.freigaben.entscheiden(ja ?? false);
@@ -1082,9 +1082,12 @@ Future<void> bestaetigungenHilfe(BuildContext context) => showDialog<void>(
 );
 
 class FreigabeDialog extends StatelessWidget {
-  const FreigabeDialog(this.anfrage, this.frist, {super.key});
+  const FreigabeDialog(this.anfrage, this.freigaben, {super.key});
   final FreigabeAnfrage anfrage;
-  final Duration frist;
+
+  /// Für die Frist und den Zähler der wartenden Anfragen, der sich ändert,
+  /// während der Dialog offen ist.
+  final Freigaben freigaben;
 
   @override
   Widget build(BuildContext context) {
@@ -1191,8 +1194,20 @@ class FreigabeDialog extends StatelessWidget {
               const Spacer(),
             const SizedBox(height: 8),
             Text(
-              'Ohne Entscheidung innerhalb von ${frist.inMinutes} Minuten ${anfrage.ohneEntscheidung}.',
+              'Ohne Entscheidung innerhalb von ${freigaben.frist.inMinutes} Minuten ${anfrage.ohneEntscheidung}.',
               style: Theme.of(context).textTheme.bodySmall,
+            ),
+            // Nach der Entscheidung kommt der nächste Dialog -- die Lehrkraft
+            // soll das vorher wissen, nicht erst überrascht werden.
+            ListenableBuilder(
+              listenable: freigaben,
+              builder: (context, _) => switch (freigaben.wartend) {
+                0 => const SizedBox.shrink(),
+                final n => Text(
+                  n == 1 ? '1 weitere Anfrage wartet.' : '$n weitere Anfragen warten.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              },
             ),
           ],
         ),

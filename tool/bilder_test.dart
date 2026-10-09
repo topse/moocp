@@ -153,7 +153,7 @@ void main() {
       showDialog<bool>(
         context: kontext,
         barrierDismissible: false,
-        builder: (_) => FreigabeDialog(anfrage, freigaben.frist),
+        builder: (_) => FreigabeDialog(anfrage, freigaben),
       );
       await tester.pumpAndSettle();
       await expectLater(find.byType(MaterialApp), matchesGoldenFile('../docs/bilder/freigabe.png'));

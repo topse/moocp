@@ -5,7 +5,6 @@
 - Aktivität "Befragung" (questionnaire) unterstützen. Diese kann zu unterrichtlichen zwecken, aber auch organisatorischen (z.B. Befragung zur Unterrichtsquqalität) verwendet werden.
 - Fragensammlung verbergen, verschieben und duplizieren: geht nicht, weil `qbank` nicht in der Kursstruktur steht. Löschen hat einen eigenen Weg über die Sammlungsliste; die drei bräuchten denselben.
 - Konventionen beim Arbeiten an Fragen: Sie reiten an `kurs_uebersicht` und `abschnitt_lesen` mit, aber der Skill `moodle-fragen` beginnt oft mit `fragensammlungen` und `fragen_lesen` — dort hängt sie bisher nur der Satz im Skilltext an. Prüfen, ob eines dieser Werkzeuge sie mitliefern sollte. Mit dem Steckbrief dringlicher: Anrede und Arbeitsweise brauchen auch Fragetexte und Tests.
-- Wartende Freigabe sichtbar machen: Zähler im Dialog („1 weitere Anfrage wartet") und eine Protokollzeile, wenn eine Anfrage sich einreiht.
 - Aktivität "Lernpfad" vollständig unterstützen inkl. didaktischer und pädagogischer Ideen, Hilfestellungen und Regeln, wie die gut einzusetzen sind, evtl. auch mit Regeln der Gamification
 - Badges vollumfänglich unterstützen, inkl. didaktischer und pädagogischer Ideen, Hilfestellungen und Regeln, wie die gut einzusetzen sind, auch unter Regeln der Gamification
 - Optimierungsphase: MCP-Server und Skill prüfen, ob wir tokenoptimiert arbeiten, z.B. ist das MCP Interface so gestaltet, dass kein balast durchgeleitet und nur nutzdaten (werden also z.B. alle nicht benötigten HTML-Tags von der Moodle Seite rausgefiltert?)
