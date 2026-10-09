@@ -141,7 +141,7 @@ Welche Werkzeuge die KI hat und welche davon Ihre Freigabe brauchen, steht im Be
 - Ihr Passwort an die KI geben oder in ein Protokoll schreiben.
 - Beliebige Adressen aufrufen oder beliebigen Code ausführen – es gibt nur
   ihre Werkzeuge.
-- Code in eine Kursseite schreiben, der an die Moodle-Sitzung der Betrachter kommt. Interaktive Elemente stehen nur in einem abgeschotteten Rahmen.
+- Code in den Kurs schreiben, der an die Moodle-Sitzung der Betrachter kommt, weder in den Text einer Seite noch in eine Datei. Interaktive Elemente stehen nur in einem abgeschotteten Rahmen.
 - Ohne Ihr Ja einen anderen Rechner als Ihr Moodle anfragen. Die einzige
   Ausnahme ist die Suche nach Updates, und die fragt Sie beim ersten Start.
 - Bestehendes ändern, verschieben, sichtbar schalten oder löschen, ohne dass
@@ -269,7 +269,7 @@ Der Arbeitsordner lebt so lange wie die App: Beim Start und beim Beenden leert s
   Adresse, die Ihre Moodle-Instanz dafür eingestellt hat. Nach jedem Bild
   wird er beendet und sein Profil gelöscht.
 - **Zeichnungen in STACK-Fragen** laufen im Browser Ihrer Lernenden. Die App lässt dort nur zu, was von Ihrem Moodle kommt: JSXGraph, wie STACK es mitbringt. Was eine Frage von einem fremden Server laden würde – eine andere JSXGraph-Version, ein GeoGebra-Applet, Bilder oder Daten –, weist sie beim Anlegen und Ändern ab, denn jeder solche Aufruf verriete dem fremden Server, dass gerade jemand die Frage bearbeitet.
-- **Interaktive Elemente** laufen im Browser Ihrer Lernenden und in Ihrem. Die App schreibt sie nur als eigene Datei in einen abgeschotteten Rahmen: Das Element kommt nicht an die Moodle-Seite, Ihre Sitzung, Cookies oder den Speicher des Browsers, und es lädt und sendet nichts außer dem Aussehen Ihres Moodle. Öffnet jemand die Datei außerhalb des Rahmens, hält sie an. Code direkt im Text einer Seite (`<script>` und Ähnliches) liefe ohne diese Abschottung bei jedem Betrachter; die App schreibt ihn nicht, und was schon da ist, nennt sie beim Lesen.
+- **Interaktive Elemente** laufen im Browser Ihrer Lernenden und in Ihrem. Die App schreibt sie nur als eigene Datei in einen abgeschotteten Rahmen: Das Element kommt nicht an die Moodle-Seite, Ihre Sitzung, Cookies oder den Speicher des Browsers. Nachladen darf es nur das Aussehen Ihres Moodle, und eine fremde Adresse im Element weist die App vor dem Schreiben ab. Öffnet jemand die Datei außerhalb des Rahmens, hält sie an. Code direkt im Text einer Seite (`<script>` und Ähnliches) oder in einer anderen Datei, die der Browser öffnen kann – eine verlinkte HTML-Seite, eine SVG-Zeichnung –, liefe ohne diese Abschottung bei jedem Betrachter; die App schreibt ihn nicht, und was schon da ist, nennt sie beim Lesen.
 - Außer Ihrem Moodle fragt die App nur eine einzige Stelle an: GitHub, für
   die **Suche nach Updates** – und das nur, wenn Sie beim ersten Start
   zugestimmt haben. Was dabei übertragen wird, steht unter
@@ -508,7 +508,7 @@ skills/  (Wissen: Didaktik, Regeln,        moocp (Flutter, Windows)
 | `lib/moodle/kurshinweise.dart` | das Verzeichnis `CLAUDE` je Kurs und je Abschnitt: Konventionen lesen und schreiben, mit Verdachtsprüfung |
 | `lib/moodle/kursfilter.dart` | Textfilter eines Kurses: setzt er Formeln (MathJax)? |
 | `lib/moodle/formeln.dart` | Formelfehler im HTML; an ihnen bricht jedes Schreiben ab |
-| `lib/moodle/elemente.dart` | Interaktive Elemente: Kopf mit Content-Security-Policy und Wächter, Prüfung der Elementdatei; neuer Code im Text und Rahmen ohne Abschottung brechen jedes Schreiben ab |
+| `lib/moodle/elemente.dart` | Interaktive Elemente: Kopf mit Content-Security-Policy und Wächter, Prüfung der Elementdatei; neuer Code im Text, Rahmen ohne Abschottung und Dateien mit Code, die kein Element sind, brechen jedes Schreiben ab |
 | `lib/moodle/stack_skripte.dart` | Skriptblöcke in STACK-Fragen: nur `[[jsxgraph]]` ohne fremde Quelle; an allem anderen bricht Bauen, Import und Ändern einer Frage ab |
 | `lib/moodle/bildschirmfoto.dart`, `browserliste.dart` | Bildschirmfotos: den Browser steuern, jede seiner Anfragen prüfen, nur den Inhalt aufnehmen |
 | `lib/moodle/zeilenvergleich.dart` | Zeilenvergleich für den Freigabedialog |

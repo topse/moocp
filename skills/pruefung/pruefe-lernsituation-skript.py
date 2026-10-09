@@ -509,6 +509,14 @@ FAELLE = [
                                  'height="100"></iframe>',
                                  ELEMENT_GUT.replace('</body>', '<script>fetch("/x");</script></body>')),
      r'Element zz-element.html: Im Code steht fetch'),
+    ('Verlinkte Datei mit Code', mit_element('<p><a href="@@PLUGINFILE@@/zz-element.html">Zum Ausprobieren</a></p>',
+                                             ELEMENT_GUT.replace('</body>', '<script>los()</script></body>')),
+     r'Datei zz-element.html enthält Code \(<script>\) und ist kein Element'),
+    ('Skript in eingebetteter Zeichnung',
+     lambda o: ersetze(o, AB1, '<p>Erkläre in je einem Satz',
+                       '<svg xmlns="http://www.w3.org/2000/svg"><circle r="2" onclick="los()"/></svg>\n'
+                       '<p>Erkläre in je einem Satz'),
+     r'Code im Text \(onclick an <circle>\)'),
 ]
 
 

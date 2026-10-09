@@ -33,7 +33,7 @@ Das Theme setzt das Aussehen global. Jedes Inline-Style hebelt es für diesen ei
 
 **Zwei Ausnahmen.** Die **SchuCu-Tabelle einer Lernsituation** (`<table class="lernsituation">`, Skill `lernsituation`) folgt einer fein abgestimmten Vorlage mit `style`-Angaben und `&nbsp;` in den Abstandszellen; sie wird Zeichen für Zeichen übernommen, und nichts daran wird „aufgeräumt" — auch nicht beim Ändern der Seite. Und **Rahmenlinien an Tabellenelementen**, wo die Linie die Aussage trägt und die Randklassen nicht reichen — eng umgrenzt, unten unter „Wenn die Linien die Aussage tragen".
 
-Ein **interaktives Element** ist keine Ausnahme davon, sondern ein eigenes Dokument in seinem Rahmen: Dort trägt ein `<style>`-Block die Anordnung, Farben und Schriften kommen auch dort vom Theme (Skill `moodle`, `references/elemente.md`). Für die Seite, in der es steht, gilt alles hier.
+Ein **interaktives Element** ist keine Ausnahme davon, sondern ein eigenes Dokument in seinem Rahmen: Dort trägt ein `<style>`-Block die Anordnung, Farben und Schriften kommen auch dort vom Theme, außer in einer Zeichnung nach dem Hausstil (Skill `moodle`, `references/elemente.md`). Für die Seite, in der es steht, gilt alles hier.
 
 ## Überschriften: Inhalt beginnt bei h3
 

@@ -8,6 +8,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:moocp/moodle/auswertung.dart';
 import 'package:moocp/moodle/elemente.dart';
+import 'package:moocp/moodle/formular_schreiben.dart';
+import 'package:moocp/moodle/fragen_xml.dart';
 import 'package:moocp/moodle/moodle_zugang.dart';
 import 'package:path/path.dart' as p;
 
@@ -93,6 +95,18 @@ void main() {
       expect(elementFehler(_element.replaceFirst('<body>', '<body><p>Quelle: https://www.destatis.example</p>')),
           isEmpty);
     });
+
+    test('Wörter wie im Code, aber als Text: kein Befund; im Skript schon', () {
+      expect(
+          elementFehler(_element.replaceFirst(
+              '<body>', '<body><p>We import goods. The box is on top. Ask a parent. Der Wert steht im localStorage.</p>')),
+          isEmpty);
+      String mit(String code) => _element.replaceFirst('</script>', '$code\n</script>');
+      expect(elementFehler(mit("import('x.js');")), [contains('import')]);
+      expect(elementFehler(mit('top.location;')), [contains('Moodle-Seite')]);
+      expect(elementFehler(_element.replaceFirst('<button ', '<button onclick="parent.alert(1)" ')),
+          [contains('Moodle-Seite')], reason: 'auch im Ereignis-Attribut');
+    });
   });
 
   group('Code im Text eines Felds', () {
@@ -103,6 +117,8 @@ void main() {
       expect(skriptstellen('<p>Ein Skript über JavaScript</p><img src="a.png" alt="">'), isEmpty);
       expect(skriptstellen('[[jsxgraph]]if (a<b && onclick=1) {}[[/jsxgraph]]'), isEmpty,
           reason: 'Code einer STACK-Zeichnung ist kein HTML');
+      expect(skriptstellen('<svg><set attributeName="onmouseover" to="x()"/></svg>'), hasLength(1),
+          reason: 'eine SVG-Animation, die ein Ereignis-Attribut setzt');
     });
 
     test('neuer Code bricht ab, was schon in Moodle stand, darf bleiben', () {
@@ -171,6 +187,44 @@ void main() {
       expect(() => elementeVorbereiten(ordner.path, feld, _kopf), throwsA(isA<MoodleFehler>()));
       expect(lies('dateien/w.html'), schlecht);
     });
+
+    test('Datei mit Code, die kein Element ist: abgewiesen, ob verlinkt oder im Dateibereich', () {
+      Matcher abgewiesen(String pfad) =>
+          throwsA(isA<MoodleFehler>().having((e) => e.meldung, 'meldung', contains(pfad)));
+      datei('dateien/x.html', _element);
+      datei('page.html', '<p><a href="@@PLUGINFILE@@/x.html">Seite</a></p>');
+      expect(() => quelleLesen(ordner.path, kopf: _kopf), abgewiesen('dateien/x.html'));
+      // Als Element eingebunden, darf dieselbe Datei auch verlinkt sein: Der Kopf hält sie offen geöffnet an.
+      datei('page.html', '${feld['page']!.replaceAll('w.html', 'x.html')}<p><a href="@@PLUGINFILE@@/x.html">x</a></p>');
+      quelleLesen(ordner.path, kopf: _kopf);
+      datei('bereiche/files/y.svg', '<svg xmlns="http://www.w3.org/2000/svg" onload="los()"></svg>');
+      expect(() => quelleLesen(ordner.path, kopf: _kopf), abgewiesen('bereiche/files/y.svg'));
+      datei('bereiche/files/y.svg', '<svg xmlns="http://www.w3.org/2000/svg"><circle r="2"/></svg>');
+      datei('bereiche/files/z.html', '<!DOCTYPE html><html><head><title>Z</title></head><body><p>Nur Text</p></body></html>');
+      quelleLesen(ordner.path, kopf: _kopf);
+    });
+  });
+
+  test('Code in Dateien, die der Browser als Dokument öffnet', () {
+    List<String> code(String name, String text) => codeInDatei(name, utf8.encode(text));
+    expect(code('a.html', _element), isNotEmpty);
+    expect(code('a.svg', '<svg onload="x()"></svg>'), isNotEmpty);
+    expect(code('a.xml', '<html xmlns="http://www.w3.org/1999/xhtml"><script>x()</script></html>'), isNotEmpty);
+    expect(codeInDatei('a.svgz', gzip.encode(utf8.encode('<svg><script>x()</script></svg>'))), isNotEmpty);
+    expect(code('a.html', '<p>Nur Text</p>'), isEmpty);
+    expect(code('a.txt', '<script>x()</script>'), isEmpty, reason: 'öffnet der Browser nicht als Dokument');
+  });
+
+  test('Fragen-XML: keine Datei mit Code, auch keine, die schon im XML steht', () {
+    String xml(String datei) => quizXml([
+          '<question type="cloze"><name><text>ZZ Frage</text></name><questiontext format="html">'
+              '<text><![CDATA[<p><a href="@@PLUGINFILE@@/$datei">Blatt</a> {1:MULTICHOICE_V:=a~b}</p>]]></text>'
+              '<file name="$datei" path="/" encoding="base64">${base64Encode(utf8.encode(_element))}</file>'
+              '</questiontext></question>'
+        ]);
+    expect(() => fragenXmlPruefen(xml('blatt.html')),
+        throwsA(isA<MoodleFehler>().having((e) => e.meldung, 'meldung', contains('Datei blatt.html enthält Code'))));
+    fragenXmlPruefen(xml('blatt.txt'));
   });
 
   group('Auswertung beim Lesen', () {
@@ -205,6 +259,9 @@ void main() {
       expect(uebersichtText(felder, {'w.html': d}), contains('als interaktives Element eingebunden'));
       final verlinkt = [feldAuswerten('page', '<a href="@@PLUGINFILE@@/w.html">Seite</a>', host: host)];
       expect(uebersichtText(verlinkt, {'w.html': d}), isNot(contains('ohne den Kopf der App')));
+      expect(uebersichtText(verlinkt, {'w.html': d}), contains('enthält Code und ist kein Element'),
+          reason: 'verlinkt läuft sie ohne Rahmen');
+      expect(uebersichtText(felder, {'w.html': d}), isNot(contains('kein Element')));
     });
   });
 

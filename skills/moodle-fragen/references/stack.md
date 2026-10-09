@@ -160,7 +160,7 @@ schlecht : length(sublist(kor, lambda([x], is(mod(x,10)=0))));
 
 Mit dem Ausdruck `{@schlecht@} von {@length(kor)@}` kommt `0 von 312` zurück.
 
-**`rand()` nicht in Verzweigungen.** In `if is(rand(2)=0) then a elseif is(rand(2)=0) then b else c` würfelt das zweite `rand` nur, wenn das erste nicht getroffen hat: `a` kommt in der Hälfte der Varianten, `b` und `c` je in einem Viertel. Jede Zufallszahl wird deshalb vorher für sich gewürfelt. Soll eine Auswahl gewichtet sein, dann ausdrücklich über eine Zahl mit Schwellen: `w : rand(10);` und dann `if w < 4 then … elseif w < 7 then … else …`.
+**Eine Auswahl, eine Zufallszahl.** In `if is(rand(2)=0) then a elseif is(rand(2)=0) then b else c` würfelt jede Stufe für sich: `a` kommt in der Hälfte der Varianten, `b` und `c` je in einem Viertel – daran ändert sich nichts, wenn die beiden Zahlen vorher gewürfelt werden. Eine Auswahl aus mehreren Fällen würfelt deshalb eine einzige Zahl: `rand([a, b, c])` wählt gleich verteilt aus der Liste (gemessen 09.10.2026), ebenso `w : rand(3);` mit `if is(w = 0) then … elseif is(w = 1) then … else …`. Soll die Auswahl gewichtet sein, dann ausdrücklich über Schwellen: `w : rand(10);` und dann `if w < 4 then … elseif w < 7 then … else …`.
 
 Ob das alles gelungen ist, sieht man an den eingesetzten Varianten (Schritt 5).
 

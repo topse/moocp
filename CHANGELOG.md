@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.20
+- Dateien: Eine verlinkte HTML-Seite, eine SVG-Zeichnung oder eine Datei in einem Verzeichnis schreibt die KI nur ohne Code; was schon dasteht, nennt sie beim Lesen.
+- Interaktive Elemente: Zum Ziehen baut die KI sie so, dass es auch am Handy geht, und Text im Element, der nach Code klingt, bricht das Schreiben nicht mehr ab.
+- Abschnitte: Reißt beim Anlegen die Verbindung ab, erfährt die KI auch dann, dass der Abschnitt schon im Kurs steht.
+- STACK: Wählt eine neue Frage zufällig einen von mehreren Fällen, kommen alle gleich oft vor.
+
 ## 0.9.18
 - Neu: interaktive Elemente – kleine Anwendungen zum Ausprobieren und Üben mitten in einer Seite, abgeschottet vom Rest von Moodle; die KI schlägt sie vor, wo sie passen, und Bildschirmfotos zeigen sie samt Fehlern im Skript.
 - Seiten: Code direkt im Text schreibt die KI nicht mehr; was schon dasteht, bleibt und wird beim Lesen genannt.

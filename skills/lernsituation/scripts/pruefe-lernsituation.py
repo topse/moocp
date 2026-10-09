@@ -61,6 +61,7 @@ Lernsituation gut ist. Das kann kein Skript. Was es kann:
 
 Rückgabe 0 = keine Befunde, 1 = Befunde, 2 = nichts zu prüfen.
 """
+import gzip
 import html
 import io
 import json
@@ -1274,11 +1275,17 @@ ELEMENT_NETZ = [
     (re.compile(r'\bsendBeacon\b'), 'sendBeacon'),
     (re.compile(r'\bimportScripts\b'), 'importScripts'),
 ]
-ELEMENT_SONST = [
+ELEMENT_CODE = [
     (re.compile(r'\b(?:localStorage|sessionStorage|indexedDB)\b|document\s*\.\s*cookie'),
      'Speichern im Browser: Ein Element merkt sich nichts, und der Rahmen sperrt es.'),
     (re.compile(r'(?<![\w$.])(?:window\s*\.\s*)?(?:parent|top|opener)\s*\.'),
      'Zugriff auf die Moodle-Seite (parent/top/opener): Der Rahmen sperrt ihn.'),
+]
+# Netz, Speicher und Moodle-Seite nur im Code: Inhalt der <script> und Werte
+# der Ereignis-Attribute. „We import goods" auf einer Vokabelkarte ist Text.
+ELEMENT_SKRIPT = re.compile(r'<script\b[^>]*>([\s\S]*?)</script\s*>', re.I)
+ELEMENT_EREIGNIS = re.compile(r'''\son[a-z]+\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))''', re.I)
+ELEMENT_SONST = [
     (re.compile(r'<script\b[^>]*\bsrc\s*=', re.I), 'Nachgeladenes Skript (<script src>): Der Code steht im Element selbst.'),
     (re.compile(r'<(?:iframe|frame|object|embed)\b', re.I), 'Rahmen oder Einbettung im Element: Ein Element bettet nichts ein.'),
     (re.compile(r'<meta\b[^>]*http-equiv', re.I), '<meta http-equiv> setzt nur die App (im Kopf).'),
@@ -1298,13 +1305,64 @@ def element_fehler(text):
             raus.append('Adresse „%s": Ein Element lädt nichts und verweist nirgendwohin -- Bilder als SVG im '
                         'Element, Verweise in den Text der Seite' % m.group(1)[:60])
             break
+    code = '\n'.join([m.group(1) for m in ELEMENT_SKRIPT.finditer(t)] +
+                     [next(g for g in m.groups() if g is not None) for m in ELEMENT_EREIGNIS.finditer(t)])
     for muster, was in ELEMENT_NETZ:
-        if muster.search(t):
+        if muster.search(code):
             raus.append('Im Code steht %s: Ein Element lädt und sendet nichts.' % was)
+    for muster, satz in ELEMENT_CODE:
+        if muster.search(code):
+            raus.append(satz)
     for muster, satz in ELEMENT_SONST:
         if muster.search(t):
             raus.append(satz)
     return raus
+
+
+# Code in Dateien, die kein Element sind: dieselbe Grenze wie codeInDatei in
+# lib/moodle/elemente.dart. Moodle liefert HTML, SVG und XML direkt aus; über
+# einen Link oder in einem neuen Tab geöffnet, liefe ihr Code in der Sitzung
+# des Betrachters, und die App lädt so eine Datei nicht hoch.
+DOKUMENT = re.compile(r'\.(?:x?html?|xht|shtml|svgz?|xml|xslt?)$', re.I)
+
+
+class Skriptstellen(HTMLParser):
+    """Stellen, an denen Code läuft: <script>, Ereignis-Attribute (auch per
+    SVG-Animation gesetzt), srcdoc und javascript:-Adressen."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.stellen = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == 'script':
+            self.stellen.append('<script>')
+        for k, w in attrs:
+            w = w or ''
+            if k.startswith('on') or (k == 'attributename' and w.strip().lower().startswith('on')):
+                self.stellen.append('%s an <%s>' % (k if k.startswith('on') else w.strip(), tag))
+            elif k == 'srcdoc':
+                self.stellen.append('<%s srcdoc>' % tag)
+            elif re.sub(r'[\s\x00-\x1f]', '', w).lower().startswith('javascript:'):
+                self.stellen.append('javascript: an <%s>' % tag)
+
+    handle_startendtag = handle_starttag
+
+
+def code_in_datei(name, daten):
+    """Die Stellen mit Code in einer Datei, die der Browser als Dokument
+    öffnet; bei anderen Dateien leer."""
+    if not DOKUMENT.search(name):
+        return []
+    if name.lower().endswith('.svgz'):
+        try:
+            daten = gzip.decompress(daten)
+        except (OSError, EOFError):
+            return ['komprimierte SVG, die sich nicht entpacken lässt']
+    p = Skriptstellen()
+    p.feed(daten.decode('utf-8', 'replace'))
+    p.close()
+    return p.stellen
 
 
 # Formelfehler: dieselbe Prüfung wie formelFehler in lib/moodle/formeln.dart,
@@ -1423,6 +1481,7 @@ class HtmlRegeln(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
         self.befunde, self.dateien, self.text = [], [], []
+        self.elemente = set()      # Dateien, die ein Rahmen als Element einbindet
         self.svg = self.code = 0
         self.ebene, self.kaesten, self.absatz = 2, set(), None
 
@@ -1462,26 +1521,30 @@ class HtmlRegeln(HTMLParser):
             self.text.append(d)
 
     def element(self, tag, a, roh):
-        if self.svg:
-            return                # eine eingebettete Zeichnung hat eigene Elemente
-        if tag in BLOCK:
-            self.text.append('\n')
         # Code im Text: dieselbe Grenze wie skripteImTextPruefen in
-        # lib/moodle/elemente.dart -- die App schriebe das Blatt nicht.
+        # lib/moodle/elemente.dart -- die App schriebe das Blatt nicht. Auch in
+        # einer eingebetteten Zeichnung, die sonst eigene Regeln hat.
         if tag == 'script':
             self.befund('Code im Text (<script>) -- Interaktives als Element in einen Rahmen '
                         '(references/elemente.md)')
             return
         for k, w in a.items():
-            if k.startswith('on'):
-                self.befund('Code im Text (%s an <%s>) -- Interaktives als Element (references/elemente.md)' % (k, tag))
+            w = w or ''
+            if k.startswith('on') or (k == 'attributename' and w.strip().lower().startswith('on')):
+                self.befund('Code im Text (%s an <%s>) -- Interaktives als Element (references/elemente.md)'
+                            % (k if k.startswith('on') else w.strip(), tag))
             elif k == 'srcdoc':
                 self.befund('<%s srcdoc>: Der Moodle-Editor löscht ihn -- als Elementdatei in dateien/ einbinden' % tag)
-            elif re.sub(r'[\s\x00-\x1f]', '', w or '').lower().startswith('javascript:'):
+            elif re.sub(r'[\s\x00-\x1f]', '', w).lower().startswith('javascript:'):
                 self.befund('javascript:-Adresse an <%s> -- Code gehört in ein Element' % tag)
+        if self.svg:
+            return                # eine eingebettete Zeichnung hat eigene Elemente
+        if tag in BLOCK:
+            self.text.append('\n')
         if tag == 'iframe':
             src = a.get('src') or ''
             if src.startswith('@@PLUGINFILE@@/') and re.search(r'\.html?$', src, re.I):
+                self.elemente.add(unquote(src[len('@@PLUGINFILE@@/'):]))
                 if ' '.join(sorted(set((a.get('sandbox') or '-').split()))) != 'allow-scripts':
                     self.befund('Element %s ohne sandbox="allow-scripts" -- die App schreibt es so nicht' % src[15:])
                 if not (a.get('title') or '').strip():
@@ -1593,9 +1656,15 @@ def lies_entwurf(ordner):
             if n not in da_ist:
                 befund(wo, '%s liegt nicht in %s/dateien/ -- jedes Blatt bringt seine Bilder selbst mit'
                        % (n, rel(o)))
-            elif re.search(r'\.html?$', n, re.I):
+            elif n in r.elemente:
                 for t in element_fehler(io.open(os.path.join(da, n), encoding='utf-8', errors='replace').read()):
                     befund(wo, 'Element %s: %s' % (n, t))
+            else:
+                with open(os.path.join(da, n), 'rb') as f:
+                    stellen = code_in_datei(n, f.read())
+                if stellen:
+                    befund(wo, 'Datei %s enthält Code (%s) und ist kein Element -- die App lädt sie so nicht hoch '
+                               '(references/elemente.md)' % (n, stellen[0]))
         for f in da_ist:
             if f not in r.dateien:
                 befund(wo, '%s/dateien/%s wird nicht eingebunden' % (rel(o), f))
@@ -1716,6 +1785,13 @@ def lies_entwurf(ordner):
                 befund(wo, 'Verzeichnis ohne Dateien -- sie liegen in %s/bereiche/files/' % rel(d))
             if typ == 'resource' and n != 1:
                 befund(wo, 'eine Datei braucht genau eine Datei in %s/bereiche/files/ (gefunden: %d)' % (rel(d), n))
+            for wurzel, _, fs in (os.walk(b) if os.path.isdir(b) else []):
+                for f in sorted(fs):
+                    with open(os.path.join(wurzel, f), 'rb') as datei:
+                        stellen = code_in_datei(f, datei.read())
+                    if stellen:
+                        befund(wo, '%s enthält Code (%s) -- die App lädt sie so nicht hoch (references/elemente.md)'
+                               % (rel(os.path.join(wurzel, f)), stellen[0]))
         if texte:
             html_pruefen(d, '\n'.join(texte), wo)
 

@@ -676,6 +676,22 @@ class FrageImXml {
         vorhanden.add(n);
       }
     }
+    // Keine Datei mit Code, auch keine, die schon im XML stand: Moodle
+    // liefert sie direkt aus, und geöffnet liefe der Code in der Sitzung
+    // des Betrachters (elemente.dart).
+    for (final f in q.descendantElements.where((e) => e.name.local == 'file')) {
+      final n = f.getAttribute('name') ?? '';
+      final List<int> bytes;
+      try {
+        bytes = base64Decode(f.innerText.replaceAll(RegExp(r'\s'), ''));
+      } on FormatException {
+        fehler.add('$wer: Datei $n ist kein lesbares Base64');
+        continue;
+      }
+      for (final s in codeInDatei(n, bytes)) {
+        fehler.add('$wer: Datei $n enthält Code (${kurz(s, 60)}) -- nicht in Fragen');
+      }
+    }
     final idn = q.getElement('idnumber')?.innerText.trim();
     fragen.add(FrageImXml(typ, name, idn == null || idn.isEmpty ? null : idn));
   }

@@ -676,9 +676,6 @@ Future<String> abschnittAnlegen(MoodleZugang moodle, Freigaben freigaben,
         'Bitte mit kurs_uebersicht prüfen.');
   }
   final id = neu.single.id;
-  // Sofort verbergen, noch bevor er einen Namen hat: Lernende sollen keinen
-  // leeren „Thema 7" sehen.
-  if (!sichtbar) await kursAktion(moodle, kurs, 'section_hide', [id]);
 
   final ziel = Formularziel.abschnitt(id);
   Future<(Map<String, String>, List<dynamic>)> fuellen() async {
@@ -694,20 +691,28 @@ Future<String> abschnittAnlegen(MoodleZugang moodle, Freigaben freigaben,
     return e;
   }
 
-  // Der Abschnitt steht schon im Kurs, ohne Namen. Scheitert das Füllen --
-  // eine unbekannte Einstellung (das Formular gibt es erst jetzt), HTTP 403,
-  // weil ein Filter vor der Instanz den Inhalt abweist --, muss die Meldung
-  // das sagen; sonst hält die KI den Abschnitt für nicht angelegt und legt
-  // beim nächsten Versuch einen zweiten an.
+  // Der Abschnitt steht schon im Kurs, ohne Namen. Scheitert das Verbergen
+  // oder das Füllen -- die Verbindung reißt ab, eine unbekannte Einstellung
+  // (das Formular gibt es erst jetzt), HTTP 403, weil ein Filter vor der
+  // Instanz den Inhalt abweist --, muss die Meldung das sagen; sonst hält die
+  // KI den Abschnitt für nicht angelegt und legt beim nächsten Versuch einen
+  // zweiten an.
+  var verborgen = false;
   (Map<String, String>, List<dynamic>) e;
   try {
+    // Sofort verbergen, noch bevor er einen Namen hat: Lernende sollen keinen
+    // leeren „Thema 7" sehen.
+    if (!sichtbar) {
+      await kursAktion(moodle, kurs, 'section_hide', [id]);
+      verborgen = true;
+    }
     try {
       e = await fuellen();
     } on SitzungAbgelaufen {
       e = await fuellen();
     }
   } on MoodleFehler catch (x) {
-    throw MoodleFehler(halbAngelegt(id, kurs, x.meldung, verborgen: !sichtbar));
+    throw MoodleFehler(halbAngelegt(id, kurs, x.meldung, verborgen: verborgen));
   }
   final g = await formularLesen(moodle, ziel, arbeitsordner);
   final probe = await zuruecklesen(g,

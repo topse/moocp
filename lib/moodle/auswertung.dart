@@ -72,9 +72,11 @@ class Dateiinfo {
   // HTML: ob die Datei den Kopf der App trägt und was als Element nicht
   // ginge (elemente.dart). Zum Befund wird beides erst, wenn ein Rahmen die
   // Datei als Element einbindet (uebersichtText) -- ein Verweis auf eine
-  // HTML-Datei ist keins.
+  // HTML-Datei ist keins. Bindet keiner sie ein, zählt nur, ob sie Code
+  // enthält (code): Geöffnet liefe er in der Sitzung des Betrachters.
   bool elementKopf = false;
   List<String> elementFehler = const [];
+  List<String> code = const [];
   final Befunde befunde = Befunde();
 
   Map<String, Object?> toJson() => {
@@ -88,7 +90,7 @@ class Dateiinfo {
           'beschreibung': beschreibung,
           'beschriftungen': beschriftungen,
         },
-        if (format == 'HTML') ...{'kopfDerApp': elementKopf, 'elementFehler': elementFehler},
+        if (format == 'HTML') ...{'kopfDerApp': elementKopf, 'elementFehler': elementFehler, 'code': code},
       };
 }
 
@@ -163,7 +165,8 @@ Dateiinfo dateiAuswerten(String name, Uint8List b) {
     d
       ..format = 'HTML'
       ..elementKopf = hatKopf(text)
-      ..elementFehler = elementFehler(text);
+      ..elementFehler = elementFehler(text)
+      ..code = skriptstellen(text);
   } else {
     final anfang = utf8.decode(b.length > 4096 ? b.sublist(0, 4096) : b, allowMalformed: true);
     if (anfang.contains('<svg')) _svgAuswerten(d, utf8.decode(b, allowMalformed: true));
@@ -205,7 +208,11 @@ void _svgAuswerten(Dateiinfo d, String text) {
   if (attr('role') != 'img') b.add('Zeichnung', '${d.name}: kein role="img" am <svg>');
   if (t == null) b.add('Zeichnung', '${d.name}: kein <title>');
   if (ds == null) b.add('Zeichnung', '${d.name}: kein <desc>');
-  if (svg.querySelector('script') != null) b.add('Zeichnung', '${d.name}: enthält <script>');
+  final code = skriptstellen(text);
+  if (code.isNotEmpty) {
+    b.add('Zeichnung', '${d.name}: enthält Code (${kurz(code.first, 60)}) -- in einem neuen Tab geöffnet, liefe er '
+        'in der Sitzung des Betrachters');
+  }
   if (svg.querySelectorAll('*').any((e) => e.localName?.toLowerCase() == 'foreignobject')) {
     b.add('Zeichnung', '${d.name}: enthält <foreignObject> -- Text gehört in <text>');
   }
@@ -790,7 +797,14 @@ String uebersichtText(List<Feldauswertung> felder, Map<String, Dateiinfo> dateie
   }
   for (final d in dateien.values) {
     alle.addAll(d.befunde);
-    if (!alsElement.contains(d.name) || d.format != 'HTML') continue;
+    if (d.format != 'HTML') continue;
+    if (!alsElement.contains(d.name)) {
+      if (d.code.isNotEmpty) {
+        alle.add('Skript', '${d.name}: enthält Code und ist kein Element -- über einen Link oder in einem neuen Tab '
+            'geöffnet, liefe er in der Sitzung des Betrachters; die App lädt so etwas nicht hoch');
+      }
+      continue;
+    }
     if (!d.elementKopf) {
       alle.add('Element', '${d.name}: ohne den Kopf der App (Content-Security-Policy, Wächter) -- die App setzt '
           'ihn ein, sobald die Datei geändert wird');

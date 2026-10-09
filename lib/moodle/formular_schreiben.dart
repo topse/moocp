@@ -522,14 +522,19 @@ String wichtigeText(FormularGelesen g) {
     throw MoodleFehler('Im Quelltext eingebunden, aber nicht in dateien/: ${fehlend.join(", ")}');
   }
   elementeVorbereiten(quelle, felder, kopf);
-  return (
-    felder: felder,
-    bereiche: bereicheIn(quelle),
-    dateien: {
-      for (final h in felder.values)
-        for (final n in eingebunden(h)) n: File(p.join(quelle, 'dateien', n)).readAsBytesSync()
-    },
-  );
+  final dateien = {
+    for (final h in felder.values)
+      for (final n in eingebunden(h)) n: File(p.join(quelle, 'dateien', n)).readAsBytesSync()
+  };
+  final bereiche = bereicheIn(quelle);
+  final elemente = {for (final h in felder.values) for (final r in elementRahmen(h)) r.datei};
+  dateienPruefen({
+    for (final e in dateien.entries)
+      if (!elemente.contains(e.key)) 'dateien/${e.key}': e.value,
+    for (final b in bereiche.entries)
+      for (final d in b.value.entries) 'bereiche/${b.key}${d.key}': d.value,
+  });
+  return (felder: felder, bereiche: bereiche, dateien: dateien);
 }
 
 /// Füllt ein frisch geholtes Formular mit Einstellungen, Name, Editorfeldern
@@ -891,6 +896,16 @@ Future<_Aenderung?> _vorbereiten(
     for (final b in {...lokaleBereiche.keys, ...standBereiche.keys})
       BereichAenderung(b, lokaleBereiche[b] ?? const {}, standBereiche[b] ?? const {})
   ].where((b) => !b.leer).toList();
+  // Kein Code in einer neuen oder geänderten Datei, die kein Element ist;
+  // was schon in Moodle stand, bleibt (elemente.dart).
+  final elemente =
+      istFrage ? const <String>{} : {for (final h in lokal.values) for (final r in elementRahmen(h)) r.datei};
+  dateienPruefen({
+    for (final n in [...neu, ...geaendert])
+      if (!elemente.contains(n)) 'dateien/$n': dateien[n]!,
+    for (final b in bereiche)
+      for (final k in [...b.neu, ...b.geaendert]) 'bereiche/${b.feld}$k': b.lokal[k]!,
+  });
 
   if (zuSchreiben.isEmpty && bereiche.isEmpty && einstellungen.isEmpty && !neuSpeichern) return null;
 

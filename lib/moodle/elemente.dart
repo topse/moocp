@@ -31,7 +31,15 @@
 //     daran, ob der Browser abschottet -- verschleierter Code kommt daran
 //     nicht vorbei. Die Prüfung am Text ([elementFehler]) meldet früh, was
 //     Policy und Rahmen ohnehin sperren würden, damit kein Element still
-//     scheitert.
+//     scheitert. Eine Lücke lässt die Policy: Der Rahmen kann sich selbst
+//     auf eine andere Adresse umleiten (location). An Seite und Sitzung
+//     kommt er dabei nicht, verriete aber die IP-Adresse; eine fremde
+//     Adresse im Text fängt deshalb [elementFehler] ab.
+//   - Dasselbe gilt für jede Datei, die der Browser als Dokument öffnet
+//     (HTML, SVG, XML): Moodle liefert sie aus dem Dateibereich direkt aus,
+//     über einen Link, in einem neuen Tab oder als <embed>, und ihr Code
+//     liefe mit der Sitzung des Betrachters. Elemente schützt der Wächter;
+//     jede andere solche Datei darf keinen Code enthalten ([dateienPruefen]).
 //   - Fehler im Element meldet der Kopf mit postMessage an die Seite; dort
 //     hört nur das Bildschirmfoto zu (bildschirmfoto.dart), in Moodle
 //     niemand.
@@ -122,13 +130,26 @@ String mitKopf(String text, String kopf) {
   return '${t.substring(0, m.end)}\n$kopf${t.substring(m.end)}';
 }
 
+final RegExp _skriptInhalt = RegExp(r'<script\b[^>]*>([\s\S]*?)</script\s*>', caseSensitive: false);
+final RegExp _ereignisWert =
+    RegExp(r'''\son[a-z]+\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))''', caseSensitive: false);
+
+/// Der Code einer Elementdatei: Inhalt der `<script>` und Werte der
+/// Ereignis-Attribute. Nur daran prüfen, was nur Code meint -- „We import
+/// goods" oder „on top." auf einer Vokabelkarte ist Text.
+String _code(String t) => [
+      for (final m in _skriptInhalt.allMatches(t)) m.group(1)!,
+      for (final m in _ereignisWert.allMatches(t)) m.group(1) ?? m.group(2) ?? m.group(3)!,
+    ].join('\n');
+
 /// Was in einem Element nicht geht, je als Satz -- geprüft ohne den Kopf der
 /// App. Leer: in Ordnung.
 List<String> elementFehler(String text) {
   final t = ohneKopf(text);
+  final code = _code(t);
   final aus = <String>[];
-  void wenn(String muster, String satz, {bool gross = false}) {
-    if (RegExp(muster, caseSensitive: gross).hasMatch(t)) aus.add(satz);
+  void wenn(String muster, String satz, {bool gross = false, bool nurCode = false}) {
+    if (RegExp(muster, caseSensitive: gross).hasMatch(nurCode ? code : t)) aus.add(satz);
   }
 
   // Adressen in Attributen, CSS und Zeichenketten. Namensräume des W3C
@@ -142,12 +163,12 @@ List<String> elementFehler(String text) {
     break;
   }
   for (final (muster, was) in netzSchnittstellen) {
-    if (muster.hasMatch(t)) aus.add('Im Code steht $was: Ein Element lädt und sendet nichts.');
+    if (muster.hasMatch(code)) aus.add('Im Code steht $was: Ein Element lädt und sendet nichts.');
   }
   wenn(r'\b(?:localStorage|sessionStorage|indexedDB)\b|document\s*\.\s*cookie',
-      'Speichern im Browser: Ein Element merkt sich nichts, und der Rahmen sperrt es.', gross: true);
+      'Speichern im Browser: Ein Element merkt sich nichts, und der Rahmen sperrt es.', gross: true, nurCode: true);
   wenn(r'(?<![\w$.])(?:window\s*\.\s*)?(?:parent|top|opener)\s*\.',
-      'Zugriff auf die Moodle-Seite (parent/top/opener): Der Rahmen sperrt ihn.', gross: true);
+      'Zugriff auf die Moodle-Seite (parent/top/opener): Der Rahmen sperrt ihn.', gross: true, nurCode: true);
   wenn(r'<script\b[^>]*\bsrc\s*=', 'Nachgeladenes Skript (<script src>): Der Code steht im Element selbst.');
   wenn(r'<(?:iframe|frame|object|embed)\b', 'Rahmen oder Einbettung im Element: Ein Element bettet nichts ein.');
   wenn(r'<meta\b[^>]*http-equiv', '<meta http-equiv> setzt nur die App (im Kopf).');
@@ -160,7 +181,10 @@ List<String> elementFehler(String text) {
 /// Stelle als voller Text, damit [skripteImTextPruefen] alte von neuen
 /// unterscheiden kann.
 List<String> skriptstellen(String html) {
-  if (!RegExp(r'script|\bon[a-z]+\s*=|srcdoc', caseSensitive: false).hasMatch(html)) return const [];
+  if (!RegExp(r'''script|\bon[a-z]+\s*=|srcdoc|attributename\s*=\s*["']?\s*on''', caseSensitive: false)
+      .hasMatch(html)) {
+    return const [];
+  }
   final aus = <String>[];
   // Der Code einer STACK-Zeichnung ist kein HTML; ein „a<b" darin hielte der
   // Parser für einen Tag (stack_skripte.dart prüft ihn eigens).
@@ -169,7 +193,8 @@ List<String> skriptstellen(String html) {
     if (tag == 'script') aus.add('<script>${e.text}</script>');
     for (final a in e.attributes.entries) {
       final k = '${a.key}'.toLowerCase(), w = a.value;
-      if (k.startsWith('on')) {
+      // attributeName="on…": eine SVG-Animation, die ein Ereignis-Attribut setzt.
+      if (k.startsWith('on') || (k == 'attributename' && w.trim().toLowerCase().startsWith('on'))) {
         aus.add('<$tag $k="$w">');
       } else if (k == 'srcdoc') {
         aus.add('<$tag srcdoc="$w">');
@@ -314,4 +339,40 @@ void elementeVorbereiten(String quelle, Map<String, String> felder, String kopf,
   throw MoodleFehler('Abgebrochen, nichts geschrieben: Elemente, die so nicht laufen würden.\n'
       '${fehler.map((f) => '  - $f').join('\n')}\n'
       'Wie ein Element aussieht: Skill moodle, references/elemente.md.');
+}
+
+/// Dateien, die der Browser als Dokument öffnet und deren Code dann mit der
+/// Herkunft von Moodle liefe.
+final RegExp _dokument = RegExp(r'\.(?:x?html?|xht|shtml|svgz?|xml|xslt?)$', caseSensitive: false);
+
+/// Die Stellen mit Code ([skriptstellen]) in einer Datei, die der Browser als
+/// Dokument öffnet; bei anderen Dateien leer.
+List<String> codeInDatei(String name, List<int> bytes) {
+  if (!_dokument.hasMatch(name)) return const [];
+  var b = bytes;
+  if (name.toLowerCase().endsWith('.svgz')) {
+    try {
+      b = gzip.decode(bytes);
+    } on FormatException {
+      return const ['komprimierte SVG, die sich nicht entpacken lässt'];
+    }
+  }
+  return skriptstellen(utf8.decode(b, allowMalformed: true));
+}
+
+/// Bricht ab, wenn eine Datei, die hochgeladen werden soll, Code enthält --
+/// bevor etwas an Moodle geht. [dateien]: Pfad für die Meldung (dateien/…,
+/// bereiche/…) -> Inhalt; ohne die Elemente, die [elementeVorbereiten] schon
+/// geprüft und mit dem Kopf versehen hat.
+void dateienPruefen(Map<String, List<int>> dateien) {
+  final fehler = [
+    for (final e in dateien.entries)
+      for (final s in codeInDatei(e.key, e.value)) '${e.key}: ${kurz(s, 80)}'
+  ];
+  if (fehler.isEmpty) return;
+  throw MoodleFehler('Abgebrochen, nichts geschrieben: Code in einer Datei, die kein Element ist.\n'
+      '${fehler.map((f) => '  - $f').join('\n')}\n'
+      'Moodle liefert solche Dateien direkt aus; über einen Link oder in einem neuen Tab geöffnet, liefe der Code '
+      'in der Sitzung des Betrachters. Interaktives gehört als Element in einen abgeschotteten Rahmen '
+      '(Skill moodle: references/elemente.md).');
 }

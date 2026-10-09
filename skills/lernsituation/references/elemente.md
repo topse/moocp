@@ -8,20 +8,19 @@ Wann ein Element passt, steht in `references/einsatz.md`, „Interaktive Element
 Ein Element ist eine eigene HTML-Datei in `dateien/` des Ordners, eingebunden wie ein Bild:
 
 ```html
-<p>Verschiebe die Regler und beobachte, wie sich der Strom ändert, wenn Spannung oder Widerstand steigen.</p>
+<p>Verschiebe den Regler und beobachte, wie der Strom mit der Spannung steigt.</p>
 <iframe sandbox="allow-scripts" src="@@PLUGINFILE@@/ohmsches-gesetz.html" title="Ohmsches Gesetz ausprobieren" class="w-100 border-0" height="220"></iframe>
 ```
 
 - **`sandbox="allow-scripts"`, genau so.** Der Rahmen schottet das Element ab: kein Zugriff auf die Moodle-Seite, die Sitzung, Cookies oder den Speicher des Browsers. Ohne `sandbox` oder mit weiteren Rechten weist die App das Schreiben ab.
 - **`title`** sagt Screenreadern, was das Element ist. **`height`** in Pixeln, fest: Der Rahmen passt sich nicht an. Am schmalen Bildschirm scrollt man im Element; plane es so, dass es auch schmal noch geht.
 - **Der Satz davor** sagt, was man mit dem Element tut. Gedruckt bleibt nur er.
-- **Kein `srcdoc`, kein `<script>` und keine `on…`-Attribute im Text der Seite.** Der Moodle-Editor löscht `srcdoc` beim nächsten Bearbeiten, und Code im Text liefe ohne Abschottung bei jedem Betrachter, auch bei der Lehrkraft. Die App weist beides ab; was schon in Moodle stand, bleibt, und die Übersicht beim Lesen nennt es.
 
 Elemente stehen in Textseite, Buchkapitel, Textfeld und den Beschreibungen von Abschnitten und Aktivitäten. In Fragen und Wikis nicht: Für Interaktives in einer Frage gibt es STACK mit Zeichnungen (Skill `moodle-fragen`).
 
 ## Die Datei
 
-Ein vollständiges Dokument mit `<head>`. **Den Anfang des Kopfs setzt die App**, beim Anlegen und immer, wenn sich die Datei ändert: eine Content-Security-Policy, die jedes Laden und Senden sperrt außer vom eigenen Moodle, einen Wächter, der die Datei anhält, wenn jemand sie außerhalb des Rahmens öffnet, das Stylesheet des Themes und die Meldung von Fehlern ans Bildschirmfoto. Du schreibst diesen Teil nicht und änderst ihn nicht; in einer gelesenen Datei steht er zwischen `<!-- moocp: … -->` und `<!-- /moocp -->` — lass ihn stehen.
+Ein vollständiges Dokument mit `<head>`. **Den Anfang des Kopfs setzt die App**, beim Anlegen und immer, wenn sich die Datei ändert: eine Content-Security-Policy, die jedes Nachladen und Senden sperrt außer vom eigenen Moodle, einen Wächter, der die Datei anhält, wenn jemand sie außerhalb des Rahmens öffnet, das Stylesheet des Themes und die Meldung von Fehlern ans Bildschirmfoto. Du schreibst diesen Teil nicht und änderst ihn nicht; in einer gelesenen Datei steht er zwischen `<!-- moocp: … -->` und `<!-- /moocp -->` — lass ihn stehen.
 
 ```html
 <!DOCTYPE html>
@@ -63,10 +62,10 @@ Was darin gilt:
 
 - **Nichts von außen.** Kein `fetch`, keine Bibliothek, keine Schrift, kein Bild und kein Video von einem anderen Rechner: Jeder Aufruf verriete die IP-Adresse der Lernenden, und die Policy im Kopf sperrt es ohnehin. Bilder zeichnest du als SVG im Element (Stil wie in `references/zeichnungen.md`), Daten stehen im Skript. Ein Verweis gehört in den Text der Seite, nicht ins Element. Die App prüft das vor dem Schreiben und bricht mit einer Meldung ab, damit kein Element still scheitert.
 - **Nichts merken.** Kein `localStorage`, keine Cookies: Der Rahmen sperrt sie, und ein Element ist zum Ausprobieren da, nicht zum Sichern.
-- **Aussehen vom Theme.** Das Stylesheet des Moodle liegt im Element, also gelten die Klassen der Seite: Knöpfe mit `btn btn-primary` oder `btn btn-secondary`, Felder mit `form-control`, Regler mit `form-range`, Rückmeldungen in Kästen mit `alert` (`references/html.md`). Ein `<style>`-Block im Element trägt nur die Anordnung — Raster, Zeichenfläche, Abstände —, keine Farben und Schriften. Die Regel „keine `style`-Attribute" gilt für die Seite; das Element ist ein eigenes Dokument, und ohne Gerüst ginge keine Zeichenfläche.
+- **Aussehen vom Theme.** Das Stylesheet des Moodle liegt im Element, also gelten die Klassen der Seite: Knöpfe mit `btn btn-primary` oder `btn btn-secondary`, Felder mit `form-control`, Regler mit `form-range`, Rückmeldungen in Kästen mit `alert` (`references/html.md`). Ein `<style>`-Block im Element trägt nur die Anordnung — Raster, Zeichenfläche, Abstände —, keine Farben und Schriften für Knöpfe, Felder und Text. Die Ausnahme ist eine Zeichnung: Sie bringt Palette und Schrift im eigenen `<style>` mit, wie der Hausstil in `references/zeichnungen.md` es vorgibt. Die Regel „keine `style`-Attribute" gilt für die Seite; das Element ist ein eigenes Dokument, und ohne Gerüst ginge keine Zeichenfläche.
 - **Deutsch rechnen.** Zahlen mit Komma annehmen und anzeigen: `parseFloat("1,5")` ergibt 1, also vor dem Rechnen das Komma durch einen Punkt ersetzen und zur Anzeige `toLocaleString('de-DE')` nehmen. Zahlenfelder bekommen `inputmode="decimal"`, damit das Handy die Zifferntastatur zeigt.
-- **Maus, Finger, Tastatur.** Ziehen mit Pointer-Ereignissen (`pointerdown`, `pointermove`, `pointerup`), die Maus und Finger gleich behandeln; bedienbares als `<button>` oder Formularfeld, damit es auch mit der Tastatur geht.
-- **Würfeln vorwärts.** Würfelt das Element Aufgaben, baue sie aus dem Ergebnis rückwärts zusammen, statt zu würfeln, bis es passt, und schließe triviale Fälle aus (Faktor 1, Ergebnis 0, ein Bruch, der schon gekürzt ist, wenn Kürzen geübt werden soll). Geh alle möglichen Würfe einmal durch, bevor das Element in den Kurs kommt; seltene Fälle fallen sonst erst im Unterricht auf.
+- **Maus, Finger, Tastatur.** Ziehen mit Pointer-Ereignissen (`pointerdown`, `pointermove`, `pointerup`), die Maus und Finger gleich behandeln. Die Fläche, auf der gezogen wird, bekommt im `<style>`-Block `touch-action: none`: Sonst übernimmt am Handy der Browser die Fingerbewegung zum Scrollen, und das Ziehen bricht ab. Beim `pointerdown` hält `setPointerCapture` den Zeiger fest, auch wenn der Finger über den Rand rutscht. Punkte in einer SVG rechnest du mit `new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.getScreenCTM().inverse())` in ihre Koordinaten um, denn die Breite des Rahmens wechselt mit dem Bildschirm. Bedienbares ist ein `<button>` oder Formularfeld, damit es auch mit der Tastatur geht.
+- **Vom Ergebnis her bauen.** Würfelt das Element Aufgaben, würfle zuerst das Ergebnis und baue die Aufgabe daraus, statt zu würfeln, bis es passt, und schließe triviale Fälle aus (Faktor 1, Ergebnis 0, ein Bruch, der schon gekürzt ist, wenn Kürzen geübt werden soll). Geh alle möglichen Würfe einmal durch, bevor das Element in den Kurs kommt; seltene Fälle fallen sonst erst im Unterricht auf.
 - **Gerecht prüfen.** Antworten wertgleich annehmen (0,5 und 1/2), das Kürzen nur verlangen, wenn es Lernziel ist — dann drei Rückmeldungen: richtig, richtig aber nicht gekürzt, falsch. Wo mehrere Lösungen richtig sind, prüfe die geforderte Eigenschaft, nicht eine Musterlösung.
 - **Nicht vorwegnehmen.** Was das Element live anzeigt, löst die Aufgabe nicht schon: Beim Zeichnen eines Rechtecks zeigt es die Seitenlängen, nicht die gesuchte Fläche.
 
@@ -78,5 +77,5 @@ Steht das Element auf einer Textseite oder in einem Buchkapitel, nimm vor dem Si
 
 Ein Element kommt mit seiner Seite: Das Lesewerkzeug legt die Datei in `dateien/`, und die Übersicht nennt sie „als interaktives Element eingebunden". Geändert wird die Datei dort, dann `aendern`; die Freigabe zeigt ihre Zeilen wie die einer Seite. Bearbeitet die Lehrkraft die Seite im Moodle-Editor, bleibt das Element erhalten.
 
-Nennt die Übersicht einen **leeren Rahmen** oder einen Rahmen **mit `srcdoc`**, ist ein Element verloren oder geht beim nächsten Bearbeiten im Editor verloren. Nennt sie eine Elementdatei **ohne den Kopf der App**, stammt sie von anderswo. In allen drei Fällen gehört der Neubau als Element nach dieser Anleitung in den Plan.
+Nennt die Übersicht einen **leeren Rahmen** oder einen Rahmen **mit `srcdoc`**, ist ein Element verloren oder geht beim nächsten Bearbeiten im Editor verloren; der Neubau als Element gehört in den Plan.
 <!-- >>> gemeinsam/elemente.md -->

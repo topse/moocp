@@ -72,6 +72,7 @@ Wenn eine Aufgabe gelesen wird, müssen nicht nur Metadaten, sondern auch Daten 
 
 
 # Bugs
+- Sperrliste, Dateien von Lernenden: Die Positivliste lässt jede Adresse unter `pluginfile.php` zu („Datei im Kurs"), die Sperrliste nimmt davor nur Profil, Abgaben, Testantworten, Foren, Workshop, Datenbank und Lektion heraus. Es fehlen Bereiche, in die Lernende Dateien legen können: Glossar (`mod_glossary/attachment`, `mod_glossary/entry`), Wiki (`mod_wiki/attachments`), Blog (`blog/attachment`, `blog/post`) und die Zusatzplugins Board, Kanban-Board und Journal. Die Namen der Bereiche messen, dann sperren, mit Test beider Richtungen in `test/sperrliste_test.dart`. Vorher klären, was die Lesewerkzeuge dabei verlieren: Bilder, die die Lehrkraft selbst in eine gemeinsame Wikiseite oder einen Glossareintrag gesetzt hat, liegen in denselben Bereichen.
 - Schmales Fenster: Unter etwa 900 px Breite läuft der Kopf der Protokollspalte über („Protokoll" und „Leeren"), weil die linke Spalte fest 460 px breit ist. Die Titelzeile hält bis dahin. Entweder die linke Spalte schrumpfen lassen oder den Kopf kürzen.
 - Einstellungen mit Optionsfeldern: Die Zeilen der Abschlussverfolgung
   lesen sich missverständlich („Keine = nein").
