@@ -1,6 +1,6 @@
 # CLAUDE.md – moocp
 
-Keine git Aktionen durchführen - das macht ausschließlich der Benutzer. Wenn Du während der Arbeit Fehler, Probleme oder sonstige Ungenauigkeiten findest, beseitige Sie entweder sofort oder nimm einen Punkt ins TODO.md auf.
+Git: Lokal keine Git-Aktionen durchführen – das macht ausschließlich der Benutzer. In einer Cloud-Sitzung dagegen committen und direkt auf main pushen, ohne Force und ohne eigenen Zweig: `import_from_github.sh` holt nur main herein (E12). Wenn Du während der Arbeit Fehler, Probleme oder sonstige Ungenauigkeiten findest, beseitige Sie entweder sofort oder nimm einen Punkt ins TODO.md auf.
 
 ## Regeln für die Dokumentation (zuerst lesen, immer einhalten)
 
