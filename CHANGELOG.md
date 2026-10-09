@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.9.21
+- import_from_github.sh hinzugefügt
+
 ## 0.9.20
 - Dateien: Eine verlinkte HTML-Seite, eine SVG-Zeichnung oder eine Datei in einem Verzeichnis schreibt die KI nur ohne Code; was schon dasteht, nennt sie beim Lesen.
 - Interaktive Elemente: Zum Ziehen baut die KI sie so, dass es auch am Handy geht, und Text im Element, der nach Code klingt, bricht das Schreiben nicht mehr ab.

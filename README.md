@@ -526,7 +526,7 @@ skills/  (Wissen: Didaktik, Regeln,        moocp (Flutter, Windows)
 | `installer/`, `create_installer.bat` | der Installer (NSIS) und das Skript, das ihn baut |
 | `docs/bilder/`, `docs/icon/` | Bilder dieser README; das Symbol der App als SVG |
 | `CHANGELOG.md` | was sich je Version geändert hat |
-| `publish_tag_to_github.sh` | eine Version auf GitHub bringen (siehe „Veröffentlichen") |
+| `publish_tag_to_github.sh`, `import_from_github.sh` | eine Version auf GitHub bringen, dort entstandene Änderungen hereinholen (siehe „Veröffentlichen") |
 
 Wie etwas im Einzelnen funktioniert und warum – Moodle-Eigenheiten,
 Parameter, Fallstricke –, steht als Kommentar im Quelltext.
@@ -658,6 +658,15 @@ bash publish_tag_to_github.sh v0.9.0
 Das Skript erwartet ein Remote `github` und nimmt die Commit-Nachricht aus dem Abschnitt der Version in `CHANGELOG.md`. Den Tag legt es auf GitHub unter dem Namen `v<Version>` ab (lokal heißt er `github-v<Version>` und zeigt auf den veröffentlichten Commit).
 
 Das Release wird danach auf GitHub von Hand aus diesem Tag erzeugt, mit dem Installer als Datei. Beides muss dem Schema folgen, sonst findet die Update-Prüfung der App die Version nicht: Tag `v0.9.5`, Datei `moocp_setup_0.9.5.exe`, kein Entwurf und keine Vorabversion. Das Skript nennt beides am Ende noch einmal.
+
+Entstehen Änderungen auf GitHub selbst an `main`, etwa aus einer Cloud-Sitzung, kommen sie so ins eigene Repository:
+
+```bash
+bash import_from_github.sh
+git merge github-import
+```
+
+Weil die Geschichte auf GitHub nur aus Versionen besteht, baut das Skript jeden neuen Commit auf dem lokalen Tag mit demselben Stand nach und legt ihn auf den Zweig `github-import`; mehr ändert es nicht, und ohne Neues auf GitHub legt es auch den Zweig nicht an. Die nächste Version setzt auf GitHub auf diese Commits auf. Fehlt einer davon im Tag, bricht `publish_tag_to_github.sh` ab und nennt die Schritte: importieren, mergen, Tag neu setzen. Überschrieben wird `main` auf GitHub nie.
 
 ### Mitwirken
 
