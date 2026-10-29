@@ -1,5 +1,5 @@
 // Die Update-Prüfung: einmal täglich bei GitHub nachsehen, ob es eine neue
-// Version gibt, sie auf Wunsch holen und den Installer starten.
+// Fassung gibt, sie auf Wunsch holen und den Installer starten.
 //
 // Drei Dinge sind hier wichtig:
 //
@@ -12,7 +12,7 @@
 //     geprüft; jede Anfrage steht mit Status im Protokoll (A4 sinngemäß).
 //  3. Nur wer sich selbst ersetzen kann, prüft überhaupt (updateMoeglich):
 //     Der Installer legt die App nach %LOCALAPPDATA%\Programs\moocp. Läuft
-//     die exe woanders -- Entwicklerversion aus build\, eine Kopie --, würde
+//     die exe woanders -- Entwicklerfassung aus build\, eine Kopie --, würde
 //     ein Update sie gar nicht ersetzen, sondern eine zweite daneben
 //     installieren.
 //
@@ -52,10 +52,10 @@ class UpdateFehler implements Exception {
 /// Abgebrochen durch die Lehrkraft; kein Fehler, keine Meldung nötig.
 class UpdateAbgebrochen implements Exception {}
 
-/// Eine Version, die neuer ist als die laufende.
-class NeueVersion {
-  NeueVersion({
-    required this.version,
+/// Eine Fassung, die neuer ist als die laufende.
+class NeueFassung {
+  NeueFassung({
+    required this.fassung,
     required this.datei,
     required this.dateiname,
     this.groesse,
@@ -64,7 +64,7 @@ class NeueVersion {
   });
 
   /// „0.9.5", ohne führendes „v".
-  final String version;
+  final String fassung;
 
   /// Adresse des Installers im Release.
   final Uri datei;
@@ -77,7 +77,7 @@ class NeueVersion {
   /// null, wenn das Feld fehlt (ältere Releases).
   final String? pruefsumme;
 
-  /// Der Text des Releases, also die Änderungen dieser Version. Reiner
+  /// Der Text des Releases, also die Änderungen dieser Fassung. Reiner
   /// Anzeigetext für die Lehrkraft -- er kommt von außen und löst nichts
   /// aus.
   final String beschreibung;
@@ -96,18 +96,18 @@ bool updateMoeglich(List<String> argumente, Map<String, String> umgebung) {
   }
 }
 
-/// Der Tag eines Releases als Version: „v0.9.4" ergibt „0.9.4". Das Schema
+/// Der Tag eines Releases als Fassung: „v0.9.4" ergibt „0.9.4". Das Schema
 /// setzt publish_tag_to_github.sh; „github-v…" ist geduldet, weil die
-/// ersten Versionen so veröffentlicht wurden. Alles andere ergibt null --
+/// ersten Fassungen so veröffentlicht wurden. Alles andere ergibt null --
 /// dann meldet die Prüfung, dass sie den Tag nicht lesen kann, statt zu
 /// raten.
-String? versionAusTag(String tag) =>
+String? fassungAusTag(String tag) =>
     RegExp(r'^(?:github-)?v?(\d+(?:\.\d+)*)$').firstMatch(tag.trim())?.group(1);
 
-/// Vergleicht zwei Versionen Zahl für Zahl: -1, 0 oder 1. Die Buildnummer
+/// Vergleicht zwei Fassungen Zahl für Zahl: -1, 0 oder 1. Die Buildnummer
 /// hinter „+" zählt nicht mit, fehlende Stellen gelten als 0 („1.0" ist
 /// „1.0.0").
-int versionVergleich(String a, String b) {
+int fassungVergleich(String a, String b) {
   final x = _zahlen(a);
   final y = _zahlen(b);
   for (var i = 0; i < (x.length > y.length ? x.length : y.length); i++) {
@@ -118,7 +118,7 @@ int versionVergleich(String a, String b) {
   return 0;
 }
 
-List<int> _zahlen(String version) => version
+List<int> _zahlen(String fassung) => fassung
     .split('+')
     .first
     .split('.')
@@ -127,22 +127,22 @@ List<int> _zahlen(String version) => version
 
 /// Der Name, unter dem der Installer im Release liegt (installer/moocp.nsi,
 /// OutFile).
-String installerName(String version) => 'moocp_setup_$version.exe';
+String installerName(String fassung) => 'moocp_setup_$fassung.exe';
 
 /// Die heruntergeladene Datei liegt im Temp-Verzeichnis, nicht im
 /// Arbeitsordner: Den leert die App beim Beenden -- also genau dann, wenn
 /// der Installer gerade daraus läuft.
-File installerDatei(String version) =>
-    File(p.join(Directory.systemTemp.path, 'moocp_update_$version.exe'));
+File installerDatei(String fassung) =>
+    File(p.join(Directory.systemTemp.path, 'moocp_update_$fassung.exe'));
 
-/// Sucht im Release die Datei, die zur Version gehört.
-Map<String, dynamic>? releaseDatei(List<dynamic> anhaenge, String version) {
+/// Sucht im Release die Datei, die zur Fassung gehört.
+Map<String, dynamic>? releaseDatei(List<dynamic> anhaenge, String fassung) {
   final passend = anhaenge.whereType<Map<String, dynamic>>().where((a) {
     final n = a['name'];
     return n is String && n.startsWith('moocp_setup') && n.endsWith('.exe');
   }).toList();
   for (final a in passend) {
-    if (a['name'] == installerName(version)) return a;
+    if (a['name'] == installerName(fassung)) return a;
   }
   return passend.isEmpty ? null : passend.first;
 }
@@ -177,8 +177,8 @@ class Update {
   }
 
   /// Fragt bei GitHub nach dem neuesten Release. Rückgabe: die neue
-  /// Version, oder null, wenn die laufende schon die neueste ist.
-  Future<NeueVersion?> pruefen(String eigene) async {
+  /// Fassung, oder null, wenn die laufende schon die neueste ist.
+  Future<NeueFassung?> pruefen(String eigene) async {
     final klient = _neuerKlient();
     try {
       final antwort = await _holen(releaseAbfrage, klient, download: false);
@@ -187,17 +187,17 @@ class Update {
       if (j is! Map<String, dynamic>) throw UpdateFehler('GitHub hat unerwartet geantwortet.');
       final tag = j['tag_name'];
       if (tag is! String) throw UpdateFehler('Das Release auf GitHub hat keinen Tag.');
-      final version = versionAusTag(tag);
-      if (version == null) {
+      final fassung = fassungAusTag(tag);
+      if (fassung == null) {
         throw UpdateFehler('Der Tag „$tag" des Releases passt nicht zum Schema „v0.9.4".');
       }
-      if (versionVergleich(version, eigene) <= 0) {
-        protokoll.eintrag(Art.info, 'Update: neueste Version ist $version, läuft bereits ($eigene)');
+      if (fassungVergleich(fassung, eigene) <= 0) {
+        protokoll.eintrag(Art.info, 'Update: neueste Fassung ist $fassung, läuft bereits ($eigene)');
         return null;
       }
-      final anhang = releaseDatei((j['assets'] as List?) ?? const [], version);
+      final anhang = releaseDatei((j['assets'] as List?) ?? const [], fassung);
       if (anhang == null) {
-        throw UpdateFehler('Im Release $version liegt kein Installer (${installerName(version)}).');
+        throw UpdateFehler('Im Release $fassung liegt kein Installer (${installerName(fassung)}).');
       }
       final adresse = Uri.parse(anhang['browser_download_url'] as String);
       final grund = updateGesperrt(adresse, download: true);
@@ -206,9 +206,9 @@ class Update {
         throw UpdateFehler('Die Adresse des Installers ist nicht erlaubt ($grund).');
       }
       final pruefsumme = anhang['digest'];
-      protokoll.eintrag(Art.info, 'Update: Version $version verfügbar (läuft: $eigene)');
-      return NeueVersion(
-        version: version,
+      protokoll.eintrag(Art.info, 'Update: Fassung $fassung verfügbar (läuft: $eigene)');
+      return NeueFassung(
+        fassung: fassung,
         datei: adresse,
         dateiname: anhang['name'] as String,
         groesse: anhang['size'] as int?,
@@ -229,9 +229,9 @@ class Update {
 
   /// Holt den Installer ins Temp-Verzeichnis und gibt die Datei zurück.
   /// [fortschritt] bekommt geladene und (soweit bekannt) gesamte Byte.
-  Future<File> herunterladen(NeueVersion neu, void Function(int, int?) fortschritt) async {
+  Future<File> herunterladen(NeueFassung neu, void Function(int, int?) fortschritt) async {
     final klient = _neuerKlient();
-    final ziel = installerDatei(neu.version);
+    final ziel = installerDatei(neu.fassung);
     try {
       final antwort = await _holen(neu.datei, klient, download: true);
       final gesamt = antwort.contentLength >= 0 ? antwort.contentLength : neu.groesse;
@@ -268,7 +268,7 @@ class Update {
   /// Unterschrieben ist der Installer nicht; mehr als dieser Abgleich geht
   /// nicht, und ohne ihn wäre eine abgebrochene Übertragung nicht von einer
   /// vollständigen zu unterscheiden.
-  void _pruefeDatei(File datei, NeueVersion neu) {
+  void _pruefeDatei(File datei, NeueFassung neu) {
     final bytes = datei.readAsBytesSync();
     if (neu.groesse != null && bytes.length != neu.groesse) {
       throw UpdateFehler('Die geladene Datei ist unvollständig '
@@ -341,14 +341,14 @@ void wegwerfen(File datei) {
   }
 }
 
-/// Startet den geladenen Installer und merkt sich die Version. Danach muss
+/// Startet den geladenen Installer und merkt sich die Fassung. Danach muss
 /// der Aufrufer die App regulär beenden -- erst dann gibt sie die exe frei,
 /// und nur so leert sie ihren Arbeitsordner.
 Future<void> installerStarten(
-    File installer, String version, Einstellungen einstellungen, Protokoll protokoll) async {
-  einstellungen.updateErwartet = version;
+    File installer, String fassung, Einstellungen einstellungen, Protokoll protokoll) async {
+  einstellungen.updateErwartet = fassung;
   await einstellungen.speichern();
-  protokoll.eintrag(Art.info, 'Update: Installer für Version $version gestartet');
+  protokoll.eintrag(Art.info, 'Update: Installer für Fassung $fassung gestartet');
   await Process.start(installer.path, ['/UPDATE'], mode: ProcessStartMode.detached);
 }
 
@@ -364,12 +364,12 @@ Future<void> updateStandMelden(Einstellungen einstellungen, String eigene, Proto
   } catch (_) {
     // Dann steht es beim nächsten Start noch einmal da; harmlos.
   }
-  if (versionVergleich(eigene, erwartet) >= 0) {
-    protokoll.eintrag(Art.info, 'Update: auf Version $eigene aktualisiert');
+  if (fassungVergleich(eigene, erwartet) >= 0) {
+    protokoll.eintrag(Art.info, 'Update: auf Fassung $eigene aktualisiert');
   } else {
     protokoll.eintrag(
         Art.fehler,
-        'Update: Version $erwartet wurde nicht installiert (es läuft weiter $eigene). '
+        'Update: Fassung $erwartet wurde nicht installiert (es läuft weiter $eigene). '
         'Der Installer liegt unter ${installerDatei(erwartet).path}');
   }
 }

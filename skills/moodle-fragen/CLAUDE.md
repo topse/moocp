@@ -4,10 +4,6 @@ Entwicklungsnotizen; nicht Teil des Pakets. Allgemeines zur Pflege der
 Skills: [../CLAUDE.md](../CLAUDE.md). Entscheidungen zu Fragen und Tests: E9
 der [Projekt-CLAUDE.md](../../CLAUDE.md).
 
-## Einen weiteren Fragetyp aufnehmen
-
-Gemessen nach dem Verfahren unten, dann in `zusatzAnlegbar` (`lib/moodle/fragen_xml.dart`), in die Tabelle im SKILL.md, mit seinem XML in `references/fragetypen.md` – und mit seinem Abschnitt in `references/einsatz.md`: wofür er sich anbietet, was er prüft, wie leicht er sich erraten lässt, ob er auf Papier geht ([../CLAUDE.md](../CLAUDE.md), „Einsatz").
-
 ## Die gemessenen XML-Muster
 
 Die XML-Muster je Fragetyp in `references/fragetypen.md`, `stack.md` und
@@ -17,8 +13,6 @@ exportiert, verglichen, **in der Vorschau angesehen**. Die Beispieldateien
 dieser Messungen liegen in `test/daten/fragen/`, und
 `test/fragen_beispiele_test.dart` hält die Prüfung der App vor dem Import
 dagegen. Ändert sich ein Muster im Skill, ändert sich die Beispieldatei mit.
-
-Die Beschreibungen für `stack_xml` in `stack.md` und `jsxgraph.md` prüft derselbe Test direkt aus der Referenz: Jeder `json`-Block dort muss bauen und durch die Prüfung vor dem Import gehen. Ein geändertes Beispiel wird außerdem einmal im Testkurs importiert – die Testfälle laufen dabei mit und sind die eigentliche Abnahme.
 
 **Die Vorschau ist die einzige echte Abnahme.** Eine `calculatedmulti`-Frage
 importierte fehlerfrei, las sich korrekt zurück und bewertete richtig – und

@@ -7,7 +7,7 @@
 // IMMER neu an -- es gibt keinen Weg, ein XML als neue Version einer
 // vorhandenen Frage einzuspielen. Speichern im Formular erzeugt eine neue
 // Version mit NEUER questionid; die alte Nummer zeigt danach auf die alte
-// Version. Stabil ist die Sachnummer (idnumber): Sie hängt am
+// Fassung. Stabil ist die Sachnummer (idnumber): Sie hängt am
 // Fragenbank-Eintrag, nicht an der Version. Tests ziehen standardmäßig die
 // neueste Version -- eine Änderung wirkt sofort in jedem Test, der die Frage
 // benutzt.
@@ -165,11 +165,7 @@ Future<String> frageLesen(MoodleZugang moodle, String arbeitsordner, {required i
     }
     if (xml.trimLeft().startsWith('<?xml')) {
       await File(p.join(g.ordner, 'frage.xml')).writeAsString(xml, encoding: utf8);
-      // Der Einzelexport lässt die Datensätze einer berechneten Frage weg
-      // (gemessen: calculated mit geteilten Datensätzen); vollständig stehen
-      // sie im Export ihrer Kategorie.
-      xmlHinweis = 'Die Frage als Moodle-XML (nur zum Lesen): frage.xml'
-          '${g.modul == 'calculated' ? ' -- ohne ihre Datensätze; vollständig im Export ihrer Kategorie (fragen_lesen)' : ''}\n';
+      xmlHinweis = 'Die Frage als Moodle-XML (nur zum Lesen): frage.xml\n';
     }
   } on MoodleFehler catch (x) {
     xmlHinweis = 'Einzelexport nicht möglich (${x.meldung}).\n';
@@ -191,7 +187,7 @@ class Importiert {
   final List<FrageKurz> neu;
 }
 
-Future<Importiert> fragenImportieren(MoodleZugang moodle, Freigaben freigaben, String arbeitsordner,
+Future<Importiert> fragenImportieren(MoodleZugang moodle, String arbeitsordner,
     {required int sammlung, required String kategorie, required String datei}) async {
   final pfad = imArbeitsordner(datei, arbeitsordner);
   final f0 = File(pfad);
@@ -201,29 +197,6 @@ Future<Importiert> fragenImportieren(MoodleZugang moodle, Freigaben freigaben, S
 
   final kats = await kategorienLesen(moodle, sammlung);
   final k = _kategorie(kats, kategorie);
-
-  // Eine Freigabe für die ganze Datei, nicht je Frage: Der Import ist ein
-  // Vorgang, und er bricht beim ersten Fehler als Ganzes ab. Erst bei
-  // Bestätigungen „alle" -- Lernende sehen eine Frage erst in einem Test.
-  final ja = await freigaben.anfragen(FreigabeAnfrage(
-    titel: '${fragen.length} Frage(n) anlegen?',
-    punkte: [
-      'In Kategorie „${k.name}" der Fragensammlung cmid $sammlung',
-      'Aus ${p.basename(pfad)}; die Fragen sind neu, vorhandene werden nicht ersetzt.',
-      for (final f in fragen.take(20)) '${f.typ}: „${f.name}"',
-      if (fragen.length > 20) '… und ${fragen.length - 20} weitere',
-      'Lernende sehen eine Frage erst, wenn sie in einem Test steht.',
-    ],
-    vergleich: const [],
-    knopf: 'Anlegen',
-    ohneEntscheidung: 'wird nichts angelegt',
-    ab: Bestaetigungen.alle,
-  ));
-  if (!ja) {
-    throw MoodleFehler('Der Import wurde in der App abgelehnt oder nicht innerhalb von '
-        '${freigaben.frist.inMinutes} Minuten freigegeben. Nichts angelegt.');
-  }
-
   final vorherIds = k.anzahl == 0 ? <int>{} : {for (final f in fragenAusXml(await exportieren(moodle, sammlung, k))) f.id};
 
   Future<String> versuch() async {
@@ -276,31 +249,13 @@ const String kategorieFormular = r'qbank_managecategories\form\question_category
 /// ist eine Aktivität (`aktivitaet_anlegen`, Typ `qbank`). Die Meldung nennt
 /// deshalb die Sammlung mit: Wer „Fragensammlung" sagte und eine Kategorie
 /// bekommt, erkennt die Verwechslung nur, wenn das Ziel dabeisteht.
-Future<String> kategorieAnlegen(MoodleZugang moodle, Freigaben freigaben,
+Future<String> kategorieAnlegen(MoodleZugang moodle,
     {required int sammlung, required String name, String? eltern, String? beschreibung}) async {
   final kats = await kategorienLesen(moodle, sammlung);
   final kontext = kats.first.kontext;
   final elternK = eltern == null ? null : _kategorie(kats, eltern);
   if (kats.any((k) => k.name == name)) {
     throw MoodleFehler('Eine Kategorie „$name" gibt es in dieser Sammlung schon.');
-  }
-  // Eine Kategorie ist Gliederung in der Fragensammlung; Lernende sehen sie
-  // nie. Freigabe deshalb erst bei Bestätigungen „alle".
-  final ja = await freigaben.anfragen(FreigabeAnfrage(
-    titel: 'Kategorie anlegen?',
-    punkte: [
-      'Kategorie „$name" in der Fragensammlung cmid $sammlung'
-          '${elternK == null ? '' : ', unter „${elternK.name}"'}',
-      'Gliederung der Fragensammlung; Lernende sehen Kategorien nicht.',
-    ],
-    vergleich: const [],
-    knopf: 'Anlegen',
-    ohneEntscheidung: 'wird nichts angelegt',
-    ab: Bestaetigungen.alle,
-  ));
-  if (!ja) {
-    return 'Nicht angelegt: in der App abgelehnt oder nicht innerhalb von '
-        '${freigaben.frist.inMinutes} Minuten freigegeben.';
   }
   final leer = await moodle.dienst('core_form_dynamic_form',
       {'form': kategorieFormular, 'formdata': 'cmid=$sammlung&contextid=$kontext&courseid=0&actiontype=add'});

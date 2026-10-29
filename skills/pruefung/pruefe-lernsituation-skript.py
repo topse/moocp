@@ -177,69 +177,6 @@ def bg(ordner, *aenderungen):
 LIES4 = '<strong>Lies:</strong> Infoblatt 1, Abschnitt 4.'
 BILD_ALT = 'alt="Netz der Muster GmbH vor der Umstellung: zwei Switches, alle Geräte in einem Segment" class="img-fluid"'
 
-PINNWAND = 'Unsere VLAN-Aufteilung'
-REFLEXION = '<td>Plenum</td><td>—</td>'
-
-
-def weitere(ordner, eintraege):
-    """Weitere Aktivitäten in den Entwurf: je (ordner, typ, name, {datei: inhalt},
-    extra) ein Ordner mit seinen Dateien und ein Eintrag hinter der Pinnwand;
-    im Ablaufplan stehen sie bei Schritt 7 als Material."""
-    nach = 'pinnwand-aufteilung'
-    for o, typ, name, dateien, extra in eintraege:
-        for d, inhalt in dateien.items():
-            schreib(ordner, '%s/%s' % (o, d), inhalt)
-        # Ein Link ohne Beschreibung braucht keinen Ordner.
-        e = dict({'ordner': o} if dateien else {}, typ=typ, name=name)
-        e.update(extra)
-        dazu(ordner, e, nach=nach)
-        nach = o if dateien else nach
-    ersetze(ordner, HAND, REFLEXION, '<td>Plenum</td><td>%s</td>'
-            % ', '.join('„%s"' % e[2] for e in eintraege))
-
-
-INTRO = {'introeditor.html': '<p>Für die Reflexion.</p>\n'}
-ALLE_WEITEREN = [
-    ('kanban-plan', 'kanban', 'Unser Arbeitsplan', dict(INTRO, **{'kanban.json':
-        '{"spalten": ["Zu erledigen", "Erledigt"], "karten": [{"spalte": "Zu erledigen", "titel": "Ports"}]}'}), {}),
-    ('liste-pruefen', 'checklist', 'Prüfliste zum VLAN-Konzept', {'eintraege.json':
-        '[{"text": "Planung", "zustand": "ueberschrift"}, {"text": "Jede Abteilung hat ein VLAN", "tiefe": 1}, '
-        '{"text": "Gäste getrennt", "tiefe": 1, "zustand": "optional"}]'}, {}),
-    ('wiki-begriffe', 'wiki', 'Begriffe der Klasse', {'seiten.json':
-        '[{"titel": "Begriffe", "datei": "begriffe.html"}, {"titel": "Tagging", "datei": "tagging.html"}]',
-        'begriffe.html': '<p>Siehe [[Tagging]].</p>\n', 'tagging.html': '<p>Ein Tag kennzeichnet den Rahmen.</p>\n'},
-     {'einstellungen': {'firstpagetitle': 'Begriffe'}}),
-    ('test-uebung', 'quiz', 'Übung zu VLANs', {'fragen.xml':
-        '<?xml version="1.0" encoding="UTF-8"?>\n<quiz><question type="truefalse"><name><text>Tag</text></name>'
-        '<idnumber>vlan-01</idnumber></question></quiz>\n'},
-     {'fragen': {'sammlung': 'VLAN-Segmentierung', 'kategorie': 'Übung'}}),
-    ('material', 'folder', 'Vorlagen für die Konfiguration', {'bereiche/files/plan.ods': 'x'}, {}),
-    ('vorlage', 'resource', 'Netzplan zum Weiterarbeiten', {'bereiche/files/netz.pkt': 'x'}, {}),
-    ('hersteller', 'url', 'Herstellerdokumentation', {}, {'einstellungen': {'externalurl': 'https://example.org/vlan'}}),
-]
-
-
-def eine_weitere(nr, **aenderung):
-    """Eine der weiteren Aktivitäten aus ALLE_WEITEREN, verändert."""
-    o, typ, name, dateien, extra = ALLE_WEITEREN[nr]
-    dateien, extra = dict(dateien), dict(extra)
-    dateien.update(aenderung.get('dateien', {}))
-    extra.update(aenderung.get('extra', {}))
-    return lambda ordner: weitere(ordner, [(o, typ, aenderung.get('name', name), dateien, extra)])
-
-
-ELEMENT_GUT = ('<!DOCTYPE html><html lang="de"><head><title>Z</title></head>'
-               '<body><button type="button" class="btn btn-primary">Z</button></body></html>')
-
-
-def mit_element(rahmen, datei=ELEMENT_GUT):
-    """Ein interaktives Element auf Arbeitsblatt 1 (references/elemente.md)."""
-    def f(o):
-        ersetze(o, AB1, '<p>Erkläre in je einem Satz', rahmen + '\n<p>Erkläre in je einem Satz')
-        schreib(o, 'ab-01-auftrag/dateien/zz-element.html', datei)
-    return f
-
-
 FAELLE = [
     ('Lösung gelöscht', lambda o: weg(o, 'ab-02-umsetzung-vertiefung-loesung'),
      r'Lösung fehlt: „Lösung zur Vertiefung zu Arbeitsblatt 2: …"'),
@@ -465,58 +402,6 @@ FAELLE = [
     ('"→ für" ohne "Lies"-Zeile', lambda o: ersetze(o, IB1, '<p>→ für Arbeitsblatt 1, Aufgabe 1</p>',
                                                     '<p>→ für Arbeitsblatt 1, Aufgaben 1 und 4</p>'),
      r'Abschnitt 1: "→ für Arbeitsblatt 1, Aufgabe 4", aber dort'),
-    # ---- Weitere Aktivitäten ----
-    ('Pinnwand nicht im Ablaufplan', lambda o: (
-        ersetze(o, HAND, 'Arbeitsblatt 1, „Unsere VLAN-Aufteilung"</td>', 'Arbeitsblatt 1</td>'),
-        ersetze(o, HAND, '<tr><td>„Unsere VLAN-Aufteilung"</td>', '<tr><td>Unsere VLAN-Aufteilung</td>')),
-     r'„Unsere VLAN-Aufteilung" \(pinnwand-aufteilung\)\s+steht weder im Ablaufplan'),
-    ('Name in Anführungszeichen ohne Aktivität', lambda o: ersetze(o, HAND, REFLEXION,
-                                                                   '<td>Plenum</td><td>„Unsere Pinnwand"</td>'),
-     r'„Unsere Pinnwand" in Ablaufplan oder Materialübersicht ist keine Aktivität'),
-    ('Weitere Aktivität mit Kennung', lambda o: setze(o, 'pinnwand-aufteilung', name='Arbeitsblatt 3: Pinnwand'),
-     r'ist kein Blatt und trägt keine Kennung'),
-    ('Board ohne Spalten', lambda o: schreib(o, 'pinnwand-aufteilung/board.json', '{"spalten": []}'),
-     r'board.json braucht "spalten"'),
-    ('Board ohne board.json', lambda o: os.remove(os.path.join(o, 'pinnwand-aufteilung', 'board.json')),
-     r'board.json fehlt in pinnwand-aufteilung'),
-    ('Kanban: Karte ohne Spalte', eine_weitere(0, dateien={'kanban.json':
-        '{"spalten": ["Zu erledigen"], "karten": [{"spalte": "Später", "titel": "Ports"}]}'}),
-     r'kanban.json: eine Karte nennt keine Spalte'),
-    ('Fortschrittsliste springt', eine_weitere(1, dateien={'eintraege.json': '[{"text": "A"}, {"text": "B", "tiefe": 2}]'}),
-     r'„B" springt in der Einrückung'),
-    ('Fortschrittsliste: Zustand', eine_weitere(1, dateien={'eintraege.json': '[{"text": "A", "zustand": "kür"}]'}),
-     r'"zustand" .kür.'),
-    ('Wiki: Startseite heißt anders', eine_weitere(2, extra={'einstellungen': {'firstpagetitle': 'Start'}}),
-     r'die erste Seite „Begriffe" ist die Startseite'),
-    ('Wiki: Seite fehlt', eine_weitere(2, dateien={'seiten.json': '[{"titel": "Begriffe", "datei": "fehlt.html"}]'}),
-     r'Seite 1 braucht "titel" und eine "datei"'),
-    ('Test ohne Sachnummer', eine_weitere(3, dateien={'fragen.xml':
-        '<quiz><question type="truefalse"><name><text>Tag</text></name></question></quiz>'}),
-     r'Frage „Tag" ohne Sachnummer'),
-    ('Test ohne Ort der Fragen', eine_weitere(3, extra={'fragen': {}}), r'Test ohne Ort für seine Fragen'),
-    ('Test: kaputtes XML', eine_weitere(3, dateien={'fragen.xml': '<quiz><question>'}), r'fragen.xml ist kein gültiges XML'),
-    ('Verzeichnis leer', lambda o: (eine_weitere(4)(o), os.remove(os.path.join(o, 'material', 'bereiche', 'files', 'plan.ods'))),
-     r'Verzeichnis ohne Dateien'),
-    ('Datei: zwei Dateien', eine_weitere(5, dateien={'bereiche/files/zweite.pkt': 'y'}), r'genau eine Datei .*gefunden: 2'),
-    ('Link ohne https', eine_weitere(6, extra={'einstellungen': {'externalurl': 'http://example.org'}}),
-     r'Link ohne Adresse'),
-    ('Skript im Text', lambda o: ersetze(o, AB1, '<p>Erkläre in je einem Satz',
-                                         '<script>los()</script>\n<p>Erkläre in je einem Satz'),
-     r'Code im Text \(<script>\)'),
-    ('Element ohne sandbox', mit_element('<iframe src="@@PLUGINFILE@@/zz-element.html" title="Z"></iframe>'),
-     r'Element zz-element.html ohne sandbox'),
-    ('Element lädt', mit_element('<iframe sandbox="allow-scripts" src="@@PLUGINFILE@@/zz-element.html" title="Z" '
-                                 'height="100"></iframe>',
-                                 ELEMENT_GUT.replace('</body>', '<script>fetch("/x");</script></body>')),
-     r'Element zz-element.html: Im Code steht fetch'),
-    ('Verlinkte Datei mit Code', mit_element('<p><a href="@@PLUGINFILE@@/zz-element.html">Zum Ausprobieren</a></p>',
-                                             ELEMENT_GUT.replace('</body>', '<script>los()</script></body>')),
-     r'Datei zz-element.html enthält Code \(<script>\) und ist kein Element'),
-    ('Skript in eingebetteter Zeichnung',
-     lambda o: ersetze(o, AB1, '<p>Erkläre in je einem Satz',
-                       '<svg xmlns="http://www.w3.org/2000/svg"><circle r="2" onclick="los()"/></svg>\n'
-                       '<p>Erkläre in je einem Satz'),
-     r'Code im Text \(onclick an <circle>\)'),
 ]
 
 
@@ -542,7 +427,7 @@ GUTE = [
     ('"Lies"-Zeile in der Sie-Form', lambda o: ersetze(o, AB1, LIES4, LIES4.replace('Lies:', 'Lesen Sie:')), r'OK --'),
     ('Verweis über einen Zeilenumbruch', lambda o: ersetze(o, HILFE1, 'Kreist sie in Abb. 1 auf Arbeitsblatt 1 ein.',
                                                            'Kreist sie in Abb. 1 auf\nArbeitsblatt 1 ein.'), r'OK --'),
-    ('Handlungssituation als Textfeld', mit_situation, r'OK -- 13 Aktivitäten, 13 davon'),
+    ('Handlungssituation als Textfeld', mit_situation, r'OK -- 12 Aktivitäten, 12 davon'),
     ('"Lies"-Zeile mit Lehrbuch', lambda o: ersetze(o, AB1, LIES4, '<strong>Lies:</strong> Infoblatt 1, Abschnitt 4, '
                                                     'und im Lehrbuch der Klasse das Kapitel „Netzsicherheit".'), r'OK --'),
     ('Rahmenlinie ohne Farbe', lambda o: ersetze(o, AB1L, '<tr><td>Trunk</td>',
@@ -552,7 +437,6 @@ GUTE = [
     ('Datei zum Herunterladen', mit_download, r'OK --'),
     ('Unterabschnitt', lambda o: dazu(o, {'typ': 'subsection', 'name': 'Durchführen'}, nach='ab-01-auftrag-hilfe-loesung'),
      r'OK --'),
-    ('alle weiteren Aktivitäten', lambda o: weitere(o, ALLE_WEITEREN), r'OK -- 19 Aktivitäten, 19 davon'),
 ]
 
 # ---- Der Stand in Moodle ---------------------------------------------------
@@ -583,42 +467,29 @@ def _url(cmid, typ='page'):
     return '%s/mod/%s/view.php?id=%d' % (HOST, typ, cmid)
 
 
-def verlinke(h, eigen, namen, kennungen, weitere=None):
+def verlinke(h, eigen, namen, kennungen):
     """Jede Nennung eines anderen Blatts wird ein Link, wie der Skill moodle es
     nach dem Anlegen tut: in der Materialübersicht mit dem ganzen Namen, sonst
-    mit der Kennung; eine weitere Aktivität mit ihrem Namen in
-    Anführungszeichen. `namen`/`kennungen`/`weitere` zeigen auf (cmid, typ).
-    Gibt HTML und [(cmid, Linktext)]."""
-    links, weitere = [], weitere or {}
+    mit der Kennung. `namen`/`kennungen` zeigen auf (cmid, typ). Gibt HTML und
+    [(cmid, Linktext)]."""
+    links = []
     for name, (cmid, typ) in sorted(namen.items(), key=lambda x: -len(x[0])):
         e = html.escape(name, quote=False)
         if '<td>%s</td>' % e in h:
             h = h.replace('<td>%s</td>' % e, '<td><a href="%s">%s</a></td>' % (_url(cmid, typ), e))
             links.append((cmid, name))
-
-    def zitat(m):
-        cmid, typ = weitere[m.group(2)]
-        links.append((cmid, m.group(2)))
-        return '%s<a href="%s">%s</a>%s' % (m.group(1), _url(cmid, typ), m.group(2), m.group(3))
-
-    def kennung(m):
-        s = LS.schluessel(m.group(0))
-        if s == eigen or s not in kennungen:
-            return m.group(0)
-        links.append((kennungen[s][0], LS.norm(m.group(0))))
-        return '<a href="%s">%s</a>' % (_url(*kennungen[s]), m.group(0))
-
-    zitiert = re.compile(r'([„“"])(%s)([“”"])' % '|'.join(re.escape(n) for n in sorted(weitere, key=len, reverse=True))) \
-        if weitere else None
     raus, in_a = [], 0
     for t in re.split(r'(<[^>]+>)', h):
         if t.startswith('<'):
             in_a += 1 if re.match(r'<a\b', t) else -1 if t.startswith('</a') else 0
         elif not in_a:
-            # Erst die Namen in Anführungszeichen, dann die Kennungen -- nur
-            # ausserhalb der eben gesetzten Links.
-            teile = re.split(r'(<a\b[^>]*>.*?</a>)', zitiert.sub(zitat, t) if zitiert else t)
-            t = ''.join(x if x.startswith('<a') else re.sub(LS.ZIEL, kennung, x) for x in teile)
+            def link(m):
+                s = LS.schluessel(m.group(0))
+                if s == eigen or s not in kennungen:
+                    return m.group(0)
+                links.append((kennungen[s][0], LS.norm(m.group(0))))
+                return '<a href="%s">%s</a>' % (_url(*kennungen[s]), m.group(0))
+            t = re.sub(LS.ZIEL, link, t)
         raus.append(t)
     return ''.join(raus), links
 
@@ -630,8 +501,7 @@ def nach_moodle(entwurf, ao):
     eintraege = [e for e in json.load(io.open(os.path.join(entwurf, MANIFEST), encoding='utf-8'))['aktivitaeten']
                  if e.get('ordner')]
     seiten = [(cm_von(e['ordner']), e) for e in eintraege]
-    namen = {e['name']: (cmid, e['typ']) for cmid, e in seiten if e['typ'] not in LS.WEITERE}
-    weitere = {e['name']: (cmid, e['typ']) for cmid, e in seiten if e['typ'] in LS.WEITERE}
+    namen = {e['name']: (cmid, e['typ']) for cmid, e in seiten}
     kennungen = {LS.schluessel(m.group(0)): (cmid, e['typ']) for cmid, e in seiten
                  for m in [re.match(LS.ZIEL, e['name'])] if m}
     ziele = {cmid: e['name'] for cmid, e in seiten}
@@ -642,7 +512,7 @@ def nach_moodle(entwurf, ao):
         h, links = io.open(p, encoding='utf-8').read(), []
         if e['name'] != 'SchuCu':
             m = re.match(LS.ZIEL, e['name'])
-            h, links = verlinke(h, LS.schluessel(m.group(0)) if m else None, namen, kennungen, weitere)
+            h, links = verlinke(h, LS.schluessel(m.group(0)) if m else None, namen, kennungen)
         io.open(p, 'w', encoding='utf-8', newline='').write(h)
         json.dump({'name': e['name'], 'auswertung': {'felder': [{'feld': feld, 'verweise': [
             {'art': 'aktivitaet', 'cmid': c, 'text': text, 'zielTitel': ziele[c]} for c, text in links]}]}},
@@ -651,10 +521,7 @@ def nach_moodle(entwurf, ao):
     cms = []
     for cmid, e in seiten:
         quelle = os.path.join(entwurf, e['ordner'])
-        if e['typ'] in LS.WEITERE:
-            # Ihr Inhalt steht nicht im Formular; kurs_uebersicht nennt sie.
-            pass
-        elif e['typ'] == 'book':
+        if e['typ'] == 'book':
             o = os.path.join(ao, 'buch-%d' % cmid)
             shutil.copytree(quelle, o)
             for k in json.load(io.open(os.path.join(o, 'kapitel.json'), encoding='utf-8')):
@@ -725,9 +592,6 @@ FAELLE_MOODLE = [
     ('Moodle: Link aus dem Abschnitt', None, _link_hinaus, 1, r'ausserhalb dieses Abschnitts'),
     ('Moodle: Aufgabe ohne AFB', None, lambda o: seite_aendern(o, 'ab-01-auftrag', '(10 min · Einzel · AFB II)',
                                                                '(10 min · Einzel)'), 1, r'Aufgabe 2: Klammer'),
-    ('Moodle: Pinnwand ohne Link', None, lambda o: seite_aendern(
-        o, 'ab-01-auftrag', '<a href="%s">%s</a>' % (_url(cm_von('pinnwand-aufteilung'), 'board'), PINNWAND), PINNWAND),
-     1, r'nennt „Unsere VLAN-Aufteilung" ohne Link'),
     ('Moodle: nicht gelesen', None, lambda o: shutil.rmtree(os.path.join(o, 'cm-%d' % cm_von('ab-02-umsetzung'))),
      2, r'Erst lesen, dann prüfen'),
 ]

@@ -2,10 +2,10 @@
 // Anmeldedaten -- die stehen auf der Hauptseite.
 //
 // Zwei Abschnitte: die Update-Prüfung (update/update.dart) und der Weg zum
-// Dialog „KI-Werkzeuge einrichten". Der Zugangsschlüssel steht hier bewusst
-// nicht: Eingetragen wird er nur von der App selbst (E13), und jede Anzeige
-// wäre ein weiterer Weg, ihn aus Versehen weiterzugeben. Wer ihn braucht,
-// findet ihn in der README.
+// Dialog „Claude einrichten". Der Zugangsschlüssel steht hier bewusst
+// nicht: Eingetragen wird er nur über die Kommandozeile von Claude Code
+// (E13), und jede Anzeige wäre ein weiterer Weg, ihn aus Versehen
+// weiterzugeben. Wer ihn braucht, findet ihn in der README.
 
 import 'package:flutter/material.dart';
 
@@ -18,7 +18,7 @@ enum EinstellungenErgebnis {
   /// Nichts weiter zu tun.
   fertig,
 
-  /// Die Lehrkraft will zu „KI-Werkzeuge einrichten"; der Aufrufer öffnet ihn,
+  /// Die Lehrkraft will zu „Claude einrichten"; der Aufrufer öffnet ihn,
   /// damit nicht zwei Dialoge übereinanderliegen.
   einrichten,
 
@@ -39,13 +39,13 @@ class EinstellungenDialog extends StatefulWidget {
   final Einstellungen einstellungen;
   final Protokoll protokoll;
 
-  /// Die laufende Version, etwa „0.9.4".
+  /// Die laufende Fassung, etwa „0.9.4".
   final String eigene;
 
   /// Ob sich diese App überhaupt selbst aktualisieren kann (update.dart).
   final bool updateMoeglich;
 
-  /// Ob der MCP-Server läuft; dann hängt womöglich eine Sitzung eines KI-Werkzeugs
+  /// Ob der MCP-Server läuft; dann hängt womöglich eine Claude-Sitzung
   /// daran, die ein Update verlöre.
   final bool sitzungLaeuft;
 
@@ -101,7 +101,7 @@ class _EinstellungenDialogState extends State<EinstellungenDialog> {
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
-                    'Diese Version kann sich nicht selbst aktualisieren: Sie läuft nicht aus '
+                    'Diese Fassung kann sich nicht selbst aktualisieren: Sie läuft nicht aus '
                     'dem Installationsverzeichnis, oder die Prüfung ist über die Kommandozeile '
                     'abgeschaltet ($keinUpdateSchalter).',
                     style: klein),
@@ -113,7 +113,7 @@ class _EinstellungenDialogState extends State<EinstellungenDialog> {
                 controlAffinity: ListTileControlAffinity.leading,
                 value: an,
                 onChanged: _sucht ? null : (v) => _umschalten(v ?? false),
-                title: const Text('Einmal täglich bei GitHub nach einer neuen Version sehen'),
+                title: const Text('Einmal täglich bei GitHub nach einer neuen Fassung sehen'),
                 subtitle: Text(
                     'GitHub erfährt dabei Ihre IP-Adresse und den Zeitpunkt. Nichts aus '
                     'Moodle wird übertragen.',
@@ -136,13 +136,12 @@ class _EinstellungenDialogState extends State<EinstellungenDialog> {
               ),
             ],
             const Divider(height: 32),
-            Text('KI-Werkzeuge', style: Theme.of(context).textTheme.titleSmall),
+            Text('Claude Code', style: Theme.of(context).textTheme.titleSmall),
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                  'Claude Code, Codex CLI und LM Studio brauchen die Verbindung zu dieser App und '
-                  'die Skills in der Version, die zu ihr gehört. Dort wählen Sie auch, welche '
-                  'davon eingerichtet werden.',
+                  'Claude Code braucht die Verbindung zu dieser App und die Skills in der '
+                  'Fassung, die zu ihr gehört.',
                   style: klein),
             ),
             Padding(

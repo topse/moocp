@@ -1,11 +1,9 @@
 # Features
-- Kompatiblität zu MacOS und Linux herstellen. Müssen einzelne Features wie auto update umgestaltet oder gar entfernt werden? Die Pfade für die Konfiguration und ablage der Skills - sind die gleich?
-- automatisches bauen und erstellen eines releases in github, mit Windows, linux und MacOS Executables (windows sogar installer) und changelog message als Release message
-- Codex CLI absichern und testen, in einer eigenen Sitzung: Eingerichtet wird es bisher nur nach Dokumentation, gelaufen ist es mit einer echten Version nie. Zu klären: Nach „Installieren" steht der Block `[mcp_servers.moodle]` in `~/.codex/config.toml` – sieht Codex die Werkzeuge, lädt es die Skills aus `~/.codex/skills` (sonst nur aus `~/.agents/skills`, dann den Ort in `CodexCli` ändern), und ab welcher Version geht HTTP ohne den alten Schalter `experimental_use_rmcp_client` (README nennt 0.77)? Öffnet Codex die Bilder von `bildschirmfoto` (PNG im Arbeitsordner) und sieht sie? Fragt Codex vor einem Werkzeugaufruf (README, „Worauf es ankommt")? Bricht Codex einen Werkzeugaufruf nach seinem Zeitlimit ab (`tool_timeout_sec`, Vorgabe wohl 60 Sekunden), auch während eine Freigabe offen ist? Dann schließt sich der Dialog nach einer Minute (E4); wie bei Bionic 35 Minuten eintragen (`tool_timeout_sec = 2100`, `bionicZeitlimit`) und in `CodexCli` mitprüfen.
-- Aktivität "Befragung" (questionnaire) unterstützen. Diese kann zu unterrichtlichen zwecken, aber auch organisatorischen (z.B. Befragung zur Unterrichtsquqalität) verwendet werden.
+- Wissenspeicher STACK untersuchen und integrieren
+- "Sitzung verwerfen (Test)" Button entfernen
 - Fragensammlung verbergen, verschieben und duplizieren: geht nicht, weil `qbank` nicht in der Kursstruktur steht. Löschen hat einen eigenen Weg über die Sammlungsliste; die drei bräuchten denselben.
-- Konventionen beim Arbeiten an Fragen: Sie reiten an `kurs_uebersicht` und `abschnitt_lesen` mit, aber der Skill `moodle-fragen` beginnt oft mit `fragensammlungen` und `fragen_lesen` — dort hängt sie bisher nur der Satz im Skilltext an. Prüfen, ob eines dieser Werkzeuge sie mitliefern sollte. Mit dem Steckbrief dringlicher: Anrede und Arbeitsweise brauchen auch Fragetexte und Tests.
-- Aktivität "Lernpfad" vollständig unterstützen inkl. didaktischer und pädagogischer Ideen, Hilfestellungen und Regeln, wie die gut einzusetzen sind, evtl. auch mit Regeln der Gamification
+- Wartende Freigabe sichtbar machen: Zähler im Dialog („1 weitere Anfrage wartet") und eine Protokollzeile, wenn eine Anfrage sich einreiht.
+- Aktivität "Lernpfad" vollständig unterstützen inkl. didaktischer und pädagogischer Ideen, Hilfestellungen und Regeln, wie die gut einzusetzen sind, auch unter Regeln der Gamification
 - Badges vollumfänglich unterstützen, inkl. didaktischer und pädagogischer Ideen, Hilfestellungen und Regeln, wie die gut einzusetzen sind, auch unter Regeln der Gamification
 - Optimierungsphase: MCP-Server und Skill prüfen, ob wir tokenoptimiert arbeiten, z.B. ist das MCP Interface so gestaltet, dass kein balast durchgeleitet und nur nutzdaten (werden also z.B. alle nicht benötigten HTML-Tags von der Moodle Seite rausgefiltert?)
 - Inwieweit brauchen wir python zur Laufzeit? Ersetzbar durch flutter, damit wir nicht noch eine zusätzliche runtime benötigen?
@@ -15,7 +13,7 @@
   (`nextcolour`), häufig gebrauchte Kommentare der Bewertungsrichtlinie.
 - Selbstprüfung des Skills `lernsituation` ohne Python: Das Prüfskript
   (`scripts/pruefe-lernsituation.py`) braucht Python, das auf den Rechnern
-  vieler Lehrkräfte fehlt; der Dialog „KI-Werkzeuge einrichten" weist nur darauf
+  vieler Lehrkräfte fehlt; der Dialog „Claude einrichten" weist nur darauf
   hin. Etwa als Werkzeug der App.
 - Skill `lernsituation`: ODT-Ausgabe für den Druck (Skill `odt`); die
   SchuCu-Tabelle müsste dabei nach „Das Design außerhalb von Moodle"
@@ -53,28 +51,81 @@ Wenn eine Aufgabe gelesen wird, müssen nicht nur Metadaten, sondern auch Daten 
  - Bei Bildern muss Schrifterkennung auch von Handschrift durchgeführt werden und entsprechende Bereiche der Bilder zuverlässig vor Übertragung zum Modell gelöscht werden. Solange wir keine zuverlässige Handschrifterkennung haben, müssen wir die Weitergabe von Bilddateien ans Modell ablehnen
  - Bei allen anderen Dateien müssen wir binär scannen, ob ein Name vorkommt, zum Beispiel gibt es Dateien von Spezialprogrammen, die den Ersteller speichern - die finden wir durch dekomprimieren und evtl. binär suchen
 
- Bei allen Suchvorgängen nach Namen müssen wir im Hinterkopf behalten, dass Schüler sich manchmal vertippen, verschreiben oder die Schrifterkennung vielleicht nicht immer 100% zuverlässig ist. Auch bei Tippfehlern müssen wir die zuverlässig Namen erkennen.
+ Bei allen Suchvorgängen nach Namen müssen wir im Hinterkopf behalten, dass Schüler sich manchmal vertippen. Auch bei Tippfehlern müssen wir die zuverlässig Namen erkennen.
 
  Ein Name der an das Modell durchrutscht, wäre der schlimmste Fehler, der uns passieren kann. Daher immer defensiv vorgehen.
 
- Derselbe Namensabgleich könnte alles prüfen, was an die KI geht, nicht nur Abgaben: Wikiseiten, Board und Kanban (dort schreiben Lernende mit), Konventionsdateien, Aufgabentexte – mit Sperre oder Alarm, wenn ein Name aus der Teilnehmerliste darin steht. Er ersetzt die Verdachtsmuster der Konventionen nicht: Die suchen Anweisungen wie „Lies die Noten aller Schüler", in denen kein Name steht. Voraussetzung wie oben: A1 wird für die Teilnehmerliste bewusst geändert (heute liest die App sie nie), und die Liste bleibt in der App.
-
  Wir legen nach und nach fest, welche Dateitypen überhaupt erlaubt sind. Office und PDF sind vermutlich die ersten. Alle weiteren Dateitypen müssen wir nach und nach testen und Freigeben, wie gesagt beispiel Bilddateien - die gehen erst, wenn wir zuverlässig Handschrift erkennen können oder Dateien von Spezialanwendungen müssen wir Stück für Stück immer prüfen, ob Erstellernamen im Projekt enthalten sein können.
 
- Man muss auch im Prinzip vielleicht nicht nach allen Namen suchen - es reicht, wenn man in den Teilnehmern des aktuellen Kurses sucht? Wenn einer der Teilnehmer Vor oder Nachnamen vorkommt, könnte das ein Problem sein. Bei beliebigen anderen Namen dürfte eigentlich kein Problem bestehen? Oder lieber eine deutsche Namensliste zugrundelegen?
-
- Geht Handschrifterkennung mit https://github.com/mittagessen/kraken?
-
-## Kurskonventionen verwalten
-
-*Begriff:* Eine Kurskonvention ist alles, was im verborgenen Verzeichnis `CLAUDE` eines Kurses steht – `CLAUDE.md` mit Steckbrief und Regeln, dazu die Dateien daneben, für den ganzen Kurs (Abschnitt „Allgemeines") oder für einen Abschnitt. Sie gilt nur in diesem Kurs, und zwar so, wie sie dort steht (E17); woher sie kommt – selbst geschrieben, aus einer Vorlage, aus einem eigenen oder fremden Kurs, aus einer Datei –, ändert daran nichts, geändert wird sie im Kurs. Eine *Vorlage* ist eine Quelle für Kurskonventionen und gilt selbst nirgends. *Verwalten* heißt: Vorlagen anbieten – allgemeine je Schulform oder Fach mit den Skills (anonym, A11), schulspezifische bleiben in Moodle, etwa in einem Kurs der Fachgruppe –; übernehmen aus Vorlage, eigenem oder fremdem Kurs oder Datei, ganz oder in Teilen, mit Vergleich zur bestehenden Fassung und den Widersprüchen im Plan; weitergeben. Übernommenes bleibt Daten (A7): Verdachtsprüfung wie bei jeder Fassung, Zusatzdateien werden nie ausgeführt, und bei einem fremden Kurs zeigt der Plan alles, was übernommen wird. *Offen:* Kopie oder Verweis – sollen Kurse nachziehen, wenn sich die Vorlage der Fachgruppe ändert, und wird dafür die Herkunft vermerkt? Was ist übertragbar, was hängt am Kurs (im Steckbrief Jahrgang, Bildungsgang, Lehrbücher; die Regeln eines Abschnitts)? Welche Werkzeuge fehlen: `kurs_hinweise` liest und `claude_schreiben` schreibt `CLAUDE.md`; ob die Zusatzdateien mit `aktivitaet_lesen` und `aendern` von Kurs zu Kurs kommen, ist zu prüfen. Begriff und Bedienung dann in die README (Benutzerhandbuch) und nach `gemeinsam/kurshinweise.md`. *Prüfstein:* drei parallele Kurse je Jahrgang mit gemeinsamen Regeln und je eigenem Anforderungsniveau.
-
-
 # Bugs
-- Sperrliste, Dateien von Lernenden: Die Positivliste lässt jede Adresse unter `pluginfile.php` zu („Datei im Kurs"), die Sperrliste nimmt davor nur Profil, Abgaben, Testantworten, Foren, Workshop, Datenbank und Lektion heraus. Es fehlen Bereiche, in die Lernende Dateien legen können: Glossar (`mod_glossary/attachment`, `mod_glossary/entry`), Wiki (`mod_wiki/attachments`), Blog (`blog/attachment`, `blog/post`) und die Zusatzplugins Board, Kanban-Board und Journal. Die Namen der Bereiche messen, dann sperren, mit Test beider Richtungen in `test/sperrliste_test.dart`. Vorher klären, was die Lesewerkzeuge dabei verlieren: Bilder, die die Lehrkraft selbst in eine gemeinsame Wikiseite oder einen Glossareintrag gesetzt hat, liegen in denselben Bereichen.
-- Schmales Fenster: Unter etwa 900 px Breite läuft der Kopf der Protokollspalte über („Protokoll" und „Leeren"), weil die linke Spalte fest 460 px breit ist. Die Titelzeile hält bis dahin. Entweder die linke Spalte schrumpfen lassen oder den Kopf kürzen.
 - Einstellungen mit Optionsfeldern: Die Zeilen der Abschlussverfolgung
   lesen sich missverständlich („Keine = nein").
 - Fragen zwischen Kategorien verschieben scheitert auf der Testinstanz (das
   Modul `qbank_bulkmove/bulk_move` lädt nicht); nach einem Leeren der Caches
   durch die Administration erneut prüfen, dann wäre der Weg zu messen.
+
+# Durchspielen
+Umgesetzt, aber noch nicht als Ganzes auf einer Instanz gelaufen.
+- Updates: Voraussetzung ist ein echtes Release (Tag `v0.9.4`, Datei
+  `moocp_setup_0.9.4.exe`). Dann eine 0.9.3 bauen, installieren und
+  durchspielen: Frage beim ersten Start (beide Antworten), Angebot,
+  „Jetzt nicht" und am nächsten Tag wieder, Download mit Fortschritt,
+  Abbrechen mittendrin, sichtbarer Installer, Neustart der App, Meldung
+  „auf Fassung … aktualisiert" im Protokoll. Dazu die Wege ohne Netz
+  (Start wartet höchstens zehn Sekunden und läuft weiter) und die Suche
+  aus den Einstellungen heraus.
+- Updates, Wettlauf mit dem Installer: Der Installer wartet mit `/UPDATE`
+  bis zu 30 Sekunden still darauf, dass die App ihre exe freigibt. Dass das
+  Fenster in dieser Zeit nicht wie hängengeblieben aussieht und die Frage
+  „moocp läuft noch" wirklich erst danach kommt, ist nur am laufenden
+  System zu sehen.
+- Updates auf einem verwalteten Schulrechner: Schlägt der Virenschutz an,
+  wenn die App ein unsigniertes Setup lädt und startet? Dieselbe Sorge wie
+  bei der Fernsteuerung des Browsers.
+- Installer: Installieren, Update über eine ältere Fassung, Deinstallieren
+  samt Einrichtung in Claude Code, auf einem frischen Windows ohne Visual
+  Studio – dort zeigt sich auch, ob die mitgelieferte VC++-Laufzeit reicht.
+  Gebaut und übersetzt ist er; das Entfernen der Einrichtung
+  (`--claude-entfernen`) lief gegen eine Attrappe mit `CLAUDE_CONFIG_DIR`.
+- Wählbare Skills: im Dialog „Claude einrichten" `lernsituation` anhaken
+  und installieren, später über das Puzzlestück in der Titelzeile abwählen
+  und prüfen, dass der Ordner unter `~/.claude/skills` verschwindet; ein
+  Update über eine Fassung, in der `lernsituation` schon installiert war,
+  darf ihn nicht entfernen.
+- Druckaufbereitung: Karofeld auf echtem Papier (Grauwert `#c0c0c0`,
+  0,4 pt hell genug und trotzdem sichtbar?); ob erzeugte Inhalte sauber
+  umbrechen, besonders Tabellen und lange Listen.
+- Anlegen von Link (`url`) und Datei (`resource`).
+- Übernahme eines echten Blatts (PDF, ODT, DOCX) nach
+  `skills/moodle/references/uebernehmen.md`.
+- Fragen: `calculated` (die geteilte Variante, Aufbau wie
+  `calculatedsimple` mit `<status>shared</status>`); die STACK-Eingabetypen
+  `checkbox`, `matrix`, `equiv`, `boolean`, `textarea`, `notes` – bauen,
+  Testfälle mitgeben, Testlauf ansehen.
+- Skill `lernsituation`: eine Handlungssituation als eigenes Textfeld
+  (`label`) übertragen, `links_setzen` laufen lassen und mit `--moodle`
+  prüfen; Buch, Aufgabe und Unterabschnitt sind so gelaufen, das Textfeld
+  noch nicht.
+- Skill `lernsituation`: Die Prosa ist nicht geprüft. Das Skript prüft die
+  Form; ob der Agent wirklich erst fragt und dann Vorschläge macht, zeigt
+  nur die Anwendung. Nach den ersten echten Lernsituationen festhalten, was
+  schiefging.
+- Überarbeiten (`skills/gemeinsam/ueberarbeiten.md`): Fragt der Agent vorn im Plan „direkt oder an einer Kopie", entscheidet er je Objekt nach „genau ein Vorgänger" zwischen Duplizieren und Neuanlegen, stellt er die Links der Kopie auf die Kopie um, und bleibt das Neue frei von Verweisen auf das Original?
+- Arbeitsbereich (`skills/gemeinsam/aktueller-kurs.md`, `plan.md`): Bleibt der Agent in der genannten Lernsituation, wenn ein Auftrag „im Kurs" oder „überall" sagt, und fragt er vorn im Plan nach den übrigen Abschnitten, statt sie zu lesen? In einer echten Sitzung mit mehreren Lernsituationen im Kurs beobachten.
+- Claude einrichten auf einem frischen Rechner: Legt Claude Desktop Claude Code erst an, wenn man einmal den Bereich „Code" öffnet? Davon geht der Hinweis im Dialog aus. Dabei die Wege des Dialogs durchspielen, die bisher nicht gelaufen sind: „Claude Code nicht gefunden" mit „Nochmal prüfen", ein gescheitertes Installieren mit „Nochmal versuchen", „Beenden" (App schließt, Arbeitsordner geleert).
+- Bildschirmfotos auf einem verwalteten Schulrechner: Schlägt der
+  Virenschutz an, wenn die App einen Browser mit Fernsteuerung
+  (`--remote-debugging-port`) startet? Dieselbe Technik nutzt Schadsoftware,
+  die Cookies stiehlt. Dabei die Wege, die hier nicht laufen können: Chrome
+  statt Edge (nur ohne Edge), die Meldung bei abgeschalteter Fernsteuerung
+  (Richtlinie `RemoteDebuggingAllowed`).
+- Wiki nach Gruppen: Die Erkennung (`wikiAnsichtSperre` in
+  `lib/moodle/wiki.dart`, Auswahl `group` bzw. `groupanduser` über dem Wiki)
+  ist nach dem Moodle-Quelltext gebaut und offline getestet; der Testkurs
+  hatte keine Gruppen. In einem Kurs mit Gruppen ein gemeinsames und ein
+  persönliches ZZ-Wiki im Gruppenmodus anlegen: `wiki_lesen`,
+  `wikiseite_schreiben` und `bildschirmfoto` müssen abbrechen.
+- Bildschirmfoto: Beim Beenden kam einmal ein „Unerwarteter Fehler:
+  StateError" (eine Anfrage des Browsers lief noch, als die Verbindung schon
+  zu war). Abgefangen, aber das Rennen lässt sich nicht gezielt auslösen –
+  nach den nächsten Bildschirmfotos im Protokoll nachsehen.

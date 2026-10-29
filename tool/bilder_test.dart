@@ -19,7 +19,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:moocp/arbeitsordner.dart';
 import 'package:moocp/einrichtung.dart';
 import 'package:moocp/einstellungen.dart';
-import 'package:moocp/einstellungen_ort.dart';
 import 'package:moocp/freigabe.dart';
 import 'package:moocp/main.dart';
 import 'package:moocp/mcp/mcp_dienst.dart';
@@ -76,7 +75,7 @@ void main() {
     // ignore: invalid_use_of_visible_for_testing_member
     SharedPreferences.setMockInitialValues({'anmeldung.merken': true, 'anmeldung.benutzer': 'e.mustermann'});
     // Sonst stünde „Version nicht lesbar" im Protokoll des Bildes: Die App
-    // liest ihre Version beim Start (Update-Prüfung), und im Test gibt es
+    // liest ihre Fassung beim Start (Update-Prüfung), und im Test gibt es
     // das Plugin dafür nicht.
     // ignore: invalid_use_of_visible_for_testing_member
     PackageInfo.setMockInitialValues(
@@ -95,7 +94,7 @@ void main() {
     try {
       final einstellungen = Einstellungen(
         moodleAdresse: 'https://moodle.schule.example',
-        port: standardPort,
+        port: Einstellungen.standardPort,
         schluessel: 'erfunden',
       );
       // Nur der Pfad; geleert wird er erst beim Beenden, und das kommt hier nicht vor.
@@ -125,15 +124,8 @@ void main() {
 
       // Alles eingerichtet: Die echte Prüfung sähe auf diesem Rechner nach, und
       // stünde dort etwas nicht, zeigte der Dialog den echten Pfad im Bild.
-      Future<Einrichtungsstand> eingerichtet() async => Einrichtungsstand(werkzeuge: [
-            Werkzeugstand(
-                werkzeug: ClaudeCode(const {}),
-                gewaehlt: true,
-                verbindung: Verbindung.aktuell,
-                skills: const [],
-                stand: const {},
-                entfernen: const {}),
-          ], skills: const [], python: true);
+      Future<Einrichtungsstand> eingerichtet() async => Einrichtungsstand(
+          claude: null, verbindung: Verbindung.aktuell, skills: const [], stand: const {}, python: true);
       await tester.pumpWidget(MoocpApp(einstellungen, protokoll, moodle, dienst, freigaben, arbeitsordner,
           einrichtungsstand: eingerichtet));
       await tester.pumpAndSettle();
@@ -153,7 +145,7 @@ void main() {
       showDialog<bool>(
         context: kontext,
         barrierDismissible: false,
-        builder: (_) => FreigabeDialog(anfrage, freigaben),
+        builder: (_) => FreigabeDialog(anfrage, freigaben.frist),
       );
       await tester.pumpAndSettle();
       await expectLater(find.byType(MaterialApp), matchesGoldenFile('../docs/bilder/freigabe.png'));

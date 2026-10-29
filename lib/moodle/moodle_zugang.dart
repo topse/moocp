@@ -28,7 +28,6 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
 
 import '../protokoll.dart';
@@ -109,17 +108,6 @@ String? wertIn(Felder f, String name) {
 /// skills/moodle/references/drucken.md.
 bool druckaufbereitungErkannt(String html) => html.contains('ab-print-root');
 
-/// Der Pfad des Theme-Stylesheets einer Seite
-/// (`/theme/styles.php/<theme>/<revision>/all`), ohne Rechner. Die Revision ändert sich, wenn die
-/// Administration die Caches leert; die App liest sie bei jeder Anmeldung neu.
-String? themeStylesheetIn(dom.Document doc) {
-  for (final l in doc.querySelectorAll('link[rel="stylesheet"]')) {
-    final u = Uri.tryParse(l.attributes['href'] ?? '');
-    if (u != null && u.path.startsWith('/theme/styles.php/')) return u.hasQuery ? '${u.path}?${u.query}' : u.path;
-  }
-  return null;
-}
-
 class MoodleZugang {
   MoodleZugang(this.protokoll);
 
@@ -191,7 +179,7 @@ class MoodleZugang {
   /// Aktivitätstypen, deren Formular die App kennt: anlegen und ändern.
   /// Ein Typ kommt erst hinein, wenn sein Formular im Testkurs gemessen ist.
   /// Die Übersicht „Unterstützte Aktivitäten und Fragetypen" in README.md
-  /// (Teil 2) im selben Zug nachziehen.
+  /// (Teil 1) im selben Zug nachziehen.
   static const Set<String> schreibbareModule = {
     'page', 'label', 'assign', 'folder', 'subsection', 'book', 'quiz', 'qbank', //
     'checklist', 'wiki', 'board', 'kanban', 'url', 'resource',
@@ -208,15 +196,6 @@ class MoodleZugang {
   /// nehmen, dürfen nur mit dieser aufgerufen werden.
   int? _eigeneId;
   int? get eigeneId => _eigeneId;
-
-  /// Die Aktivitäten, die die App seit der Anmeldung verborgen angelegt hat
-  /// (aktivitaet_anlegen). Solange eine davon verborgen ist, gehört sie noch
-  /// der Arbeitssitzung: Sie zu füllen fragt erst bei „alle", wie das Anlegen
-  /// selbst ([fuellenAb] in kurs.dart). Nur im Speicher -- ein Neustart oder
-  /// eine neue Anmeldung vergisst sie, dann fragt die App wieder ab „mittel".
-  /// Kopien kommen nicht hinein: Bei ihnen ist der Zeilenvergleich zum
-  /// Original der Sinn der Freigabe.
-  final Set<int> selbstAngelegt = {};
 
   /// Moodle-AJAX-Dienste, die aufgerufen werden dürfen, mit einer Prüfung
   /// ihrer Argumente. Keiner liefert Daten anderer Personen.
@@ -308,10 +287,8 @@ class MoodleZugang {
             parameter: (q) => q.length == 1 && _zahl(q['cmid'])),
         Erlaubt('GET', r'^/question/type/stack/questiontestrun\.php$', 'STACK: Fragetests und Varianten',
             parameter: (q) => _nurSchluessel(q, {'questionid', 'cmid', 'seed'}) && _zahl(q['questionid'])),
-        // Nur über eine Frage: Ohne questionid öffnet STACK den Notizblock nur
-        // Administratoren (stack.dart, stackCas).
         Erlaubt('GET', r'^/question/type/stack/adminui/caschat\.php$', 'STACK: CAS-Notizblock',
-            parameter: (q) => q.length == 2 && _zahl(q['questionid']) && _zahl(q['cmid'])),
+            parameter: (q) => q.isEmpty),
         Erlaubt('GET', r'^/mod/checklist/edit\.php$', 'Fortschrittsliste: die Einträge',
             parameter: (q) => q.length == 1 && _zahl(q['id'])),
         Erlaubt('GET', r'^/mod/wiki/view\.php$', 'Wiki: Startseite oder eine Seite',
@@ -432,14 +409,10 @@ class MoodleZugang {
             parameter: (q) => q.isEmpty,
             formular: (f) =>
                 f.length == 4 && _zahl(wertIn(f, 'questionid')) && _zahl(wertIn(f, 'cmid')) && _zahl(wertIn(f, 'deploy'))),
-        // Der Notizblock rechnet nur. Mit questionid hat sein Formular auch
-        // „Speichern" (action = savechat), das Variablen und Feedback ohne neue
-        // Version in die Frage schreibt -- darum genau ein action, und das ist go.
+        // Der Notizblock rechnet nur; das Zurückspeichern in eine Frage ist nicht dabei.
         Erlaubt('POST', r'^/question/type/stack/adminui/caschat\.php$', 'STACK: Ausdruck ausrechnen',
-            parameter: (q) => q.length == 2 && _zahl(q['questionid']) && _zahl(q['cmid']),
-            formular: (f) =>
-                f.every((e) => const {'cas', 'maximavars', 'simp', 'action'}.contains(e.key)) &&
-                f.where((e) => e.key == 'action').map((e) => e.value).join('|') == 'go'),
+            parameter: (q) => q.isEmpty,
+            formular: (f) => f.every((e) => const {'sesskey', 'cas', 'maximavars', 'simp', 'action'}.contains(e.key))),
         Erlaubt('POST', r'^/mod/checklist/edit\.php$', 'Fortschrittsliste: Eintrag anlegen oder ändern',
             parameter: (q) => q.isEmpty,
             formular: (f) {
@@ -550,12 +523,6 @@ class MoodleZugang {
   bool get druckaufbereitung => _druckaufbereitung;
   bool _druckaufbereitung = false;
 
-  /// Pfad des Theme-Stylesheets (/theme/styles.php/…), gesehen auf der
-  /// Anmeldeseite ([themeStylesheetIn]); interaktive Elemente binden es ein
-  /// (elemente.dart). null: keins gefunden.
-  String? get themeStylesheet => _themeStylesheet;
-  String? _themeStylesheet;
-
   // ---------------------------------------------------------------------
   // Anmelden und Abmelden
   // ---------------------------------------------------------------------
@@ -586,12 +553,10 @@ class MoodleZugang {
     _cookies.clear();
     _sesskey = null;
     _eigeneId = null;
-    selbstAngelegt.clear();
     _benutzer = null;
     _passwort = null;
     _angemeldet = false;
     _druckaufbereitung = false;
-    _themeStylesheet = null;
     if (!stillschweigend) protokoll.eintrag(Art.anmeldung, 'Abgemeldet, Zugangsdaten verworfen');
   }
 
@@ -621,7 +586,6 @@ class MoodleZugang {
     // Die Anmeldeseite ist die einzige ganze Seite, die hier ohnehin geladen
     // wird; nachzusehen kostet keine weitere Anfrage.
     final druck = druckaufbereitungErkannt(seite.text);
-    final stylesheet = themeStylesheetIn(doc);
 
     // 2. Formular senden. Moodle antwortet bei Erfolg mit einer Umleitung auf
     //    /login/index.php?testsession=…, bei Misserfolg wieder auf die
@@ -668,7 +632,6 @@ class MoodleZugang {
       _druckGemeldet = true;
     }
     _druckaufbereitung = druck;
-    _themeStylesheet = stylesheet;
   }
 
   /// Nur einmal je Stand ins Protokoll, nicht bei jeder Neuanmeldung.

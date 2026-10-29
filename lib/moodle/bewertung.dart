@@ -79,31 +79,9 @@ class Schema {
       ];
 
   String text() => _schemaText(name, methode, alsJson(), optionenWerte, optionenLabels);
-
-  /// Für die Antwort an die KI: die Kriterien mit den Punkten ihrer Stufen und
-  /// die Optionen. Die Texte der Stufen stehen nur in `bewertung-<cmid>.json` --
-  /// wer etwas ändert, öffnet die Datei ohnehin (E5), und sie zweimal zu
-  /// schicken kostete Kontext.
-  String uebersicht() {
-    final ks = alsJson();
-    String kurz(Object? s) {
-      final t = '${s ?? ''}'.replaceAll(RegExp(r'\s+'), ' ').trim();
-      return t.length <= 100 ? t : '${t.substring(0, 99)}…';
-    }
-
-    return [
-      '„$name" ($methode), ${ks.length} ${ks.length == 1 ? 'Kriterium' : 'Kriterien'}:',
-      for (final k in ks)
-        '  Kriterium ${k['id']}: ${kurz(k['shortname'] ?? k['description'])}'
-            '${k['maxscore'] == null ? '' : ' (höchstens ${k['maxscore']} P.)'}'
-            '${k['level'] == null ? '' : ' -- Stufen: ${[for (final l in (k['level'] as List).cast<Map>()) l['punkte']].join(', ')} P.'}',
-      if (optionenWerte.isNotEmpty) 'Optionen:',
-      for (final o in optionenWerte.entries) '    ${optionenLabels[o.key] ?? o.key}: ${o.value} (${o.key})',
-    ].join('\n');
-  }
 }
 
-/// Die lesbare Version für Übersicht und Freigabe; [kriterien] im Aufbau von
+/// Die lesbare Fassung für Übersicht und Freigabe; [kriterien] im Aufbau von
 /// `bewertung-<cmid>.json`, neue ohne id.
 String _schemaText(String name, String methode, List<Map> kriterien, Map<String, String> optionen,
         Map<String, String> labels) =>
@@ -238,8 +216,8 @@ Future<String> bewertungsschemaLesen(MoodleZugang moodle, int cmid, String arbei
     'kriterien': s.alsJson(),
     'optionen': s.optionenWerte,
   }));
-  return 'Bewertungsschema der Aufgabe cmid $cmid -- nur die DEFINITION, keine Bewertung:\n${s.uebersicht()}\n'
-      'Vollständig, mit den Texten der Stufen: ${datei.path}. Ändern: die Datei bearbeiten (bestehende ids behalten, neue Kriterien und Level ohne '
+  return 'Bewertungsschema der Aufgabe cmid $cmid -- nur die DEFINITION, keine Bewertung:\n${s.text()}\n'
+      'Als Datei: ${datei.path}. Ändern: die Datei bearbeiten (bestehende ids behalten, neue Kriterien und Level ohne '
       'id; weggelassene Kriterien werden gelöscht; optionen: ja/nein bzw. Text der Auswahl, weggelassene bleiben), '
       'dann bewertungsschema_setzen.';
 }
@@ -248,7 +226,7 @@ String _zahl(Object? x) => '${x ?? ''}'.replaceAll(',', '.');
 
 Future<String> bewertungsschemaSetzen(MoodleZugang moodle, Freigaben freigaben,
     {required int cmid, required String name, required String datei, required String arbeitsordner}) async {
-  final neu = jsonDecode(await dateiAusArbeitsordner(datei, arbeitsordner)) as Map;
+  final neu = jsonDecode(await File(imArbeitsordner(datei, arbeitsordner)).readAsString(encoding: utf8)) as Map;
   final s = await _schema(moodle, cmid);
   if (s == null) {
     throw MoodleFehler('Die Aufgabe hat keine Rubrik oder Richtlinie. Erst die Methode umstellen (aendern, '
@@ -305,7 +283,6 @@ Future<String> bewertungsschemaSetzen(MoodleZugang moodle, Freigaben freigaben,
   final nachherText = _schemaText(nameNeu, m, kriterien, optionen, s.optionenLabels);
   final ja = await freigaben.anfragen(FreigabeAnfrage(
     titel: 'Bewertungsschema ändern?',
-    ab: await fuellenAb(moodle, f0.kurs, [cmid]),
     punkte: [
       '${m == 'rubric' ? 'Bewertungsraster' : 'Bewertungsrichtlinie'} der Aufgabe „${f0.name}" (cmid $cmid'
           '${f0.kurs == null ? '' : ', ${await kursBezeichnung(moodle, f0.kurs!)}'})',

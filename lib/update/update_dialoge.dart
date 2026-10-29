@@ -3,9 +3,9 @@
 //
 // Beim Start läuft das vor allem anderen (main.dart, _starten): Ein Update
 // ersetzt auch die Skills, und würde die App vorher einrichten, installierte
-// sie die Version, die gleich überschrieben wird (E13). Weil der MCP-Server
+// sie die Fassung, die gleich überschrieben wird (E13). Weil der MCP-Server
 // zuletzt startet, reißt ein Update zu diesem Zeitpunkt auch keiner
-// Sitzung eines KI-Werkzeugs die Verbindung ab.
+// Claude-Sitzung die Verbindung ab.
 //
 // Die Anzeige „Prüfe auf Updates" erscheint erst nach einer kurzen Weile:
 // Bei flottem Netz ist die Prüfung vorher durch, und niemand soll bei jedem
@@ -60,7 +60,7 @@ Future<bool> updateSchritt(
   await _speichern(einstellungen, protokoll);
 
   final update = Update(protokoll);
-  NeueVersion? neu;
+  NeueFassung? neu;
   String? fehler;
   var abgebrochen = false;
   BuildContext? anzeige;
@@ -92,7 +92,7 @@ Future<bool> updateSchritt(
 
   if (neu == null) {
     if (manuell) {
-      await _melden(context, fehler ?? 'moocp $eigene ist die neueste Version.');
+      await _melden(context, fehler ?? 'moocp $eigene ist die neueste Fassung.');
     }
     return false;
   }
@@ -108,12 +108,6 @@ Future<bool> updateSchritt(
       sitzungLaeuft: sitzungLaeuft,
     ),
   );
-  // „Jetzt nicht" schreibt die App nicht weiter auf -- ins Protokoll gehört
-  // es trotzdem: Es war ein Angebot da, und es wurde abgelehnt. Morgen
-  // kommt es wieder.
-  if (los != true) {
-    protokoll.eintrag(Art.info, 'Update: Version ${neu.version} jetzt nicht installiert');
-  }
   return los == true;
 }
 
@@ -146,7 +140,7 @@ class UpdateFrageDialog extends StatelessWidget {
       content: SizedBox(
         width: 520,
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('moocp kann einmal täglich bei GitHub nachsehen, ob es eine neue Version '
+          const Text('moocp kann einmal täglich bei GitHub nachsehen, ob es eine neue Fassung '
               'gibt, und sie auf Wunsch gleich installieren.'),
           const SizedBox(height: 12),
           const Text('Dazu fragt die App eine einzige Adresse bei GitHub ab. GitHub erfährt '
@@ -155,7 +149,7 @@ class UpdateFrageDialog extends StatelessWidget {
               'Ihre Moodle-Sitzung.'),
           const SizedBox(height: 12),
           Text(
-              'Ohne Prüfung bleibt alles, wie es ist; neue Versionen finden Sie dann selbst '
+              'Ohne Prüfung bleibt alles, wie es ist; neue Fassungen finden Sie dann selbst '
               'unter „Releases" im Repository. Ändern können Sie das jederzeit in den '
               'Einstellungen.',
               style: Theme.of(context).textTheme.bodySmall),
@@ -180,7 +174,7 @@ class _PruefAnzeige extends StatelessWidget {
       content: const SizedBox(
         width: 380,
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('moocp fragt bei GitHub nach der neuesten Version.'),
+          Text('moocp fragt bei GitHub nach der neuesten Fassung.'),
           SizedBox(height: 16),
           LinearProgressIndicator(),
         ]),
@@ -203,7 +197,7 @@ class _AngebotDialog extends StatefulWidget {
     required this.sitzungLaeuft,
   });
 
-  final NeueVersion neu;
+  final NeueFassung neu;
   final String eigene;
   final Update update;
   final Einstellungen einstellungen;
@@ -219,17 +213,6 @@ class _AngebotDialogState extends State<_AngebotDialog> {
   int _geladen = 0;
   int? _gesamt;
   String? _fehler;
-
-  /// Für den Kasten mit den Änderungen: Der Text eines Releases kann lang
-  /// sein, und ohne sichtbaren Balken sieht niemand, dass darunter noch
-  /// etwas steht.
-  final _rollen = ScrollController();
-
-  @override
-  void dispose() {
-    _rollen.dispose();
-    super.dispose();
-  }
 
   double? get _anteil {
     final g = _gesamt;
@@ -250,7 +233,7 @@ class _AngebotDialogState extends State<_AngebotDialog> {
           _gesamt = gesamt;
         });
       });
-      await installerStarten(datei, widget.neu.version, widget.einstellungen, widget.protokoll);
+      await installerStarten(datei, widget.neu.fassung, widget.einstellungen, widget.protokoll);
       if (mounted) Navigator.pop(context, true);
     } on UpdateAbgebrochen {
       widget.protokoll.eintrag(Art.info, 'Update: Download abgebrochen');
@@ -278,7 +261,7 @@ class _AngebotDialogState extends State<_AngebotDialog> {
     final klein = Theme.of(context).textTheme.bodySmall;
     final text = widget.neu.beschreibung;
     return AlertDialog(
-      title: Text('Version ${widget.neu.version} ist verfügbar'),
+      title: Text('Fassung ${widget.neu.fassung} ist verfügbar'),
       content: SizedBox(
         width: 560,
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -289,23 +272,14 @@ class _AngebotDialogState extends State<_AngebotDialog> {
             const SizedBox(height: 4),
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 220),
-              child: Scrollbar(
-                controller: _rollen,
-                thumbVisibility: true,
-                child: SingleChildScrollView(
-                  controller: _rollen,
-                  // Platz für den Balken, sonst liegt er auf dem Text.
-                  padding: const EdgeInsets.only(right: 12),
-                  child: Text(text, style: klein),
-                ),
-              ),
+              child: SingleChildScrollView(child: Text(text, style: klein)),
             ),
           ],
           const SizedBox(height: 12),
           Text(
               'Der Installer wird von GitHub geladen und läuft sichtbar ab. moocp schließt '
               'sich dafür und startet danach wieder. Einstellungen, gespeicherte Anmeldedaten '
-              'und die Einrichtung der KI-Werkzeuge bleiben erhalten.',
+              'und die Einrichtung in Claude Code bleiben erhalten.',
               style: klein),
           if (widget.sitzungLaeuft) ...[
             const SizedBox(height: 8),
@@ -314,7 +288,7 @@ class _AngebotDialogState extends State<_AngebotDialog> {
               const SizedBox(width: 8),
               Expanded(
                   child: Text(
-                      'Eine laufende Sitzung im KI-Werkzeug verliert dabei die Verbindung zur App und '
+                      'Eine laufende Claude-Sitzung verliert dabei die Verbindung zur App und '
                       'muss neu gestartet werden.',
                       style: klein)),
             ]),

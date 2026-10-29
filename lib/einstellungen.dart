@@ -1,6 +1,5 @@
 // Einstellungen, die einen Neustart überleben: Moodle-Adresse, Port,
-// Zugangsschlüssel für Claude, die gewählten Skills, die Update-Prüfung und
-// die Stufe der Bestätigungen.
+// Zugangsschlüssel für Claude, die gewählten Skills und die Update-Prüfung.
 //
 // Bewusst NICHT hier: Benutzername und Passwort. Die leben im Arbeitsspeicher,
 // solange die App läuft -- und nur mit Haken „Anmeldedaten speichern" auch
@@ -12,17 +11,14 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
-import 'einstellungen_ort.dart';
-import 'freigabe.dart';
+import 'package:path/path.dart' as p;
 
 class Einstellungen {
   Einstellungen({
     required this.moodleAdresse,
     required this.port,
     required this.schluessel,
-    this.bestaetigungen = Bestaetigungen.vorgabe,
     this.wahlSkills,
-    this.werkzeugeAbgewaehlt = const {},
     this.updatePruefen,
     this.updateZuletzt,
     this.updateErwartet,
@@ -32,24 +28,12 @@ class Einstellungen {
   int port;
   String schluessel;
 
-  /// Wie viele Bestätigungen die Lehrkraft vor Änderungen in Moodle will
-  /// (freigabe.dart). Die Einstellung gilt über einen Neustart hinweg; dass
-  /// sie auf „keine" steht, zeigt die Titelzeile rot und das Protokoll beim
-  /// Start -- eine Stufe, die sich von selbst zurückstellte, überraschte.
-  Bestaetigungen bestaetigungen;
-
   /// Die gewählten unter den wählbaren Skills (einrichtung.dart,
-  /// wahlSkills); null, solange im Dialog „KI-Werkzeuge einrichten" noch
-  /// nichts gewählt wurde -- dann gilt gewaehltVorgabe.
+  /// wahlSkills); null, solange im Dialog „Claude einrichten" noch nichts
+  /// gewählt wurde -- dann gilt gewaehltVorgabe.
   Set<String>? wahlSkills;
 
-  /// Die KI-Werkzeuge, die die Lehrkraft im Dialog abgewählt hat
-  /// (einrichtung.dart, KiWerkzeug.id). Gespeichert wird, was abgewählt
-  /// ist, nicht was gewählt: So erscheint ein Werkzeug, das erst nach der
-  /// App installiert wurde, von selbst im Dialog.
-  Set<String> werkzeugeAbgewaehlt;
-
-  /// Ob die App einmal täglich bei GitHub nach einer neuen Version sehen
+  /// Ob die App einmal täglich bei GitHub nach einer neuen Fassung sehen
   /// darf; null, solange nicht gefragt wurde (update.dart). Ohne
   /// ausdrückliches Ja fragt die App niemanden -- auch GitHub nicht.
   bool? updatePruefen;
@@ -59,12 +43,21 @@ class Einstellungen {
   /// die Zeitgrenze.
   String? updateZuletzt;
 
-  /// Die Version, deren Installer gerade gestartet wurde; der nächste Start
+  /// Die Fassung, deren Installer gerade gestartet wurde; der nächste Start
   /// vergleicht sie mit der eigenen und meldet Erfolg oder Fehlschlag. Die
   /// App ist währenddessen beendet und sieht sonst nichts davon.
   String? updateErwartet;
 
-  static File get _datei => einstellungenDatei;
+  static const int standardPort = 47811;
+
+  static String get ordner => _ordner;
+
+  static String get _ordner {
+    final appdata = Platform.environment['APPDATA'] ?? Directory.systemTemp.path;
+    return p.join(appdata, 'moocp');
+  }
+
+  static File get _datei => File(p.join(_ordner, 'einstellungen.json'));
 
   static String neuerSchluessel() {
     final r = Random.secure();
@@ -84,9 +77,7 @@ class Einstellungen {
           moodleAdresse: j['moodleAdresse'] as String? ?? standard.moodleAdresse,
           port: j['port'] as int? ?? standard.port,
           schluessel: j['schluessel'] as String? ?? standard.schluessel,
-          bestaetigungen: Bestaetigungen.ausText(j['bestaetigungen'] as String?),
           wahlSkills: (j['wahlSkills'] as List?)?.whereType<String>().toSet(),
-          werkzeugeAbgewaehlt: (j['werkzeugeAbgewaehlt'] as List?)?.whereType<String>().toSet() ?? const {},
           updatePruefen: j['updatePruefen'] as bool?,
           updateZuletzt: j['updateZuletzt'] as String?,
           updateErwartet: j['updateErwartet'] as String?,
@@ -100,14 +91,12 @@ class Einstellungen {
   }
 
   Future<void> speichern() async {
-    await Directory(einstellungenOrdner).create(recursive: true);
+    await Directory(_ordner).create(recursive: true);
     await _datei.writeAsString(const JsonEncoder.withIndent('  ').convert({
       'moodleAdresse': moodleAdresse,
       'port': port,
       'schluessel': schluessel,
-      'bestaetigungen': bestaetigungen.text,
       if (wahlSkills != null) 'wahlSkills': (wahlSkills!.toList()..sort()),
-      if (werkzeugeAbgewaehlt.isNotEmpty) 'werkzeugeAbgewaehlt': (werkzeugeAbgewaehlt.toList()..sort()),
       if (updatePruefen != null) 'updatePruefen': updatePruefen,
       if (updateZuletzt != null) 'updateZuletzt': updateZuletzt,
       if (updateErwartet != null) 'updateErwartet': updateErwartet,

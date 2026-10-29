@@ -6,6 +6,7 @@ import 'package:html/parser.dart' as html_parser;
 import 'package:moocp/moodle/moodle_zugang.dart';
 import 'package:moocp/moodle/formular.dart';
 import 'package:moocp/moodle/zeilenvergleich.dart';
+import 'package:moocp/freigabe.dart';
 import 'package:moocp/protokoll.dart';
 
 void main() {
@@ -112,29 +113,6 @@ void main() {
     expect(post('$d?cmid=2384', bestaetigt), isFalse, reason: 'Parameter in der Adresse');
   });
 
-  test('CAS-Notizblock: nur über eine Frage, nur rechnen, nie speichern', () {
-    const c = 'https://m.example/question/type/stack/adminui/caschat.php';
-    const mitFrage = '$c?questionid=995&cmid=2384';
-    expect(get(mitFrage), isTrue);
-    expect(get(c), isFalse, reason: 'ohne Frage nur für Administratoren');
-    expect(get('$c?questionid=995'), isFalse);
-    expect(get('$mitFrage&initialise=1'), isFalse, reason: 'füllte das Formular mit Variablen und Feedback der Frage');
-    final rechnen = [
-      const MapEntry('maximavars', 'x : 3;'),
-      const MapEntry('simp', 'on'),
-      const MapEntry('cas', 'Ergebnis {@x@}'),
-      const MapEntry('action', 'go'),
-    ];
-    expect(post(mitFrage, rechnen), isTrue);
-    expect(post(c, rechnen), isFalse, reason: 'ohne Frage');
-    // Mit questionid schreibt „Speichern" Variablen und Feedback ohne neue
-    // Version in die Frage.
-    expect(post(mitFrage, [...rechnen]..[3] = const MapEntry('action', 'Speichern')), isFalse);
-    expect(post(mitFrage, [...rechnen, const MapEntry('action', 'Speichern')]), isFalse, reason: 'zweites action');
-    expect(post(mitFrage, rechnen.where((e) => e.key != 'action').toList()), isFalse, reason: 'ohne action');
-    expect(post(mitFrage, [...rechnen, const MapEntry('inputs', 'ans1:3;')]), isFalse, reason: 'fremdes Feld');
-  });
-
   test('Moodle-Dienste: nur die freigegebenen, nur mit passenden Argumenten', () {
     bool dienst(String info, String methode, Map<String, Object?> args, {String? key = 'x'}) =>
         z.erlaubt(
@@ -169,6 +147,21 @@ void main() {
     expect(z.erlaubt('POST', Uri.parse('https://m.example/lib/ajax/service.php?sesskey=x&info=$s')),
         isFalse,
         reason: 'ohne Rumpf');
+  });
+
+  test('Freigabe: Frist greift, Entscheidung zählt', () async {
+    final prot = Protokoll();
+    final f = Freigaben(prot, frist: const Duration(milliseconds: 200));
+    FreigabeAnfrage neu() => FreigabeAnfrage(titel: 't', punkte: const [], vergleich: const []);
+    final uhr = Stopwatch()..start();
+    expect(await f.anfragen(neu()), isFalse);
+    expect(uhr.elapsedMilliseconds, lessThan(1000));
+    expect(f.aktuell, isNull);
+    expect(prot.eintraege.last.text, contains('Frist abgelaufen'));
+    final warten = f.anfragen(neu());
+    f.entscheiden(true);
+    expect(await warten, isTrue);
+    expect(prot.eintraege.last.text, 'Freigabe erteilt');
   });
 
   test('Zeilenvergleich', () {

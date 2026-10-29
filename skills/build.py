@@ -6,7 +6,7 @@
 Installiert werden die Pakete von der App: Sie bringt skills/dist/ als Assets
 mit, vergleicht beim Start mit ~/.claude/skills/ und bietet die Installation an
 (lib/einrichtung.dart); welche der wählbaren Skills dazugehören, entscheidet
-die Lehrkraft dort. So gehören App und Skills immer zur selben Version.
+die Lehrkraft dort. So gehören App und Skills immer zur selben Fassung.
 skills/dist/ ist Bauergebnis und nicht versioniert.
 
 Ablauf je Skill:
@@ -45,37 +45,33 @@ DIST = os.path.join(HIER, 'dist')
 SKILLS = [
     {
         'name': 'moodle',
-        'bloecke': ['kurshinweise.md', 'konventionen-vorschlagen.md', 'aktueller-kurs.md', 'erfundene-namen.md', 'plan.md', 'ueberarbeiten.md',
+        'bloecke': ['kurshinweise.md', 'aktueller-kurs.md', 'erfundene-namen.md', 'plan.md', 'ueberarbeiten.md',
                     'luecken.md', 'protokoll.md', 'bildschirmfoto.md', 'urheberrecht-kurz.md', 'urheberrecht.md',
-                    'datenschutzbefund.md', 'skillfehler.md', 'html-kurz.md', 'html.md', 'zeichnungen.md', 'bruecke.md',
-                    'einsatz.md', 'elemente.md'],
+                    'datenschutzbefund.md', 'skillfehler.md', 'html-kurz.md', 'html.md', 'zeichnungen.md', 'bruecke.md'],
         'ersetzungen': {'@@NAME@@': 'moodle',
                         '@@QUELLENBEISPIELE@@': ('datei', 'urheberrecht-beispiele-html.md')},
     },
     {
         'name': 'moodle-fragen',
         # Fragen werden nicht gedruckt; die Brücke betrifft Kurs und Blätter.
-        'bloecke': ['kurshinweise.md', 'konventionen-vorschlagen.md', 'aktueller-kurs.md', 'erfundene-namen.md', 'plan.md', 'ueberarbeiten.md',
+        'bloecke': ['kurshinweise.md', 'aktueller-kurs.md', 'erfundene-namen.md', 'plan.md', 'ueberarbeiten.md',
                     'luecken.md', 'protokoll.md', 'bildschirmfoto.md', 'urheberrecht-kurz.md', 'urheberrecht.md',
                     'datenschutzbefund.md', 'skillfehler.md', 'html-kurz.md', 'html.md', 'zeichnungen.md'],
         'ersetzungen': {'@@NAME@@': 'moodle-fragen',
                         '@@QUELLENBEISPIELE@@': ('datei', 'urheberrecht-beispiele-html.md')},
     },
     {
-        # Entwirft Lernsituationen für einen Kurs: als Entwurf im Arbeitsordner,
+        # Entwirft ohne Moodle: Lernsituationen als Entwurf im Arbeitsordner,
         # schon in HTML und in der Form der Werkzeuge, den der Skill moodle
-        # gleich danach in den Kurs bringt. Lesen und Schreiben in Moodle
-        # bleiben beim Skill moodle; von dort braucht er die Konventionen des
-        # Kurses samt Steckbrief und die Anregungen, welche Aktivität wofür
-        # taugt. Dazu das HTML, weil er es selbst schreibt, das Überarbeiten,
-        # weil „Das Neue steht allein" schon für seinen Entwurf gilt, und die
-        # Lücken, damit auch hier eine fehlende Funktion als Befund zum
-        # Nachrüsten ankommt.
+        # gleich danach in den Kurs bringt. Von den Gleichanteilen braucht er
+        # nur, was nichts mit dem Bedienen von Moodle zu tun hat -- dazu das
+        # HTML, weil er es selbst schreibt, das Überarbeiten, weil „Das Neue
+        # steht allein" schon für seinen Entwurf gilt, und die Lücken, damit
+        # auch hier eine fehlende Funktion als Befund zum Nachrüsten ankommt.
         # Wählbar (lib/einrichtung.dart): gebaut für berufsbildende Schulen.
         'name': 'lernsituation',
-        'bloecke': ['bruecke.md', 'kurshinweise.md', 'konventionen-vorschlagen.md', 'erfundene-namen.md', 'plan.md', 'ueberarbeiten.md',
-                    'html-kurz.md', 'html.md', 'zeichnungen.md', 'urheberrecht-kurz.md', 'urheberrecht.md', 'luecken.md', 'skillfehler.md',
-                    'einsatz.md', 'elemente.md'],
+        'bloecke': ['bruecke.md', 'erfundene-namen.md', 'plan.md', 'ueberarbeiten.md', 'html-kurz.md', 'html.md',
+                    'zeichnungen.md', 'urheberrecht-kurz.md', 'urheberrecht.md', 'luecken.md', 'skillfehler.md'],
         'ersetzungen': {'@@NAME@@': 'lernsituation',
                         '@@QUELLENBEISPIELE@@': ('datei', 'urheberrecht-beispiele-lernsituation.md')},
     },

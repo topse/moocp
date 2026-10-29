@@ -29,15 +29,6 @@ constexpr const wchar_t kSperre[] = L"Local\\moocp";
 // installierte deinstalliert wird --, und hätte nichts ausgetragen.
 constexpr const char kClaudeEntfernen[] = "--claude-entfernen";
 
-// Wie werkzeuglisteSchalter und versionSchalter in lib/einrichtung.dart:
-// Auskünfte über stdout, ohne Fenster -- die Werkzeugliste für die Brücke
-// (lib/mcp/bruecke.dart) und die Version. Ohne Sperre, denn sie laufen neben
-// der App und fassen nichts an. Und ohne Konsole: stdout ist das Rohr dessen,
-// der fragt; hängte sich die exe an dessen Konsole, ginge die Antwort
-// womöglich dorthin statt ins Rohr.
-constexpr const char kWerkzeugliste[] = "--werkzeugliste";
-constexpr const char kVersion[] = "--version";
-
 constexpr const wchar_t kTitel[] = L"moocp";
 
 // Holt das Fenster der laufenden App nach vorn, aus der Minimierung auch.
@@ -95,23 +86,18 @@ bool AlleinStarten() {
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
-  std::vector<std::string> command_line_arguments =
-      GetCommandLineArguments();
-  auto hat = [&](const char *schalter) {
-    return std::find(command_line_arguments.begin(),
-                     command_line_arguments.end(),
-                     schalter) != command_line_arguments.end();
-  };
-  const bool auskunft = hat(kWerkzeugliste) || hat(kVersion);
-
   // Attach to console when present (e.g., 'flutter run') or create a
   // new console when running with a debugger.
-  if (!auskunft && !::AttachConsole(ATTACH_PARENT_PROCESS) &&
-      ::IsDebuggerPresent()) {
+  if (!::AttachConsole(ATTACH_PARENT_PROCESS) && ::IsDebuggerPresent()) {
     CreateAndAttachConsole();
   }
 
-  if (!auskunft && !hat(kClaudeEntfernen) && !AlleinStarten()) {
+  std::vector<std::string> command_line_arguments =
+      GetCommandLineArguments();
+
+  if (std::find(command_line_arguments.begin(), command_line_arguments.end(),
+                kClaudeEntfernen) == command_line_arguments.end() &&
+      !AlleinStarten()) {
     return EXIT_SUCCESS;
   }
 

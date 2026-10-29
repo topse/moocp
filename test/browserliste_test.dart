@@ -47,27 +47,6 @@ void main() {
     expect(weg('POST', '/mod/page/view.php?id=15730', dokument: true), BrowserWeg.gesperrt);
   });
 
-  test('Rahmen: interaktive Elemente aus dem Dateibereich eines Felds, sonst nichts', () {
-    final seiten = {'https://moodle.schule.example/mod/page/view.php?id=15961'};
-    for (final a in [
-      '/pluginfile.php/26822/mod_page/content/1/wuerfel.html',
-      '/pluginfile.php/26823/mod_label/intro/wuerfel.html',
-      '/pluginfile.php/26824/mod_book/chapter/228/wuerfel.htm',
-      '/pluginfile.php/26825/course/section/4883/wuerfel.html',
-    ]) {
-      expect(weg('GET', a, dokument: true, seiten: seiten), BrowserWeg.ueberApp, reason: a);
-    }
-    for (final a in [
-      '/pluginfile.php/26822/mod_page/content/1/bild.png',
-      '/pluginfile.php/5/user/icon/boost/f1.html',
-      '/mod/page/view.php?id=15962',
-    ]) {
-      expect(weg('GET', a, dokument: true, seiten: seiten), BrowserWeg.gesperrt, reason: a);
-    }
-    expect(weg('POST', '/pluginfile.php/26822/mod_page/content/1/wuerfel.html', dokument: true, seiten: seiten),
-        BrowserWeg.gesperrt);
-  });
-
   test('Seiten: nur die aufgenommene und ihre Umleitung, auch nicht im Rahmen', () {
     const vorschau = 'https://moodle.schule.example/question/bank/previewquestion/preview.php?id=15287&cmid=2384';
     final seiten = {vorschau};
@@ -141,65 +120,11 @@ void main() {
     expect(weg('GET', 'https://andere.schule.example/theme/styles.php/boost/1/all'), BrowserWeg.gesperrt);
   });
 
-  test('Was nicht geladen ist, zählt nur, wenn es das Bild verändern kann', () {
-    expect(veraendertBild('Datenschutz-Sperre (Regel 3)', 'Script'), isTrue);
-    expect(veraendertBild('fremder Rechner', 'Stylesheet'), isTrue, reason: 'Schriften, fremde Bilder');
-    expect(veraendertBild('nicht die aufgenommene Seite', 'Document'), isTrue, reason: 'ein Rahmen im Inhalt');
-    for (final art in ['Stylesheet', 'Image', 'Font', 'Media']) {
-      expect(veraendertBild(nichtAufDerListe, art), isTrue, reason: art);
-    }
-    for (final art in ['Script', 'XHR', 'Fetch', 'Other', null]) {
-      expect(veraendertBild(nichtAufDerListe, art), isFalse, reason: '$art: Kopfzeile und Plugins');
-    }
-    final (_, grund) = browserPruefen('GET', Uri.parse('https://moodle.schule.example/local/beispiel/build/app.js'),
-        basis: Uri.parse('https://moodle.schule.example/'), seiten: const {});
-    expect(grund, nichtAufDerListe);
-  });
-
-  test('STACK-Zeichnungen: Skripte aus corsscripts, nur Dateinamen', () {
-    const ordner = '/question/type/stack/corsscripts';
-    for (final a in [
-      '$ordner/cors.php?name=jsxgraphcore.min.js',
-      '$ordner/cors.php?name=stackjsiframe.min.js',
-      '$ordner/cors.php?name=jsxgraph.min.css',
-      '$ordner/cors.php?name=jsxgraphstyles%2Fempty.css',
-      '$ordner/stackjsxgraph.min.js',
-    ]) {
-      expect(browserPruefen('GET', _basis.resolve(a), basis: _basis, seiten: const {}), (BrowserWeg.ueberApp, stackSkript),
-          reason: a);
-    }
-    for (final a in [
-      '$ordner/cors.php?name=..%2F..%2F..%2Fconfig.php',
-      '$ordner/cors.php?name=..%2Fversion.js',
-      '$ordner/cors.php?name=x.php',
-      '$ordner/cors.php',
-      '$ordner/cors.php?name=a.js&x=1',
-      '$ordner/README',
-      '$ordner/a.js?x=1',
-      '/question/type/stack/adminui/index.php',
-    ]) {
-      expect(weg('GET', a), BrowserWeg.gesperrt, reason: a);
-    }
-    expect(weg('POST', '$ordner/cors.php?name=jsxgraphcore.min.js'), BrowserWeg.gesperrt);
-    expect(weg('GET', '$ordner/cors.php?name=jsxgraphcore.min.js', dokument: true), BrowserWeg.gesperrt);
-  });
-
   test('Grund: Pflicht, ein Satz', () {
     expect(grundPruefen('  Prüfen, ob die Formeln\n auf Infoblatt 2 gesetzt werden  '),
         'Prüfen, ob die Formeln auf Infoblatt 2 gesetzt werden');
     for (final g in [null, '', '   ', 'Formeln', 'x' * 201]) {
       expect(() => grundPruefen(g), throwsA(isA<MoodleFehler>()), reason: '$g');
     }
-    String meldung(String? g) {
-      try {
-        grundPruefen(g);
-      } on MoodleFehler catch (f) {
-        return f.toString();
-      }
-      return '';
-    }
-
-    expect(meldung('  '), contains('Ohne Grund'));
-    expect(meldung('Testlauf'), allOf(contains('„Testlauf" ist zu knapp'), isNot(contains('Ohne Grund'))));
   });
 }
