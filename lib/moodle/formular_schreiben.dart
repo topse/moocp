@@ -41,6 +41,7 @@ import 'elemente.dart';
 import 'formeln.dart';
 import 'formular.dart';
 import 'formular_lesen.dart';
+import 'fragen.dart';
 import 'kurs.dart';
 import 'moodle_zugang.dart';
 import 'stack_skripte.dart';
@@ -86,6 +87,50 @@ Set<String> eingebunden(String html) => {
       for (final m in attrMuster.allMatches(html))
         if (_istDatei(m.group(3)!)) dateiname(m.group(3)!.replaceAll('&amp;', '&'))
     };
+
+/// Der Quelltext für die Zwischenablage der Übergabe (_uebergeben): Eigene
+/// Dateien stehen darin als Adresse im Entwurfsbereich der App, die im
+/// Formular des Browsers nichts gilt -- dort hat es einen eigenen. Als
+/// `@@PLUGINFILE@@/<name>` ordnet Moodle sie beim Speichern der Datei
+/// gleichen Namens zu, die das Formular ohnehin mitbringt. Adressen auf
+/// pluginfile.php zeigen auf Dateien anderswo und bleiben.
+String fuerBrowser(String html) => html.replaceAllMapped(attrMuster, (m) {
+      final wert = m.group(3)!.replaceAll('&amp;', '&');
+      if (!wert.contains('/draftfile.php/')) return m.group(0)!;
+      return '${m.group(1)}=${m.group(2)}@@PLUGINFILE@@/${dateiname(wert)}${m.group(2)}';
+    });
+
+/// Der Quelltext so, wie ihn ein Editor im Browser gleichwertig schreibt:
+/// Speichert die Lehrkraft nach einer Übergabe (_uebergeben), ordnet TinyMCE
+/// die Attribute um und setzt Zeilenumbrüche zwischen Absätze (gemessen am
+/// Abschnitt). Hier zählt deshalb nur die Bedeutung: Elemente mit sortierten
+/// Attributen, Text mit zusammengefasstem Leerraum, in `<pre>` Zeichen für
+/// Zeichen. Leerraum zwischen zwei Tags fällt weg.
+String wieImEditor(String html) {
+  final b = StringBuffer();
+  void knoten(dom.Node n, bool pre) {
+    if (n is dom.Text) {
+      final t = pre ? n.text : n.text.replaceAll(RegExp(r'\s+'), ' ');
+      if (pre || t.trim().isNotEmpty) b.write(t);
+    } else if (n is dom.Element) {
+      // Eine eigene Datei als Entwurfsadresse oder als @@PLUGINFILE@@ ist
+      // dieselbe: Übergeben wird die eine, zurück kommt die andere.
+      String wert(String w) =>
+          w.contains('/draftfile.php/') ? '@@PLUGINFILE@@/${dateiname(w.replaceAll('&amp;', '&'))}' : w;
+      final attrs = [for (final e in n.attributes.entries) '${e.key}="${wert(e.value)}"']..sort();
+      b.write('<${n.localName}${attrs.map((a) => ' $a').join()}>');
+      for (final c in n.nodes) {
+        knoten(c, pre || n.localName == 'pre');
+      }
+      b.write('</${n.localName}>');
+    }
+  }
+
+  for (final n in html_parser.parseFragment(html).nodes) {
+    knoten(n, false);
+  }
+  return b.toString();
+}
 
 String normalisiert(String html) => html.replaceAll(
     RegExp(r'/draftfile\.php/\d+/user/draft/\d+/'), '/draftfile.php/U/user/draft/X/');
@@ -432,7 +477,8 @@ Future<Antwort> absenden(MoodleZugang moodle, Formular f, {List<String> knoepfe 
 /// fehlt) oder ein Filter vor der Instanz, der Formulare mit bestimmten
 /// Inhalten abweist -- auf der Testinstanz etwa srcdoc und <script> in
 /// Abschnitt und Buchkapitel (elemente.dart). Die Antwort selbst sagt dann
-/// nichts Brauchbares.
+/// nichts Brauchbares. Gibt sich der Filter als Prüfung von Cloudflare zu
+/// erkennen, kommt es gar nicht bis hier (SchutzPruefung, moodle_zugang.dart).
 String formularAbgelehnt(int status, Iterable<String> meldungen) =>
     'Moodle hat das Formular nicht angenommen (HTTP $status)'
     '${meldungen.isNotEmpty ? ': ${meldungen.join(' | ')}' : status == 403 ? ': abgelehnt von Moodle, weil ein Recht '
@@ -468,12 +514,16 @@ Future<Probe> zuruecklesen(
   required Map<String, Map<String, List<int>>> bereiche,
   required List<Gesetzt> einstellungen,
   String? name,
+  bool wieEditor = false,
 }) async {
   final probe = Probe();
   if (name != null) probe.pruefe(nameNormal(g.name ?? '') == nameNormal(name), 'Name (gelesen „${g.name}")');
+  // [wieEditor]: Die Lehrkraft hat im Browser gespeichert, und dessen Editor
+  // schreibt Gleichwertiges anders auf (wieImEditor).
+  final vergleich = wieEditor ? wieImEditor : normalisiert;
   for (final e in felder.entries) {
     final gelesen = g.felder.where((x) => x.feld == e.key).firstOrNull?.html ?? '';
-    probe.pruefe(normalisiert(gelesen) == normalisiert(e.value), 'Quelltext ${e.key}');
+    probe.pruefe(vergleich(gelesen) == vergleich(e.value), 'Quelltext ${e.key}');
   }
   for (final e in dateien.entries) {
     final f = File(p.join(g.ordner, 'dateien', e.key));
@@ -658,14 +708,14 @@ Future<String> aktivitaetAnlegen(
       ? (await fragensammlungenLesen(moodle, kurs)).map((s) => s.cmid).toSet()
       : vorherStruktur.nachCmid.keys.toSet();
 
-  Future<(Map<String, String>, List<Gesetzt>)> versuch() async {
+  Future<(Map<String, String>, List<Gesetzt>)> versuch(Map<String, String> felder) async {
     final f = await formularHolen(
         moodle,
         '/course/modedit.php?add=$typ&type=&course=$kurs'
         '&section=${istSammlung ? 0 : abschnitt.nummer}&return=0&sr=0');
     final (geschrieben, gesetzt) = await formularFuellen(moodle, f,
         quelle: quelle,
-        felder: inhalt.felder,
+        felder: felder,
         bereiche: inhalt.bereiche,
         einstellungen: einstellungen,
         name: f.form.querySelector('input[name="name"]') != null ? name : null,
@@ -675,12 +725,24 @@ Future<String> aktivitaetAnlegen(
     return (geschrieben, gesetzt);
   }
 
+  Future<(Map<String, String>, List<Gesetzt>)> mitNeuanmeldung(Map<String, String> felder) async {
+    try {
+      return await versuch(felder);
+    } on SitzungAbgelaufen {
+      // Einmal von vorn: frisches Formular, neuer Entwurfsbereich, neuer sesskey.
+      return await versuch(felder);
+    }
+  }
+
+  // Hält der Schutzdienst das Anlegen an, mit Platzhalter anlegen und den
+  // Inhalt danach übergeben (inhaltUebergeben).
+  SchutzPruefung? angehalten;
   (Map<String, String>, List<Gesetzt>) ergebnis;
   try {
-    ergebnis = await versuch();
-  } on SitzungAbgelaufen {
-    // Einmal von vorn: frisches Formular, neuer Entwurfsbereich, neuer sesskey.
-    ergebnis = await versuch();
+    ergebnis = await mitNeuanmeldung(inhalt.felder);
+  } on SchutzPruefung catch (x) {
+    angehalten = x;
+    ergebnis = await mitNeuanmeldung(platzhalterFelder(inhalt.felder));
   }
   final (geschrieben, gesetzt) = ergebnis;
 
@@ -692,8 +754,24 @@ Future<String> aktivitaetAnlegen(
   if (!sichtbar) moodle.selbstAngelegt.add(cmid);
 
   final g = await formularLesen(moodle, Formularziel.aktivitaet(cmid), arbeitsordner);
+  // Der Name immer, sonst prüfte die Probe bei einer Aktivität ohne Text und
+  // Einstellungen nichts, und „verified: true" hieße 0 von 0. Ein Textfeld
+  // hat keinen eigenen Namen; Moodle bildet ihn aus dem Text.
   final probe = await zuruecklesen(g,
-      felder: geschrieben, dateien: inhalt.dateien, bereiche: inhalt.bereiche, einstellungen: gesetzt);
+      felder: geschrieben,
+      dateien: inhalt.dateien,
+      bereiche: inhalt.bereiche,
+      einstellungen: gesetzt,
+      name: typ == 'label' ? null : name);
+  if (angehalten != null) {
+    return inhaltUebergeben(moodle, freigaben,
+        ziel: Formularziel.aktivitaet(cmid),
+        felder: inhalt.felder,
+        arbeitsordner: arbeitsordner,
+        fehler: angehalten,
+        angelegt: 'Angelegt: ${typName(typ)} „$angelegt" in $wo, cmid $cmid, '
+            '${sichtbar ? "SICHTBAR" : "verborgen"}.\n${probe.text}');
+  }
   return [
     'Angelegt: ${typName(typ)} „$angelegt" in $wo, cmid $cmid, '
         '${sichtbar ? "SICHTBAR" : "verborgen"}.',
@@ -794,6 +872,7 @@ class _Aenderung {
     required this.wo,
     required this.einzelheiten,
     required this.vergleich,
+    required this.gesetzt,
   });
 
   /// Wie der Aufrufer den Ordner genannt hat.
@@ -814,6 +893,10 @@ class _Aenderung {
   /// Je geschriebenes Feld, Datei, Bereich und Einstellung eine Zeile.
   final List<String> einzelheiten;
   final List<Zeile> vergleich;
+
+  /// Die Einstellungen, probehalber am Formular vom Prüfen gesetzt: Label,
+  /// vorher, nachher -- was die Lehrkraft bei einer Übergabe von Hand setzt.
+  final List<Gesetzt> gesetzt;
 
   String get stand => p.join(quelle, '.stand');
 
@@ -987,6 +1070,7 @@ Future<_Aenderung?> _vorbereiten(
     wo: wo,
     einzelheiten: einzelheiten,
     vergleich: vergleich,
+    gesetzt: probeSetzen,
   );
 }
 
@@ -1022,16 +1106,23 @@ Future<(String, bool)> _schreiben(MoodleZugang moodle, _Aenderung a, String arbe
   // Moodle leitet auf die Fragenliste; die neue id steht nicht in der
   // Umleitung. Fragen liest frage_lesen über die Sachnummer neu.
   var zurueck = a.ziel;
+  int? neueId;
   if (a.ziel.art == Zielart.frage) {
-    final neueId = int.tryParse(moodle.umleitungsziel(antwort)?.queryParameters['lastchanged'] ?? '');
+    neueId = int.tryParse(moodle.umleitungsziel(antwort)?.queryParameters['lastchanged'] ?? '');
     if (neueId != null) zurueck = Formularziel.frage(a.ziel.cmid!, neueId);
   }
   final g = await formularLesen(moodle, zurueck, arbeitsordner);
+  // Der Name ist immer zu prüfen: Wer unverändert neu speichert, hat sonst
+  // nichts, was die Probe vergleicht, und „verified: true" hieße 0 von 0.
+  // Nicht, wenn Einstellungen gesetzt sind -- eine davon kann der Name sein.
   final probe = await zuruecklesen(g,
       felder: geschrieben,
       dateien: a.dateien,
       bereiche: {for (final b in a.bereiche) b.feld: b.lokal},
-      einstellungen: gesetzt);
+      einstellungen: gesetzt,
+      name: a.einstellungen.isEmpty ? a.vorab.name : null);
+  // Ohne neue Version läse die Probe die alte und fände dort den alten Stand.
+  if (a.ziel.art == Zielart.frage) probe.pruefe(neueId != null, 'neue Version der Frage (lastchanged fehlt)');
   final text = [
     'Gespeichert: ${_was(a.ziel, a.vorab)} „${g.name}" (${zurueck.bezeichnung}${a.wo}).',
     if (a.zuSchreiben.isNotEmpty) 'Felder: ${a.zuSchreiben.join(", ")}.',
@@ -1068,7 +1159,215 @@ Future<String> aendern(
     return 'Nicht gespeichert: Die Änderung wurde in der App abgelehnt oder nicht innerhalb von '
         '${freigaben.frist.inMinutes} Minuten freigegeben. Der Ordner ist unverändert.';
   }
-  return (await _schreiben(moodle, a, arbeitsordner)).$1;
+  try {
+    return (await _schreiben(moodle, a, arbeitsordner)).$1;
+  } on SchutzPruefung catch (e) {
+    return (await _uebergeben(moodle, freigaben, a, arbeitsordner, e)).$1;
+  }
+}
+
+/// Hält ein Schutzdienst das Anlegen an, legt die App mit diesem Platzhalter
+/// an und übergibt den Inhalt danach ([inhaltUebergeben]): Angehalten wird
+/// wegen des Textes, nicht wegen des Anlegens. Je eingebundene Datei ein
+/// Link auf sie -- so liegen Bilder und Elemente schon in Moodle, und der
+/// übergebene Text findet sie (fuerBrowser). Leere Felder bleiben leer.
+Map<String, String> platzhalterFelder(Map<String, String> felder) => {
+      for (final e in felder.entries)
+        e.key: e.value.trim().isEmpty
+            ? e.value
+            : '<p>Inhalt folgt.</p>${[for (final n in eingebunden(e.value)) '<p><a href="@@PLUGINFILE@@/$n">$n</a></p>'].join()}'
+    };
+
+/// Nach dem Anlegen mit Platzhalter: den eigentlichen Inhalt an die Lehrkraft
+/// übergeben, wie bei aendern. Gelesen wird frisch, damit Stand und Dateien
+/// aus Moodle kommen; der Inhalt kommt in den gelesenen Ordner. Lässt die
+/// Lehrkraft es bleiben, steht das Objekt mit Platzhalter verborgen im Kurs --
+/// die App löscht es nicht ungefragt, das entscheidet die Lehrkraft.
+Future<String> inhaltUebergeben(MoodleZugang moodle, Freigaben freigaben,
+    {required Formularziel ziel,
+    required Map<String, String> felder,
+    required String arbeitsordner,
+    required SchutzPruefung fehler,
+    required String angelegt}) async {
+  final g = await formularLesen(moodle, ziel, arbeitsordner);
+  for (final e in felder.entries) {
+    await File(p.join(g.ordner, '${e.key}.html')).writeAsString(e.value, encoding: utf8);
+  }
+  final a = await _vorbereiten(moodle, ordner: g.ordner, arbeitsordner: arbeitsordner);
+  if (a == null) return '$angelegt\nDer Inhalt steht schon so in Moodle.';
+  final (text, ok) = await _uebergeben(moodle, freigaben, a, arbeitsordner, fehler);
+  return [
+    '$angelegt\nMIT PLATZHALTER: Der Schutzdienst vor Moodle hat das Anlegen mit diesem Inhalt angehalten; '
+        'angelegt ist es mit „Inhalt folgt.", der Inhalt ging an die Lehrkraft.',
+    text,
+    if (!ok)
+      '${a.kopf()} steht weiter mit Platzhalter im Kurs. Die Lehrkraft fragen, ob es gelöscht werden soll; '
+          'nicht ungefragt löschen.',
+  ].join('\n');
+}
+
+/// Hält ein Schutzdienst das Speichern an (SchutzPruefung), kann die App es
+/// nicht -- die Lehrkraft im Browser schon: Sie besteht die Prüfung selbst,
+/// so wie der Betreiber es vorsieht. Der Dialog öffnet das Formular und legt
+/// je geändertes Editorfeld den Inhalt als HTML und als Text in die
+/// Zwischenablage; Strg+A, Strg+V in der gewöhnlichen Editoransicht behält
+/// Kästen, Tabellen, Bilder und Code-Blöcke (gemessen).
+///
+/// Neue Dateien zieht die Lehrkraft aus neue-dateien/ in den Editor,
+/// geänderte Einstellungen setzt sie von Hand; beides hakt sie ab. Ersetzte
+/// Dateien, Dateibereiche und neue Elemente gehen nicht (siehe ungeeignet),
+/// dann sagt die Antwort nur, was in Moodle von Hand zu tun bleibt (A6).
+/// Bilder, die schon in Moodle stehen, gehen mit (fuerBrowser; Moodle ordnet
+/// `@@PLUGINFILE@@/<name>` beim Speichern aus dem Browser der Datei zu,
+/// gemessen).
+///
+/// „Im Browser gespeichert" heißt, die Lehrkraft sagt, sie habe gespeichert;
+/// die Probe liest danach zurück, bei einer Frage die neue Version. Gibt den
+/// Bericht und ob Moodle den übergebenen Stand zeigt -- ein Stapel
+/// (aendernMehrere) schreibt nur dann weiter. [stelle]: „Seite 2 von 5".
+Future<(String, bool)> _uebergeben(
+    MoodleZugang moodle, Freigaben freigaben, _Aenderung a, String arbeitsordner, SchutzPruefung e,
+    {String? stelle}) async {
+  final felder = {for (final k in a.zuSchreiben) k: a.lokal[k]!};
+  // Eine Datei gleichen Namens zu ersetzen hieße, im Editor erst die alte zu
+  // löschen, sonst legt Moodle „name (1).png" an; ein Dateibereich hat einen
+  // eigenen Dateimanager. Beides wäre von Hand fehleranfällig -- dafür nur
+  // die genaue Auskunft, was wohin gehört. Neue Dateien dagegen zieht die
+  // Lehrkraft in den Editor, und Moodle legt sie unter ihrem Namen ab
+  // (gemessen); ein Element nicht, das bände der Editor als Link ein, nicht
+  // im abgeschotteten Rahmen.
+  final elemente = [for (final n in a.neu) if (istElementdatei(n)) n];
+  final ungeeignet = [
+    if (elemente.isNotEmpty) 'neue interaktive Elemente ${elemente.join(", ")}',
+    if (a.geaendert.isNotEmpty) 'ersetzte Dateien ${a.geaendert.join(", ")}',
+    for (final b in a.bereiche) 'Dateibereich ${b.feld}: ${b.beschreibung()}',
+  ];
+  if (ungeeignet.isNotEmpty || (felder.isEmpty && a.gesetzt.isEmpty)) {
+    return (
+      '${e.meldung}\nDie App kann diese Änderung auch nicht an die Lehrkraft übergeben: Sie enthält '
+          '${ungeeignet.isEmpty ? 'nichts, was sich übertragen ließe' : ungeeignet.join('; ')}. Wie bei jeder Lücke: '
+          'Die Lehrkraft ändert ${a.kopf()} selbst in Moodle (die Dateien liegen in ${p.join(a.quelle, 'dateien')}), '
+          'oder es bleibt, wie es ist. Der Ordner ist unverändert.',
+      false
+    );
+  }
+  final adresse = moodle.basis!.resolve(a.ziel.adresse);
+  // Die neuen Dateien in einen eigenen Ordner: Im Ordner dateien/ lägen sie
+  // zwischen denen, die Moodle schon hat.
+  // Vor jedem Dialog neu: Das Rücklesen nach einem Blick, der noch nicht
+  // passt, schreibt den Ordner aus Moodle neu, und neue-dateien/ wäre weg.
+  final neueDateien = a.neu.isEmpty ? null : p.join(a.quelle, 'neue-dateien');
+  Future<void> neueAblegen() async {
+    if (neueDateien == null) return;
+    await Directory(neueDateien).create(recursive: true);
+    for (final n in a.neu) {
+      await File(p.join(neueDateien, n)).writeAsBytes(a.dateien[n]!);
+    }
+  }
+  // Setzt die Lehrkraft einen neuen Namen, heißt es danach so.
+  final name = a.gesetzt.where((s) => s.schluessel == 'name').firstOrNull?.nachher ?? a.vorab.name;
+  // Bei einer Frage: welche Nummern es vorher gibt -- die neue Version ist
+  // danach die eine, die dazukam (fragenNamens).
+  final vorher = a.ziel.art == Zielart.frage
+      ? await fragenNamens(moodle, sammlung: a.ziel.cmid!, name: a.vorab.name)
+      : const <int>{};
+  final wo = stelle == null ? '' : ' ($stelle)';
+  FreigabeAnfrage bitte({required bool nochmal}) => FreigabeAnfrage(
+        titel: nochmal ? 'Moodle zeigt den neuen Stand noch nicht$wo' : 'Bitte selbst in Moodle speichern$wo',
+        // Die Schritte zeigt der Dialog selbst, mit Haken je erledigtem.
+        punkte: [
+          a.kopf(),
+          nochmal
+              ? 'Ist das Speichern im Browser noch nicht fertig, etwa weil der Schutzdienst noch prüft? Dann '
+                  'abwarten und noch einmal prüfen. Sonst die Schritte wiederholen.'
+              : 'Der Schutzdienst vor Moodle hat das Speichern angehalten. Seine Prüfung kann die App nicht '
+                  'bestehen, Sie im Browser schon.',
+        ],
+        vergleich: a.vergleich,
+        kopieren: [for (final k in felder.keys) (k, fuerBrowser(felder[k]!))],
+        abhaken: [
+          for (final n in a.neu) 'Datei „$n" aus dem Ordner irgendwo in den Editor ziehen; die Stelle ist egal, das Einfügen setzt sie an ihren Platz',
+          for (final s in a.gesetzt) 'Im Formular „${s.label}" auf „${s.nachher}" setzen',
+        ],
+        // Beim zweiten Mal sind die Schritte meist schon getan.
+        schritteVerlangt: !nochmal,
+        oeffnen: adresse,
+        ordner: neueDateien,
+        knopf: nochmal ? 'Noch einmal prüfen' : 'Im Browser gespeichert',
+        ablehnen: 'Lassen',
+        ohneEntscheidung: 'gilt es als nicht gespeichert',
+        // Keine Freigabe, sondern eine Bitte an die Lehrkraft: Sie kommt auf
+        // jeder Stufe, sonst bliebe das Speichern still liegen.
+        ab: Bestaetigungen.keine,
+      );
+
+  // Liest zurück. Der dritte Wert: ob ein neuer Blick lohnt -- Moodle zeigt
+  // noch nicht, was übergeben wurde, und das Speichern kann noch laufen.
+  Future<(String, bool, bool)> pruefen() async {
+    // Eine Frage hat danach eine neue Version mit neuer Nummer: die, die
+    // gegenüber vorher dazukam.
+    var zurueck = a.ziel;
+    if (a.ziel.art == Zielart.frage) {
+      final neu = (await fragenNamens(moodle, sammlung: a.ziel.cmid!, name: name)).difference(vorher);
+      if (neu.isEmpty) {
+        return (
+          '${e.meldung}\nDie Lehrkraft hat „Im Browser gespeichert" gewählt, aber Moodle zeigt keine neue Version '
+              'von ${a.kopf()} -- nichts gespeichert (verified: false). Der Ordner ist unverändert.',
+          false,
+          true
+        );
+      }
+      if (neu.length > 1) {
+        return (
+          'Laut Lehrkraft im Browser gespeichert: ${a.kopf()}. Seitdem sind ${neu.length} Fragen dieses Namens '
+              'neu (${neu.join(", ")}) -- nicht zurückgelesen (verified: false). Mit fragen_lesen die Sammlung '
+              'neu lesen und die richtige mit frage_lesen prüfen.',
+          false,
+          false
+        );
+      }
+      zurueck = Formularziel.frage(a.ziel.cmid!, neu.single);
+    }
+    final g = await formularLesen(moodle, zurueck, arbeitsordner);
+    final probe = await zuruecklesen(g,
+        felder: felder,
+        dateien: {for (final n in a.neu) n: a.dateien[n]!},
+        bereiche: const {},
+        einstellungen: a.gesetzt,
+        name: name,
+        wieEditor: true);
+    return (
+      [
+        'Laut Lehrkraft im Browser gespeichert: ${_was(a.ziel, a.vorab)} „${g.name}" (${zurueck.bezeichnung}${a.wo}).',
+        'Felder: ${felder.keys.join(", ")}.',
+        probe.text,
+        if (!probe.ok)
+          'Moodle zeigt nicht den übergebenen Stand: Die Lehrkraft hat vermutlich nicht oder anders gespeichert.',
+        'Der Ordner ${g.ordner} zeigt jetzt den Stand in Moodle.',
+      ].join('\n'),
+      probe.ok,
+      !probe.ok
+    );
+  }
+
+  // Gespeichert wird im Browser, und das kann dauern: Klickt die Lehrkraft,
+  // während der Schutzdienst noch prüft, zeigt Moodle den alten Stand
+  // (gemessen am Buchkapitel, am Abschnitt erst beim dritten Blick). Dann
+  // noch einmal fragen statt aufzugeben, so oft die Lehrkraft will: Sie
+  // beendet es mit „Lassen", und das Zeitlimit des Clients beendet es
+  // ohnehin (Freigaben.mitAbbruch).
+  for (var mal = 0;; mal++) {
+    await neueAblegen();
+    if (!await freigaben.anfragen(bitte(nochmal: mal > 0))) {
+      return (
+        '${e.meldung}\nDie Lehrkraft hat es gelassen oder nicht innerhalb der Frist erledigt. '
+            'Der Ordner ist unverändert. Vor einem neuen Versuch frisch lesen: Sie kann trotzdem gespeichert haben.',
+        false
+      );
+    }
+    final (text, ok, nochmal) = await pruefen();
+    if (ok || !nochmal) return (text, ok);
+  }
 }
 
 /// Schreibt mehrere gelesene Ordner eines Abschnitts mit EINER Freigabe
@@ -1188,9 +1487,25 @@ Future<String> aendernMehrere(
     final a = alle[i];
     String? abbruch;
     try {
-      final (text, ok) = await _schreiben(moodle, a, arbeitsordner);
+      (String, bool) ergebnis;
+      var uebergeben = false;
+      try {
+        ergebnis = await _schreiben(moodle, a, arbeitsordner);
+      } on SchutzPruefung catch (e) {
+        // Der Schutzdienst prüft jede Anfrage für sich: Die übrigen Seiten
+        // gehen meist durch, nur diese braucht die Lehrkraft. Zeigt Moodle
+        // danach ihren Stand, geht es weiter, sonst Abbruch.
+        ergebnis = await _uebergeben(moodle, freigaben, a, arbeitsordner, e,
+            stelle: 'Seite ${i + 1} von ${alle.length}');
+        uebergeben = true;
+      }
+      final (text, ok) = ergebnis;
       berichte.add(text);
-      if (!ok) abbruch = '${a.kopf(mitKurs: false)} ist gespeichert, aber die Rückleseprobe weicht ab (oben).';
+      if (!ok) {
+        abbruch = uebergeben
+            ? '${a.kopf(mitKurs: false)}: nicht im Browser gespeichert (oben).'
+            : '${a.kopf(mitKurs: false)} ist gespeichert, aber die Rückleseprobe weicht ab (oben).';
+      }
     } on MoodleFehler catch (x) {
       abbruch = '${a.kopf(mitKurs: false)}: ${x.meldung}';
     } catch (x, st) {

@@ -54,11 +54,25 @@ class SitzungAbgelaufen extends MoodleFehler {
   SitzungAbgelaufen() : super('Sitzung während des Schreibens abgelaufen.');
 }
 
+/// Ein Schutzdienst vor der Instanz (Cloudflare) hat die Anfrage angehalten
+/// und verlangt eine Prüfung, die nur ein Mensch im Browser besteht. Die App
+/// besteht sie nie und bekommt deshalb nie das Cookie, das sie für die
+/// nächsten Anfragen aufhöbe -- jeder Versuch wird wieder angehalten. Die
+/// Prüfung zu lösen oder ihr Cookie aus dem Browser zu übernehmen, wäre eine
+/// Umgehung (E22). Ausgelöst wird sie meist von Code im Text, etwa onclick=
+/// in einem Code-Beispiel; dieselbe Seite im Browser zeigt die Prüfung auch.
+class SchutzPruefung extends MoodleFehler {
+  SchutzPruefung()
+      : super('Der Schutzdienst vor Moodle hat das Formular angehalten: Er verlangt eine Prüfung, die nur '
+            'ein Mensch im Browser bestehen kann. Nichts gespeichert. Ein neuer Versuch hilft nicht. Meist '
+            'löst Code im Text das aus, etwa ein Ereignis-Attribut wie onclick= in einem Code-Beispiel.');
+}
+
 typedef Felder = List<MapEntry<String, String>>;
 
 /// Eine Antwort von Moodle.
 class Antwort {
-  Antwort(this.status, this.adresse, this.bytes, this.inhaltstyp, {this.ort});
+  Antwort(this.status, this.adresse, this.bytes, this.inhaltstyp, {this.ort, this.schutzpruefung = false});
   final int status;
   final Uri adresse;
   final Uint8List bytes;
@@ -66,6 +80,10 @@ class Antwort {
 
   /// Location-Kopf einer Umleitung, sonst null.
   final String? ort;
+
+  /// Ein Schutzdienst vor der Instanz hat statt Moodle geantwortet: Cloudflare
+  /// kennzeichnet seine Prüfseite mit `cf-mitigated: challenge`.
+  final bool schutzpruefung;
 
   String get text => utf8.decode(bytes, allowMalformed: true);
 }
@@ -421,17 +439,18 @@ class MoodleZugang {
                           feld == 'updateshufflequestions' &&
                           const {'0', '1'}.contains(wertIn(f, 'newshuffle'))));
             }),
+        // Das Formular der Testseite: mehrere zufällige oder genau eine
+        // Variante, je nach Knopf (stack.dart, stackVarianten).
         Erlaubt('GET', r'^/question/type/stack/deploy\.php$', 'STACK: Varianten einsetzen',
             parameter: (q) =>
-                q.length == 4 &&
                 _zahl(q['questionid']) &&
                 _zahl(q['cmid']) &&
-                _zahl(q['deploymany']) &&
-                _gesetzt(q['sesskey'])),
-        Erlaubt('POST', r'^/question/type/stack/deploy\.php$', 'STACK: eine Variante einsetzen',
-            parameter: (q) => q.isEmpty,
-            formular: (f) =>
-                f.length == 4 && _zahl(wertIn(f, 'questionid')) && _zahl(wertIn(f, 'cmid')) && _zahl(wertIn(f, 'deploy'))),
+                _gesetzt(q['sesskey']) &&
+                ((q.length == 5 && _zahl(q['deploy']) && q['deploysinglebtn'] == '1') ||
+                    (q.length == 6 &&
+                        _zahl(q['deploymany']) &&
+                        q['deploymanybtn'] == '1' &&
+                        q['deployhalt'] == 'on'))),
         // Der Notizblock rechnet nur. Mit questionid hat sein Formular auch
         // „Speichern" (action = savechat), das Variablen und Feedback ohne neue
         // Version in die Frage schreibt -- darum genau ein action, und das ist go.
@@ -612,7 +631,14 @@ class MoodleZugang {
     _angemeldet = false;
 
     // 1. Anmeldeseite: setzt das Sitzungs-Cookie und liefert den logintoken.
-    final seite = await _roh('GET', _adresse('/login/index.php'));
+    final Antwort seite;
+    try {
+      seite = await _roh('GET', _adresse('/login/index.php'));
+    } on SchutzPruefung {
+      // Das Passwort ist noch nicht gesendet: kein Fehlversuch (_neuAnmelden).
+      throw MoodleNichtErreichbar('Der Schutzdienst vor Moodle lässt die App gerade nicht zur Anmeldeseite. '
+          'Später noch einmal versuchen.');
+    }
     final doc = html_parser.parse(seite.text);
     final token = doc.querySelector('input[name="logintoken"]')?.attributes['value'];
     if (token == null) {
@@ -971,7 +997,8 @@ class MoodleZugang {
           .fold<BytesBuilder>(BytesBuilder(copy: false), (b, d) => b..add(d))
           .timeout(antwortgrenze);
       final a = Antwort(res.statusCode, uri, bytes.takeBytes(), res.headers.contentType?.mimeType,
-          ort: res.headers.value(HttpHeaders.locationHeader));
+          ort: res.headers.value(HttpHeaders.locationHeader),
+          schutzpruefung: res.headers.value('cf-mitigated') == 'challenge');
       if (a.inhaltstyp == 'text/html' && _angemeldet) {
         final s = RegExp(r'"sesskey":"(\w+)"').firstMatch(a.text)?.group(1);
         if (s != null) _sesskey = s;
@@ -989,7 +1016,11 @@ class MoodleZugang {
       protokoll.eintrag(schreibt ? Art.schreiben : Art.moodle,
           '${browser ? 'Browser: ' : ''}$methode ${uri.path}${_querySicher(uri)}'
           '${anhang != null ? " (${anhang.dateiname})" : ""}'
-          ' → ${res.statusCode}');
+          ' → ${res.statusCode}${a.schutzpruefung ? ' (Schutzdienst: Prüfung verlangt)' : ''}');
+      // Die Prüfseite ist keine Antwort von Moodle; als solche gelesen, sähe
+      // sie wie ein fehlendes Recht oder eine leere Seite aus. Der Browser
+      // für Bildschirmfotos bekommt sie wie jede Antwort.
+      if (a.schutzpruefung && !browser) throw SchutzPruefung();
       return a;
     } on SocketException catch (e) {
       protokoll.eintrag(Art.fehler, '$methode ${uri.path}: nicht erreichbar');

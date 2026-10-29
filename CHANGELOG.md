@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.26
+- Freigaben: Ein Return, eine Leertaste oder ein Klick, der beim Aufgehen des Dialogs noch einem anderen Fenster galt, gibt nichts mehr frei.
+- Speichern: Hält ein Schutzdienst vor Moodle das Speichern an, sagt die App es klar und übergibt es an Sie, damit Sie selbst im Browser speichern – beim Ändern, bei mehreren Seiten auf einmal, beim Setzen von Links und beim Anlegen, auch mit neuen Bildern und Dateien; die KI schreibt Programmbeispiele möglichst so, dass es gar nicht dazu kommt.
+- Speichern im Browser: Der Inhalt lässt sich in der gewöhnlichen Editoransicht einfügen, ohne Quelltextansicht und mit Kästen, Tabellen, Bildern und Code-Blöcken; die Schritte gehen der Reihe nach, und zeigt Moodle den neuen Stand noch nicht, lässt sich so oft neu prüfen, wie Sie wollen.
+- STACK: Varianten lassen sich wieder einsetzen, die Prüfung meldet jeden Testfall statt nur jeden zweiten, und eine Frage mit Zufallswerten ohne Aufgabenhinweis wird gar nicht erst angelegt.
+- Programmcode in Seiten und Fragen: Die KI schreibt ihn im Format des Editors mit Syntaxhervorhebung, und Lückenfragen mit Lücken im Code bleiben lösbar.
+
 ## 0.9.24
 - Freigaben: In Claude Code und Codex verschwindet der Dialog nicht mehr nach einer Minute, und längere Vorgänge wie das Setzen vieler Links laufen zu Ende, statt für die KI scheinbar zu scheitern.
 - Lernsituationen: Infoblätter tragen keine Rückverweise auf die Arbeitsblätter mehr, und die Materialübersicht der Handreichung führt Zeichnungen nicht mehr als eigene Zeilen.

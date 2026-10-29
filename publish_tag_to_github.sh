@@ -109,6 +109,20 @@ else
 fi
 readonly LETZTE
 
+# Nur eine neuere Version als die zuletzt veröffentlichte: Ein Tippfehler im
+# Tag (v0.9.4 statt v0.9.24) brächte sonst einen alten Stand nach main und
+# hängte obendrein den Tag der alten Version auf GitHub um (--force unten).
+# Die Version steht in der Betreffzeile „moocp <version>"; fehlt sie (main
+# auf GitHub ohne veröffentlichte Version), gibt es nichts zu vergleichen.
+if [[ -n "${LETZTE}" ]]; then
+    LETZTE_VERSION=$(git log -1 --format=%s "${LETZTE}" | sed -n 's/^moocp //p')
+    if [[ -n "${LETZTE_VERSION}" ]]; then
+        HOECHSTE=$(printf '%s\n%s\n' "${LETZTE_VERSION}" "${VERSION}" | sort -V | tail -n 1)
+        [[ "${VERSION}" != "${LETZTE_VERSION}" && "${HOECHSTE}" == "${VERSION}" ]] \
+            || abbruch "${TAG} ist nicht neuer als die zuletzt veröffentlichte Version ${LETZTE_VERSION}."
+    fi
+fi
+
 if [[ -n "${LETZTE}" ]]; then
     [[ "${BAUM}" != "$(git rev-parse "${LETZTE}^{tree}")" ]] \
         || abbruch "Der Stand von ${TAG} ist schon veröffentlicht (gleich ${ZWEIG})."
