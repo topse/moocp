@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.28
+- Speichern: Weist ein Schutzdienst vor Moodle das Speichern gleich ab („Sorry, you have been blocked"), sagt die App es klar und übergibt es an Sie wie bei seiner Prüfung; das Protokoll nennt die Ray-ID für den Betreiber.
+- Programmcode in Seiten und Fragen: Weist ein Schutzdienst HTML-Code im Text ab, versucht die KI nicht mehr, betroffene Seiten und Fragen zu ändern, sondern lässt sie stehen und nennt sie Ihnen; neue Fragen mit solchem Code prüft sie vor dem Anlegen vollständig.
+
 ## 0.9.26
 - Freigaben: Ein Return, eine Leertaste oder ein Klick, der beim Aufgehen des Dialogs noch einem anderen Fenster galt, gibt nichts mehr frei.
 - Speichern: Hält ein Schutzdienst vor Moodle das Speichern an, sagt die App es klar und übergibt es an Sie, damit Sie selbst im Browser speichern – beim Ändern, bei mehreren Seiten auf einmal, beim Setzen von Links und beim Anlegen, auch mit neuen Bildern und Dateien; die KI schreibt Programmbeispiele möglichst so, dass es gar nicht dazu kommt.

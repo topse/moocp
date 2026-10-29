@@ -477,8 +477,9 @@ Future<Antwort> absenden(MoodleZugang moodle, Formular f, {List<String> knoepfe 
 /// fehlt) oder ein Filter vor der Instanz, der Formulare mit bestimmten
 /// Inhalten abweist -- auf der Testinstanz etwa srcdoc und <script> in
 /// Abschnitt und Buchkapitel (elemente.dart). Die Antwort selbst sagt dann
-/// nichts Brauchbares. Gibt sich der Filter als Prüfung von Cloudflare zu
-/// erkennen, kommt es gar nicht bis hier (SchutzPruefung, moodle_zugang.dart).
+/// nichts Brauchbares. Gibt sich der Filter als Cloudflare zu erkennen
+/// (Prüfung oder Sperre), kommt es gar nicht bis hier (SchutzPruefung,
+/// moodle_zugang.dart).
 String formularAbgelehnt(int status, Iterable<String> meldungen) =>
     'Moodle hat das Formular nicht angenommen (HTTP $status)'
     '${meldungen.isNotEmpty ? ': ${meldungen.join(' | ')}' : status == 403 ? ': abgelehnt von Moodle, weil ein Recht '
@@ -1280,8 +1281,12 @@ Future<(String, bool)> _uebergeben(
           nochmal
               ? 'Ist das Speichern im Browser noch nicht fertig, etwa weil der Schutzdienst noch prüft? Dann '
                   'abwarten und noch einmal prüfen. Sonst die Schritte wiederholen.'
-              : 'Der Schutzdienst vor Moodle hat das Speichern angehalten. Seine Prüfung kann die App nicht '
-                  'bestehen, Sie im Browser schon.',
+              : e.sperre
+                  ? 'Der Schutzdienst vor Moodle hat das Speichern abgewiesen, wohl wegen Code im Text. Versuchen '
+                      'Sie es im Browser; weist er es auch dort ab („Sorry, you have been blocked"), wählen Sie '
+                      '„Lassen".'
+                  : 'Der Schutzdienst vor Moodle hat das Speichern angehalten. Seine Prüfung kann die App nicht '
+                      'bestehen, Sie im Browser schon.',
         ],
         vergleich: a.vergleich,
         kopieren: [for (final k in felder.keys) (k, fuerBrowser(felder[k]!))],

@@ -61,18 +61,48 @@ class SitzungAbgelaufen extends MoodleFehler {
 /// Prüfung zu lösen oder ihr Cookie aus dem Browser zu übernehmen, wäre eine
 /// Umgehung (E22). Ausgelöst wird sie meist von Code im Text, etwa onclick=
 /// in einem Code-Beispiel; dieselbe Seite im Browser zeigt die Prüfung auch.
+///
+/// [sperre]: Statt einer Prüfung hat der Schutzdienst die Anfrage gleich
+/// abgewiesen. Ausgelöst vom Inhalt: Dasselbe Formular mit Code als Text
+/// (`&lt;p id="…"&gt;` in einem Code-Beispiel) weist er auch aus dem
+/// Browser der Lehrkraft ab (gemessen). Übergeben wird trotzdem -- ob eine
+/// Regel nur die App trifft, sieht die App nicht --, und die Meldung sagt,
+/// dass sonst nur ein anderer Inhalt hilft. Sich als Browser auszugeben,
+/// wäre eine Umgehung wie bei der Prüfung.
 class SchutzPruefung extends MoodleFehler {
-  SchutzPruefung()
-      : super('Der Schutzdienst vor Moodle hat das Formular angehalten: Er verlangt eine Prüfung, die nur '
-            'ein Mensch im Browser bestehen kann. Nichts gespeichert. Ein neuer Versuch hilft nicht. Meist '
-            'löst Code im Text das aus, etwa ein Ereignis-Attribut wie onclick= in einem Code-Beispiel.');
+  SchutzPruefung({this.sperre = false})
+      : super(sperre
+            ? 'Der Schutzdienst vor Moodle hat das Formular abgewiesen. Nichts gespeichert. Ein neuer Versuch '
+                'hilft nicht. Ausgelöst wird das vom Inhalt, meist von HTML- oder JavaScript-Code als Text in einem '
+                'Code-Beispiel, etwa einem Tag mit Attribut; oft weist er dasselbe auch aus dem Browser ab. Dann '
+                'hilft nur, das Beispiel anders zu schreiben, oder der Betreiber der Instanz lässt es zu.'
+            : 'Der Schutzdienst vor Moodle hat das Formular angehalten: Er verlangt eine Prüfung, die nur '
+                'ein Mensch im Browser bestehen kann. Nichts gespeichert. Ein neuer Versuch hilft nicht. Meist '
+                'löst Code im Text das aus, etwa ein Ereignis-Attribut wie onclick= in einem Code-Beispiel.');
+  final bool sperre;
+}
+
+/// Was ein Schutzdienst vor der Instanz aus einer Antwort gemacht hat.
+enum Schutz { pruefung, sperre }
+
+/// Erkennt die Antwort eines Schutzdienstes. Cloudflare kennzeichnet seine
+/// Prüfseite mit `cf-mitigated: challenge`; eine Sperre durch eine seiner
+/// Regeln dagegen nicht, sie ist ein 403 mit `server: cloudflare` und einer
+/// eigenen Seite. Dieselben Kopfzeilen trägt aber jede Antwort, die
+/// Cloudflare von Moodle durchreicht, auch ein 403 von Moodle selbst (ein
+/// Recht fehlt) -- deshalb gilt ein 403 nur dann als Sperre, wenn die Seite
+/// keine von Moodle ist: Jede Moodle-Seite setzt `M.cfg`.
+Schutz? schutzErkennen(int status, {String? server, String? mitigated, required String text}) {
+  if (mitigated == 'challenge') return Schutz.pruefung;
+  if (status == 403 && server?.toLowerCase() == 'cloudflare' && !text.contains('M.cfg')) return Schutz.sperre;
+  return null;
 }
 
 typedef Felder = List<MapEntry<String, String>>;
 
 /// Eine Antwort von Moodle.
 class Antwort {
-  Antwort(this.status, this.adresse, this.bytes, this.inhaltstyp, {this.ort, this.schutzpruefung = false});
+  Antwort(this.status, this.adresse, this.bytes, this.inhaltstyp, {this.ort, this.schutz});
   final int status;
   final Uri adresse;
   final Uint8List bytes;
@@ -81,9 +111,9 @@ class Antwort {
   /// Location-Kopf einer Umleitung, sonst null.
   final String? ort;
 
-  /// Ein Schutzdienst vor der Instanz hat statt Moodle geantwortet: Cloudflare
-  /// kennzeichnet seine Prüfseite mit `cf-mitigated: challenge`.
-  final bool schutzpruefung;
+  /// Ein Schutzdienst vor der Instanz hat statt Moodle geantwortet
+  /// ([schutzErkennen]), sonst null.
+  final Schutz? schutz;
 
   String get text => utf8.decode(bytes, allowMalformed: true);
 }
@@ -996,9 +1026,13 @@ class MoodleZugang {
       final bytes = await res
           .fold<BytesBuilder>(BytesBuilder(copy: false), (b, d) => b..add(d))
           .timeout(antwortgrenze);
-      final a = Antwort(res.statusCode, uri, bytes.takeBytes(), res.headers.contentType?.mimeType,
-          ort: res.headers.value(HttpHeaders.locationHeader),
-          schutzpruefung: res.headers.value('cf-mitigated') == 'challenge');
+      final roh = bytes.takeBytes();
+      final schutz = schutzErkennen(res.statusCode,
+          server: res.headers.value(HttpHeaders.serverHeader),
+          mitigated: res.headers.value('cf-mitigated'),
+          text: utf8.decode(roh, allowMalformed: true));
+      final a = Antwort(res.statusCode, uri, roh, res.headers.contentType?.mimeType,
+          ort: res.headers.value(HttpHeaders.locationHeader), schutz: schutz);
       if (a.inhaltstyp == 'text/html' && _angemeldet) {
         final s = RegExp(r'"sesskey":"(\w+)"').firstMatch(a.text)?.group(1);
         if (s != null) _sesskey = s;
@@ -1009,18 +1043,27 @@ class MoodleZugang {
       // Cookies, keine Parameterwerte der Anmeldung.
       // Lesende Dienstaufrufe (JSON-Rumpf) sind zwar POST, schreiben aber
       // nichts; ein GET mit sesskey dagegen ist eine Aktion.
+      // Bei einem Schutzdienst die Ray-ID: Mit ihr findet der Betreiber den
+      // Vorgang in seinen Protokollen, etwa für eine Ausnahme (TODO.md); sie
+      // trägt nichts aus der Anfrage.
       final dienst = uri.queryParameters['info'];
       final schreibt = rumpf != null
           ? schreibendeDienste.contains(dienst)
           : methode != 'GET' || uri.queryParameters.containsKey('sesskey');
+      final ray = res.headers.value('cf-ray');
       protokoll.eintrag(schreibt ? Art.schreiben : Art.moodle,
           '${browser ? 'Browser: ' : ''}$methode ${uri.path}${_querySicher(uri)}'
           '${anhang != null ? " (${anhang.dateiname})" : ""}'
-          ' → ${res.statusCode}${a.schutzpruefung ? ' (Schutzdienst: Prüfung verlangt)' : ''}');
-      // Die Prüfseite ist keine Antwort von Moodle; als solche gelesen, sähe
-      // sie wie ein fehlendes Recht oder eine leere Seite aus. Der Browser
-      // für Bildschirmfotos bekommt sie wie jede Antwort.
-      if (a.schutzpruefung && !browser) throw SchutzPruefung();
+          ' → ${res.statusCode}'
+          '${switch (schutz) {
+            Schutz.pruefung => ' (Schutzdienst: Prüfung verlangt',
+            Schutz.sperre => ' (Schutzdienst: abgewiesen',
+            null => '',
+          }}${schutz == null ? '' : '${ray == null ? '' : ', Ray-ID $ray'})'}');
+      // Die Seite des Schutzdienstes ist keine Antwort von Moodle; als solche
+      // gelesen, sähe sie wie ein fehlendes Recht oder eine leere Seite aus.
+      // Der Browser für Bildschirmfotos bekommt sie wie jede Antwort.
+      if (schutz != null && !browser) throw SchutzPruefung(sperre: schutz == Schutz.sperre);
       return a;
     } on SocketException catch (e) {
       protokoll.eintrag(Art.fehler, '$methode ${uri.path}: nicht erreichbar');
