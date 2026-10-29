@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.9.30
+- Boards, Kanban-Boards, Fortschrittslisten und Tests: Die App bestätigt nach dem Ändern selbst, dass alles angekommen ist, und die KI liest nach dem Schreiben nicht mehr eigens nach – das spart Zeit und Kontext.
+
 ## 0.9.28
 - Speichern: Weist ein Schutzdienst vor Moodle das Speichern gleich ab („Sorry, you have been blocked"), sagt die App es klar und übergibt es an Sie wie bei seiner Prüfung; das Protokoll nennt die Ray-ID für den Betreiber.
 - Programmcode in Seiten und Fragen: Weist ein Schutzdienst HTML-Code im Text ab, versucht die KI nicht mehr, betroffene Seiten und Fragen zu ändern, sondern lässt sie stehen und nennt sie Ihnen; neue Fragen mit solchem Code prüft sie vor dem Anlegen vollständig.

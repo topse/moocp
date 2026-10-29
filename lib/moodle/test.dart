@@ -34,6 +34,7 @@ import 'package:html/parser.dart' as html_parser;
 
 import '../freigabe.dart';
 import 'formular_lesen.dart';
+import 'formular_schreiben.dart';
 import 'kurs.dart';
 import 'moodle_zugang.dart';
 
@@ -276,6 +277,7 @@ Future<String> testAendern(MoodleZugang moodle, Freigaben freigaben,
   if (!ja) return 'Nicht geändert: in der App abgelehnt oder nicht rechtzeitig freigegeben.';
 
   final ergebnisse = <String>[];
+  final probe = Probe();
   for (final a in aktionen) {
     final vorher = t;
     switch (a['art']) {
@@ -285,6 +287,7 @@ Future<String> testAendern(MoodleZugang moodle, Freigaben freigaben,
             '&addonpage=${(a['seite'] as num?)?.toInt() ?? 0}&sesskey=$s');
         t = await testLesen(moodle, cmid);
         final ok = t.plaetze.length == vorher.plaetze.length + 1;
+        probe.pruefe(ok, 'Frage ${a['frage']} eingefügt');
         ergebnisse.add('Frage ${a['frage']} eingefügt: ${ok ? 'ja' : 'NEIN'}');
       case 'zufall_hinzufuegen':
         final filter = {
@@ -304,16 +307,21 @@ Future<String> testAendern(MoodleZugang moodle, Freigaben freigaben,
         });
         t = await testLesen(moodle, cmid);
         final dazu = t.plaetze.length - vorher.plaetze.length;
+        probe.pruefe(dazu == (a['anzahl'] as num).toInt(), 'Zufallsfragen ($dazu statt ${a['anzahl']})');
         ergebnisse.add('Zufallsfragen: $dazu Platz/Plätze dazu (erwartet ${a['anzahl']})');
       case 'entfernen':
         await _rest(moodle, t, {'class': 'resource', 'action': 'DELETE', 'id': '${a['platz']}'});
         t = await testLesen(moodle, cmid);
-        ergebnisse.add('Platz ${a['platz']} entfernt: ${t.plaetze.any((x) => '${x.slotid}' == '${a['platz']}') ? 'NEIN' : 'ja'}');
+        final weg = !t.plaetze.any((x) => '${x.slotid}' == '${a['platz']}');
+        probe.pruefe(weg, 'Platz ${a['platz']} entfernt');
+        ergebnisse.add('Platz ${a['platz']} entfernt: ${weg ? 'ja' : 'NEIN'}');
       case 'punkte':
         final w = (a['wert'] as num).toDouble();
         final j = await _rest(moodle, t, {'class': 'resource', 'field': 'updatemaxmark', 'id': '${a['platz']}', 'maxmark': '$w'});
         final ist = _zahl('${j['instancemaxmark']}');
-        ergebnisse.add('Platz ${a['platz']}: ${_z(ist)} Punkte (${ist != null && (ist - w).abs() < 0.005 ? 'ok' : 'ABWEICHEND'}), '
+        final ok = ist != null && (ist - w).abs() < 0.005;
+        probe.pruefe(ok, 'Punkte von Platz ${a['platz']}');
+        ergebnisse.add('Platz ${a['platz']}: ${_z(ist)} Punkte (${ok ? 'ok' : 'ABWEICHEND'}), '
             'neue Summe ${j['newsummarks']}');
         t = await testLesen(moodle, cmid);
       case 'verschieben':
@@ -326,6 +334,7 @@ Future<String> testAendern(MoodleZugang moodle, Freigaben freigaben,
         final ids = t.plaetze.map((x) => x.slotid).toList();
         final i = ids.indexOf((a['platz'] as num).toInt());
         final ok = hinter == 0 ? i == 0 : i > 0 && ids[i - 1] == hinter;
+        probe.pruefe(ok, 'Platz ${a['platz']} verschoben');
         ergebnisse.add('Platz ${a['platz']} verschoben: ${ok ? 'ja' : 'NEIN'}');
       case 'reihenfolge':
         final start = t;
@@ -342,12 +351,14 @@ Future<String> testAendern(MoodleZugang moodle, Freigaben freigaben,
           wieder = ', Seitenaufteilung (${start.proSeite} je Seite) wiederhergestellt';
         }
         final ok = t.plaetze.map((x) => x.slotid).join(',') == (a['plaetze'] as List).join(',');
+        probe.pruefe(ok, 'Reihenfolge');
         ergebnisse.add('Reihenfolge: ${ok ? 'stimmt' : 'STIMMT NICHT'}$wieder; Seiten vorher ${start.seiten}, jetzt ${t.seiten}');
       case 'seiten':
         final n = (a['pro_seite'] as num).toInt();
         await _seiten(moodle, cmid, n);
         t = await testLesen(moodle, cmid);
         final erwartet = n == 0 ? 1 : (t.plaetze.length / n).ceil();
+        probe.pruefe(t.seiten == erwartet, 'Seitenzahl');
         ergebnisse.add('Seiten: ${t.seiten} (erwartet $erwartet)${t.seiten == erwartet ? '' : ' -- ABWEICHEND'}');
       case 'beste_bewertung':
         final w = a['wert'] == 'summe' ? t.summe : (a['wert'] as num).toDouble();
@@ -360,7 +371,9 @@ Future<String> testAendern(MoodleZugang moodle, Freigaben freigaben,
           const MapEntry('savechanges', '1'),
         ]);
         t = await testLesen(moodle, cmid);
-        ergebnisse.add('Beste Bewertung: ${_z(t.beste)} (${t.beste != null && (t.beste! - w).abs() < 0.005 ? 'ok' : 'ABWEICHEND'})');
+        final ok = t.beste != null && (t.beste! - w).abs() < 0.005;
+        probe.pruefe(ok, 'Beste Bewertung');
+        ergebnisse.add('Beste Bewertung: ${_z(t.beste)} (${ok ? 'ok' : 'ABWEICHEND'})');
       case 'mischen':
         final ab = _testabschnitt(a, t);
         final an = a['an'] == true;
@@ -368,11 +381,12 @@ Future<String> testAendern(MoodleZugang moodle, Freigaben freigaben,
             {'class': 'section', 'field': 'updateshufflequestions', 'id': '${ab.id}', 'newshuffle': an ? '1' : '0'});
         t = await testLesen(moodle, cmid);
         final ist = t.abschnitte.where((x) => x.id == ab.id).firstOrNull?.mischen;
+        probe.pruefe(ist == an, 'Mischen in Testabschnitt ${ab.id}');
         ergebnisse.add('Fragen mischen (Testabschnitt ${ab.id}): ${ist == null ? '?' : ist ? 'an' : 'aus'} '
             '(${ist == an ? 'ok' : 'ABWEICHEND'})');
     }
   }
-  return '${ergebnisse.join('\n')}\n\n${t.text()}';
+  return '${ergebnisse.join('\n')}\n${probe.text}\n\n${t.text()}';
 }
 
 /// Seitenaufteilung neu setzen -- der Dialog „Neu aufteilen" von edit.php.
