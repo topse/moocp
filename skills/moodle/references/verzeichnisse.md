@@ -33,9 +33,29 @@ Eine Aufgabe hat einen eigenen Dateibereich für **Zusätzliche Dateien**
 (`bereiche/introattachments/`) — Vorlagen und Material, das zur Aufgabe
 gehört, ohne im Text eingebunden zu sein.
 
-## Lehrermaterial oder Schülerdownload
+## Drei Rollen, die nicht vermischt werden
 
 Diese Entscheidung fällt vor dem Anlegen, nicht danach.
+
+| Verzeichnis | Für wen | Wo |
+|---|---|---|
+| `_Lehrerdateien` | **Unterrichtsmaterial der Lehrkraft**: Quelldateien, Lösungen als Datei, Bewertungsbögen | verborgen, je Hauptabschnitt |
+| `CLAUDE` | **Arbeitsmaterial der KI**: `CLAUDE.md` mit den Konventionen, dazu Vorlagen, Schemata, Generatorskripte | verborgen, je Kurs oder je Abschnitt |
+| ein gewöhnliches Verzeichnis | **Schülerdownload**: Arbeitsblätter, Vorlagen, Datensätze | sichtbar |
+
+Beide ersten sind verborgen, aber nicht dasselbe. Das Kriterium ist, **wer die
+Datei beim nächsten Mal öffnet**: ein Mensch mit einem Programm (`.odg` in
+LibreOffice Draw, `.xcf` in Gimp, ein Bewertungsbogen als `.odt`) →
+`_Lehrerdateien`. Nur die KI wieder (ein Generatorskript, ein Schema, eine
+Vorlage für die KI, die Quelle einer Zeichnung, die ein Skript erzeugt) →
+`CLAUDE`. Liegen beide im selben Abschnitt, bleibt die Trennung damit
+eindeutig; leg nichts aus dem einen in das andere, „weil es da auch passt".
+
+Eine Lehrerhandreichung ist keines von beiden: Sie wird gelesen, also ist sie
+eine verborgene Textseite oder ein Buch im Abschnitt — siehe „Selbst erzeugte
+Dateien" unten.
+
+## Lehrermaterial oder Schülerdownload
 
 **Lehrermaterial** — Quelldateien (`.odg`, `.xcf`, `.docx` zu einem Bild, das
 im Kurs eingebunden ist), Lösungen, Erwartungshorizonte, interne Notizen:
@@ -76,7 +96,7 @@ Ordner nichts, wenn dieselbe Datei anderswo im Kurs offen verlinkt ist.
 ## Selbst erzeugte Dateien
 
 Soll eine Datei erst entstehen (ein Datensatz als CSV, eine Vorlage zum
-Weiterbearbeiten), schreib sie mit dem Write-Werkzeug direkt in
+Weiterbearbeiten), schreib sie mit dem Datei-Werkzeug direkt in
 `bereiche/files/` des Ordners, den `aktivitaet_anlegen` oder `aendern` nimmt.
 Ein Blatt zum Lesen oder Bearbeiten ist dagegen keine Datei, sondern eine
 Textseite oder Aufgabe (Abschnitt „Die Brücke" im SKILL.md): Eine Datei sieht

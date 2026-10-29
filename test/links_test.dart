@@ -123,4 +123,55 @@ void main() {
             {for (final z in ziele) if (z.hatSeite) linkAdresse(basis, z)}),
         isNull);
   });
+  group('Aktivitäten ohne Kennung: ganzer Name in Anführungszeichen', () {
+    final mit = [
+      ...ziele,
+      LinkZiel(30, 'board', 'Unsere Aufteilung'),
+      LinkZiel(31, 'quiz', 'Test'),
+      LinkZiel(32, 'wiki', 'Begriffe zu Arbeitsblatt 1'),
+      LinkZiel(33, 'label', 'Hinweis'),
+    ];
+
+    test('in Anführungszeichen ein Link, die Zeichen bleiben draußen; ohne kein Link', () {
+      final v = auf('<p>Heftet sie an die Pinnwand „Unsere Aufteilung“. Unsere Aufteilung bleibt Text.</p>',
+          mit: mit);
+      expect(v.html,
+          '<p>Heftet sie an die Pinnwand „${link(30, 'Unsere Aufteilung', 'board')}“. Unsere Aufteilung bleibt Text.</p>');
+      expect(v.neu, ['Unsere Aufteilung']);
+    });
+
+    test('ein Name wie „Test" macht nicht jedes Wort zum Link', () {
+      final v = auf('<p>Der Test „Test" folgt. Ein Test ist kein Link.</p>', mit: mit);
+      expect(v.html, '<p>Der Test „${link(31, 'Test', 'quiz')}" folgt. Ein Test ist kein Link.</p>');
+    });
+
+    test('Anführungszeichen als Entity, Zeilenumbruch im Namen', () {
+      final v = auf('<p>&bdquo;Unsere\nAufteilung&ldquo; und "Test"</p>', mit: mit);
+      expect(v.html,
+          '<p>&bdquo;${link(30, 'Unsere\nAufteilung', 'board')}&ldquo; und "${link(31, 'Test', 'quiz')}"</p>');
+    });
+
+    test('eine Kennung im zitierten Namen wird nicht noch einmal verlinkt', () {
+      final v = auf('<p>Tragt es in „Begriffe zu Arbeitsblatt 1“ ein, wie auf Arbeitsblatt 1.</p>', eigen: 16, mit: mit);
+      expect(
+          v.html,
+          '<p>Tragt es in „${link(32, 'Begriffe zu Arbeitsblatt 1', 'wiki')}“ ein, wie auf '
+          '${link(13, 'Arbeitsblatt 1')}.</p>');
+    });
+
+    test('ein Textfeld ist auch in Anführungszeichen kein Ziel; die eigene Aktivität nicht', () {
+      expect(auf('<p>siehe „Hinweis“</p>', mit: mit).geaendert, isFalse);
+      expect(auf('<p>in „Unsere Aufteilung“</p>', eigen: 30, mit: mit).geaendert, isFalse);
+    });
+
+    test('Link auf das Original mit dem ganzen Namen wird umgestellt; zweiter Durchgang ändert nichts', () {
+      final v = auf('<p>„<a href="https://moodle.schule.example/mod/board/view.php?id=999">Unsere Aufteilung</a>“</p>',
+          mit: mit);
+      expect(v.umgestellt, ['Unsere Aufteilung']);
+      expect(auf(v.html, mit: mit).geaendert, isFalse);
+      final w = auf('<p>„Unsere Aufteilung“</p>', mit: mit);
+      expect(auf(w.html, mit: mit).geaendert, isFalse);
+      expect(nurLinksGeaendert('<p>„Unsere Aufteilung“</p>', w.html, {linkAdresse(basis, mit[8])}), isNull);
+    });
+  });
 }

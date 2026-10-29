@@ -15,8 +15,16 @@ void main() {
     final ordner = Directory.systemTemp.createTempSync('zz_felder_');
     addTearDown(() => ordner.deleteSync(recursive: true));
     File(p.join(ordner.path, 'page.html')).writeAsStringSync('<h3>Ä</h3>\r\n<p>a</p>\r<p>b</p>\n');
-    File(p.join(ordner.path, 'page.vorschau.html')).writeAsStringSync('x');
     expect(felderIn(ordner.path), {'page': '<h3>Ä</h3>\n<p>a</p>\n<p>b</p>\n'});
+  });
+
+  test('Eine fehlende Datei im Arbeitsordner: klare Meldung statt eines unerwarteten Fehlers', () async {
+    final ao = Directory.systemTemp.createTempSync('zz_ao_');
+    addTearDown(() => ao.deleteSync(recursive: true));
+    File(p.join(ao.path, 'da.html')).writeAsStringSync('<p>ä</p>');
+    expect(await dateiAusArbeitsordner('da.html', ao.path), '<p>ä</p>');
+    await expectLater(dateiAusArbeitsordner('fehlt.html', ao.path),
+        throwsA(isA<MoodleFehler>().having((f) => f.meldung, 'meldung', contains('gibt es nicht'))));
   });
 
   test('Ordner: absolut oder relativ zum Arbeitsordner, nie außerhalb', () {

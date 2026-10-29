@@ -59,6 +59,15 @@ die Dokumentation auch hier gelten. Aufbau und Befehle für Menschen:
 - Ein neuer Anteil: Datei in `gemeinsam/`, in `SKILLS` eintragen, Markerpaar in
   die Skills, bauen.
 
+## Einsatz: Anregungen, keine Ketten
+
+Jede Aktivität und jeder Fragetyp, den die App anlegt, hat neben dem Technischen einen Abschnitt, wofür er sich anbietet: die Aktivitäten im Gleichanteil `gemeinsam/einsatz.md` (als `references/einsatz.md` in `moodle` und `lernsituation`), Tests und Fragetypen in `moodle-fragen/references/einsatz.md`. Je Art dieselben Teile: **Bewährt für**, **Denkbar auch**, **Grenzen**, **Papier und Gerät**, bei Bedarf **Im Plan**. Im SKILL.md steht nur der Verweis und wann er zu lesen ist, weil das SKILL.md bei jedem Auftrag ganz geladen wird.
+
+- **Anregungen, keine Vorschriften.** Ein Modell, das eine Liste erlaubter Einsätze bekommt, schlägt nur noch diese vor, und Lehrkräfte finden Einsätze, an die beim Schreiben niemand dachte. Darum steht überall der Satz, dass ein anderer Einsatz mit Grund willkommen ist. Bindend sind nur die **Grenzen**: Fakten darüber, was eine Art tut, was Lernende voneinander sehen und was die App nicht kann. Sie stehen nur drin, wenn sie gemessen oder im Skill schon als gemessen belegt sind; was an den Einstellungen hängt und nicht gemessen ist, steht als „prüft die Lehrkraft vor dem Einsatz" da. Regeln bleiben nur, wo ein Fehlgriff etwas anderes bewertet, als die Aufgabe meint (Zuordnung, AFB III, variierende Zahlen in `moodle-fragen`).
+- **Hybrid denken.** Papier und Gerät sind kein Entweder-oder. Die Arbeitsweise im Steckbrief des Kurses ist die Ausgangslage, keine Grenze; Vorschläge dagegen sind erwünscht, wenn sie dem Schritt dienen.
+- **Konkret vorschlagen.** Viele Lehrkräfte kennen die Möglichkeiten nicht. Ein Vorschlag ist ein Satz, den man umsetzen kann („das Blatt mit dem Handy fotografieren und in der Aufgabe abgeben"), mit dem, was vorbereitet sein muss.
+- **Kommt eine Art dazu**, bekommt sie ihren Abschnitt im selben Zug; eine Aktivität kommt außerdem in den Entwurf des Skills `lernsituation` (`references/vorlagen.md`, Prüfskript, Übertragung in `moodle/references/abschnitte.md`). Ohne das bleibt sie ungenutzt (Projekt-CLAUDE.md, Arbeitsregel „Unterstützt heißt mehr als anlegbar").
+
 ## Nach jeder Änderung
 
 Bauen und die drei Prüfungen laufen lassen (Befehle in der README). Dabei:
@@ -69,7 +78,7 @@ Bauen und die drei Prüfungen laufen lassen (Befehle in der README). Dabei:
   Zusatz zuerst kürzen.
 - **Installieren** macht die App (E13 der Projekt-CLAUDE.md): `build.py` baut
   nach `dist/`, `tool/neustart.sh` baut die App mit diesen Paketen, und beim
-  Start bietet sie im Dialog „Claude einrichten" an, sie zu installieren. Die
+  Start bietet sie im Dialog „KI-Werkzeuge einrichten" an, sie zu installieren. Die
   Entscheidung trifft der Nutzer dort; einen anderen Weg gibt es nicht.
 - Zeilenenden sind LF (`.gitattributes`). Skripte, die Dateien der Skills
   umschreiben, lesen und schreiben mit `io.open(…, encoding='utf-8',
@@ -90,6 +99,11 @@ Bauen und die drei Prüfungen laufen lassen (Befehle in der README). Dabei:
   Herkünften – beides Gleichanteile, hier nur als Erinnerung.
 - Dateien mit dem Write-Werkzeug schreiben, nicht per Bash-Heredoc: der
   scheitert erfahrungsgemäß an deutschem Text und Anführungszeichen.
+- Die Skills laufen in Claude Code, Codex CLI und LM Studio (E21 der
+  Projekt-CLAUDE.md). Darum steht in ihnen nichts, was nur in einem Client
+  gilt – keine Werkzeugnamen mit Präfix, kein „Write-Werkzeug", kein
+  `~/.claude/skills` als einziger Ort; braucht es ein Beispiel, dann mit
+  „in Claude Code" davor.
 
 ## Ein eingefügter Befund ist ein Auftrag
 

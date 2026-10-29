@@ -13,18 +13,18 @@
 // sehen -- die Prüfung hat ihre eigene Verbindung, ohne das Sitzungscookie
 // (update.dart).
 
-/// Benutzer und Repository auf GitHub, aus denen die Fassungen kommen.
+/// Benutzer und Repository auf GitHub, aus denen die Versionen kommen.
 const String herkunft = 'topse/moocp';
 
 /// Die einzige Abfrage: das neueste Release. GitHub lässt Entwürfe und
-/// Vorabfassungen dabei von selbst aus, die Prüfung muss nicht filtern.
+/// Vorabversionen dabei von selbst aus, die Prüfung muss nicht filtern.
 final Uri releaseAbfrage = Uri.parse('https://api.github.com/repos/$herkunft/releases/latest');
 
 /// Prüft eine Adresse der Update-Prüfung -- vor jeder Anfrage und für jedes
 /// Umleitungsziel. Rückgabe: null, wenn sie erlaubt ist, sonst der Grund
 /// für Protokoll und Meldung.
 ///
-/// [download] trennt die beiden Fälle: die Abfrage der Fassung (genau eine
+/// [download] trennt die beiden Fälle: die Abfrage der Version (genau eine
 /// Adresse) und das Holen der Datei (das Release dieses Repositorys und die
 /// Speicherdienste, auf die GitHub dabei umleitet).
 String? updateGesperrt(Uri uri, {required bool download}) {

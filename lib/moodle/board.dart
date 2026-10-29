@@ -138,7 +138,8 @@ Future<String> boardAendern(MoodleZugang moodle, Freigaben freigaben,
           'spalte_verschieben, spalte_sperren, notiz_neu, notiz_aendern, notiz_loeschen.'),
     });
   }
-  final ja = await freigaben.anfragen(FreigabeAnfrage(titel: 'Board ändern?', punkte: punkte, vergleich: const [], knopf: 'Ändern'));
+  final ja = await freigaben.anfragen(FreigabeAnfrage(
+      titel: 'Board ändern?', punkte: punkte, vergleich: const [], knopf: 'Ändern', ab: await fuellenAb(moodle, f0.kurs, [cmid])));
   if (!ja) return 'Nicht geändert: in der App abgelehnt oder nicht rechtzeitig freigegeben.';
   for (final a in aktionen) {
     final id = (a['spalte'] ?? a['notiz']) is num ? ((a['spalte'] ?? a['notiz']) as num).toInt() : null;
@@ -284,7 +285,8 @@ Future<String> kanbanAendern(MoodleZugang moodle, Freigaben freigaben,
           'spalte_verschieben, karte_neu, karte_aendern, karte_loeschen, karte_verschieben.'),
     });
   }
-  final ja = await freigaben.anfragen(FreigabeAnfrage(titel: 'Kanban-Board ändern?', punkte: punkte, vergleich: const [], knopf: 'Ändern'));
+  final ja = await freigaben.anfragen(FreigabeAnfrage(
+      titel: 'Kanban-Board ändern?', punkte: punkte, vergleich: const [], knopf: 'Ändern', ab: await fuellenAb(moodle, f0.kurs, [cmid])));
   if (!ja) return 'Nicht geändert: in der App abgelehnt oder nicht rechtzeitig freigegeben.';
   Future<Object?> aktion(String was, Map<String, Object?> data) =>
       moodle.dienst('mod_kanban_$was', {'cmid': cmid, 'boardid': b, 'data': data});

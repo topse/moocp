@@ -32,16 +32,18 @@ können nicht an anderer Stelle verwendet werden."*
 
 Die praktische Folge: Wer eine Frage in der privaten Sammlung eines Tests
 anlegt und sie ein halbes Jahr später im Nachschreibtest braucht, muss sie neu
-anlegen. Deshalb **im Zweifel in die geteilte Sammlung**, und dem Nutzer sagen,
-wohin du es gelegt hast.
+anlegen. Deshalb **immer in eine geteilte Sammlung**, nie in die eines Tests,
+und dem Nutzer sagen, wohin du es gelegt hast.
 
 ## Eine neue Fragensammlung anlegen
 
 Eine Sammlung ist eine gewöhnliche Aktivität: `aktivitaet_anlegen(kurs, abschnitt_id, typ: "qbank", name)`. Das Werkzeug gehört zum Skill `moodle`, der Auftrag aber hierher — du rufst es selbst auf, statt den Nutzer weiterzuschicken.
 
-**Erst nachsehen, dann anlegen.** `fragensammlungen(kurs)` zeigt, was es gibt. Sinnvoll ist eine eigene Sammlung je Fach, Lernfeld oder Jahrgang; mehr als eine Handvoll wird unübersichtlich, und die Feingliederung gehört ohnehin in Kategorien. Für ein einzelnes Thema reicht fast immer eine **Kategorie in der geteilten Sammlung** des Kurses.
+**Fragensammlungen sind die oberste Gliederung der Fragen.** Schlag eine eigene Sammlung je Lernsituation oder je Thema vor, benannt nach ihr; Kategorien gliedern darin weiter, wo es etwas trägt (unten). Die Sammlung, die Moodle beim Upgrade für den ganzen Kurs angelegt hat („… geteilte Fragensammlung"), lässt du, wie sie ist: Neue Fragen kommen dort nur hinein, wenn die Lehrkraft es will oder die Konventionen des Kurses es sagen. Eine Sammlung je Thema kostet auf der Kursseite nichts — Sammlungen stehen dort nicht, nur in der Liste der Fragensammlungen —, sie findet sich unter ihrem Namen wieder, und ihre Kategorien bleiben überschaubar. Das ist eine Anregung: Will die Lehrkraft eine Sammlung je Lernfeld oder Jahrgang, ist das ebenso gut.
 
-**Der Name gehört in den Plan, der Abschnitt nicht:** Moodle legt jede Fragensammlung im allgemeinen Abschnitt ab, einerlei welche `abschnitt_id` du mitgibst (das Werkzeug verlangt sie trotzdem, weil jede andere Aktivität sie braucht). Ein Name, der die Reichweite nennt („Fragen LF 3"), ist besser als einer, der an eine Lernsituation gebunden ist: Die Sammlung soll länger leben als der Anlass.
+**Erst nachsehen, dann anlegen.** `fragensammlungen(kurs)` zeigt, was es gibt. Gibt es schon eine Sammlung für das Thema, kommen die Fragen dorthin, statt eine zweite daneben zu legen.
+
+**Der Name gehört in den Plan, der Abschnitt nicht:** Moodle legt jede Fragensammlung im allgemeinen Abschnitt ab, einerlei welche `abschnitt_id` du mitgibst (das Werkzeug verlangt sie trotzdem, weil jede andere Aktivität sie braucht). Der Name sagt, worum es geht — der Titel der Lernsituation oder das Thema („VLAN-Segmentierung") —, damit man die Sammlung in der Liste wiederfindet, auch wenn die Lernsituation längst überarbeitet ist.
 
 **Was mit einer Sammlung nicht geht:** Sie steht nicht in der Kursstruktur, also zeigt `kurs_uebersicht` sie nicht, und verbergen, verschieben und duplizieren gibt es für sie nicht. `loeschen(kurs, cmid, name)` geht — mit Freigabe, mit Namensprüfung und mit allen Kategorien und Fragen darin.
 
@@ -62,6 +64,8 @@ kategorie_anlegen(sammlung, name: "Lernfeld 3 – Schutzmaßnahmen",
 
 Ohne `eltern` kommt sie auf die oberste Ebene der Sammlung. Die Antwort nennt
 die neue id — die brauchst du für den Import und für Zufallsfragen.
+
+**Wann eine Kategorie etwas trägt:** wenn Zufallsfragen aus ihr ziehen sollen — dann je Teilthema eine, damit ein Test „zwei Fragen zu Tagging, zwei zu Trunks" ziehen kann —, und wenn Übungsfragen und Fragen zur Leistungsfeststellung getrennt bleiben sollen, damit niemand die Klassenarbeit aus der Übung kennt. Für eine Handvoll Fragen ohne Zufall braucht es keine; eine Kategorie je Frage oder je Fragetyp gliedert nichts.
 
 ## Fragen thematisch sortieren
 

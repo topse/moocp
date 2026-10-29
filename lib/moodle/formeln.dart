@@ -29,6 +29,7 @@ import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
 
 import 'moodle_zugang.dart';
+import 'stack_skripte.dart';
 
 /// Elemente, die einen neuen Block beginnen: Eine Formel darf nicht über
 /// ihre Grenze reichen.
@@ -67,7 +68,8 @@ List<String> formelFehler(String html) {
     }
   }
 
-  besuche(html_parser.parseFragment(html));
+  // Der Code einer STACK-Zeichnung ist kein Text (stack_skripte.dart).
+  besuche(html_parser.parseFragment(ohneJsxgraphCode(html)));
   return [for (final b in bloecke) if (b.isNotEmpty) ..._blockPruefen(b)];
 }
 

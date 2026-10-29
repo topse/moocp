@@ -11,6 +11,6 @@ Pflichtfelder und Dateibereiche notieren, mit der App eine eigene Probe
 anlegen, zurücklesen, ändern, löschen. Danach in `schreibbareModule`
 (`lib/moodle/moodle_zugang.dart`) und `typName`, in die Liste „Welche Arten
 die App anlegt" im SKILL.md und – mit den wichtigen Einstellungen – in
-`references/bearbeiten.md`. Auf der Instanz installiert und bisher nicht
+`references/bearbeiten.md`. Im selben Zug bekommt er seinen Abschnitt in `gemeinsam/einsatz.md` und kommt in den Entwurf des Skills `lernsituation` ([../CLAUDE.md](../CLAUDE.md), „Einsatz"). Auf der Instanz installiert und bisher nicht
 gemessen: Forum, Glossar, H5P, `grouptool`, `collabora`, `serlo`, `margic`,
 `questionnaire`.

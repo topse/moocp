@@ -63,7 +63,7 @@ Werte zeigen, ist sie das falsche Werkzeug: Ein Schaltbild mit eingezeichneten
 12 V neben einer STACK-Aufgabe, die 9 V zieht, ist schlimmer als gar keine
 Zeichnung. Dann gehört die Darstellung nach JSXGraph in die STACK-Frage, wo sie
 aus denselben Zufallsvariablen entsteht wie die Aufgabenstellung
-(`references/stack.md`).
+(`references/jsxgraph.md`).
 
 <!-- <<< gemeinsam/zeichnungen.md - von build.py erzeugt, hier nicht bearbeiten -->
 ## Der Hausstil

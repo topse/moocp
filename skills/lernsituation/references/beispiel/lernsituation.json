@@ -40,6 +40,11 @@
       "name": "Lösung zur Hilfe zu Arbeitsblatt 1: Die Aufteilung planen"
     },
     {
+      "ordner": "pinnwand-aufteilung",
+      "typ": "board",
+      "name": "Unsere VLAN-Aufteilung"
+    },
+    {
       "ordner": "ab-02-umsetzung",
       "typ": "page",
       "name": "Arbeitsblatt 2: Umsetzung und Prüfung"

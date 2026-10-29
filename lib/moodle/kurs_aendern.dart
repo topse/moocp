@@ -34,6 +34,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import '../freigabe.dart';
+import 'elemente.dart';
 import 'formular_lesen.dart';
 import 'formular_schreiben.dart';
 import 'kurs.dart';
@@ -249,11 +250,12 @@ Future<String> verschieben(MoodleZugang moodle, Freigaben freigaben,
 // mit, einzeln wie im duplizierten Abschnitt; Quelltext, Bilder,
 // Dateibereiche und Einstellungen sind gleich; eine Textseite braucht etwa
 // drei Sekunden samt Vergleich.
-// Keine Freigabe: Am Bestehenden ändert sich nichts, und die Kopie wird
-// danach verborgen wie alles neu Angelegte (A3). Duplizieren ist nicht
-// idempotent -- ein zweiter Aufruf legt eine zweite Kopie an.
+// Eine Freigabe erst bei Bestätigungen „alle": Am Bestehenden ändert sich
+// nichts, und die Kopie wird danach verborgen wie alles neu Angelegte (A3).
+// Duplizieren ist nicht idempotent -- ein zweiter Aufruf legt eine zweite
+// Kopie an.
 
-Future<String> duplizieren(MoodleZugang moodle,
+Future<String> duplizieren(MoodleZugang moodle, Freigaben freigaben,
     {required int kurs,
     int? cmid,
     int? abschnittId,
@@ -265,13 +267,14 @@ Future<String> duplizieren(MoodleZugang moodle,
   final z = _ziel(k, cmid, abschnittId, name);
   final kursText = await kursBezeichnung(moodle, kurs);
   if (z.cm != null) {
-    return _aktivitaetDuplizieren(moodle, k, z.cm!, kursText, arbeitsordner, zielAbschnittId, vorCmid);
+    return _aktivitaetDuplizieren(
+        moodle, freigaben, k, z.cm!, kursText, arbeitsordner, zielAbschnittId, vorCmid);
   }
   if (zielAbschnittId != null || vorCmid != null) {
     throw MoodleFehler('Ein Abschnitt kommt immer direkt hinter das Original; woandershin danach '
         'mit verschieben. ziel_abschnitt_id und vor_cmid gelten nur für Aktivitäten.');
   }
-  return _abschnittDuplizieren(moodle, k, z.abschnitt!, kursText, arbeitsordner);
+  return _abschnittDuplizieren(moodle, freigaben, k, z.abschnitt!, kursText, arbeitsordner);
 }
 
 /// Führt eine Duplizier-Aktion aus. Ein Fehler zählt erst, wenn danach auch
@@ -296,8 +299,8 @@ Future<(KursStruktur, MoodleFehler?)> _duplizierAktion(
   return (k, fehler);
 }
 
-Future<String> _aktivitaetDuplizieren(MoodleZugang moodle, KursStruktur k, KursAktivitaet c, String kursText,
-    String arbeitsordner, int? zielAbschnittId, int? vorCmid) async {
+Future<String> _aktivitaetDuplizieren(MoodleZugang moodle, Freigaben freigaben, KursStruktur k,
+    KursAktivitaet c, String kursText, String arbeitsordner, int? zielAbschnittId, int? vorCmid) async {
   final kurs = k.kurs;
   if (vorCmid != null && zielAbschnittId == null) {
     throw MoodleFehler('ziel_abschnitt_id fehlt: vor_cmid gilt nur zusammen mit dem Zielabschnitt.');
@@ -315,6 +318,23 @@ Future<String> _aktivitaetDuplizieren(MoodleZugang moodle, KursStruktur k, KursA
       throw MoodleFehler('cmid $vorCmid liegt nicht im Abschnitt „${ziel.titel}".');
     }
   }
+  // Erst nach den Prüfungen oben: Ein Dialog zu einem Aufruf, der ohnehin
+  // abbricht, kostete die Lehrkraft eine Entscheidung für nichts.
+  final ja = await freigaben.anfragen(FreigabeAnfrage(
+    titel: 'Duplizieren?',
+    punkte: [
+      '${typName(c.modul)} „${c.name}" (cmid ${c.cmid}) in $kursText',
+      'Die Kopie kommt ${zielAbschnittId == null ? 'direkt unter das Original' : 'nach „${k.nachId[zielAbschnittId]!.titel}"'}, '
+          'heißt „${c.name} (Kopie)" und wird verborgen.',
+      'Am Original ändert sich nichts. Ohne Daten von Lernenden.',
+    ],
+    vergleich: const [],
+    knopf: 'Duplizieren',
+    ohneEntscheidung: 'wird nichts kopiert',
+    ab: Bestaetigungen.alle,
+  ));
+  if (!ja) return 'Nicht dupliziert: ${_nichtGefragt(freigaben)}';
+
   final stelle = zielAbschnittId ?? c.abschnittId;
   final vorher = k.nachCmid.keys.toSet();
   // Nur in der Zielstelle suchen: Beim Unterabschnitt kommen auch neue
@@ -368,8 +388,8 @@ Future<String> _aktivitaetDuplizieren(MoodleZugang moodle, KursStruktur k, KursA
   ].join('\n');
 }
 
-Future<String> _abschnittDuplizieren(
-    MoodleZugang moodle, KursStruktur k, KursAbschnitt a, String kursText, String arbeitsordner) async {
+Future<String> _abschnittDuplizieren(MoodleZugang moodle, Freigaben freigaben, KursStruktur k,
+    KursAbschnitt a, String kursText, String arbeitsordner) async {
   final kurs = k.kurs;
   if (a.istUnterabschnitt) {
     throw MoodleFehler('Einen Unterabschnitt dupliziert man über seine Kopf-Aktivität (cmid, Typ subsection).');
@@ -377,6 +397,20 @@ Future<String> _abschnittDuplizieren(
   if (a.nummer == 0) {
     throw MoodleFehler('Den allgemeinen Abschnitt (Nummer 0) dupliziert die App nicht.');
   }
+  final ja = await freigaben.anfragen(FreigabeAnfrage(
+    titel: 'Abschnitt duplizieren?',
+    punkte: [
+      'Abschnitt „${a.titel}" (id ${a.id}) in $kursText',
+      _inhaltText(k, a),
+      'Die Kopie kommt direkt dahinter, heißt „${a.titel} (Kopie)" und wird verborgen.',
+      'Am Original ändert sich nichts. Ohne Daten von Lernenden.',
+    ],
+    vergleich: const [],
+    knopf: 'Duplizieren',
+    ohneEntscheidung: 'wird nichts kopiert',
+    ab: Bestaetigungen.alle,
+  ));
+  if (!ja) return 'Nicht dupliziert: ${_nichtGefragt(freigaben)}';
   final vorher = k.nachId.keys.toSet();
   final vorherCms = k.nachCmid.keys.toSet();
   List<KursAbschnitt> neue(KursStruktur s) =>
@@ -594,6 +628,15 @@ Future<String> loeschen(MoodleZugang moodle, Freigaben freigaben,
 // abschnitt_anlegen
 // ---------------------------------------------------------------------------
 
+/// Die Meldung, wenn der Abschnitt [id] angelegt ist, Name und Beschreibung
+/// aber nicht gespeichert sind ([grund]: die Meldung des Formulars).
+String halbAngelegt(int id, int kurs, String grund, {required bool verborgen}) =>
+    'Abschnitt angelegt (id $id, ${verborgen ? 'verborgen' : 'SICHTBAR'}), aber Name und Beschreibung sind nicht '
+    'gespeichert: $grund\n'
+    'Er steht jetzt ohne Namen in Kurs $kurs. Nicht noch einmal anlegen: entweder mit abschnitt_lesen($id) lesen '
+    'und mit aendern füllen, oder mit loeschen(kurs: $kurs, abschnitt_id: $id) entfernen -- beides gehört in den '
+    'Plan.';
+
 Future<String> abschnittAnlegen(MoodleZugang moodle, Freigaben freigaben,
     {required int kurs,
     required String name,
@@ -603,24 +646,27 @@ Future<String> abschnittAnlegen(MoodleZugang moodle, Freigaben freigaben,
     bool sichtbar = false,
     Map<String, Object?> einstellungen = const {}}) async {
   final quelle = ordner == null ? null : imArbeitsordner(ordner, arbeitsordner);
-  final inhalt = quelleLesen(quelle);
+  final inhalt = quelleLesen(quelle, kopf: elementKopfFuer(moodle));
   var k = await kursLesen(moodle, kurs);
   if (nachAbschnittId != null && k.nachId[nachAbschnittId] == null) {
     throw MoodleFehler('Abschnitt id $nachAbschnittId gibt es in Kurs $kurs nicht.');
   }
   final kursText = await kursBezeichnung(moodle, kurs);
-  if (sichtbar) {
-    final ja = await freigaben.anfragen(FreigabeAnfrage(
-      titel: 'Abschnitt sichtbar anlegen?',
-      punkte: [
-        'Abschnitt „$name" in $kursText${nachAbschnittId == null ? ', am Ende' : ', hinter „${k.nachId[nachAbschnittId]!.titel}"'}',
-        'Für Lernende SOFORT SICHTBAR (sonst legt die App verborgen an).',
-      ],
-      vergleich: const [],
-      knopf: 'Sichtbar anlegen',
-    ));
-    if (!ja) return 'Nicht angelegt: ${_nichtGefragt(freigaben)}';
-  }
+  // Wie bei aktivitaet_anlegen: sichtbar ab „mittel", verborgen bei „alle".
+  final ja = await freigaben.anfragen(FreigabeAnfrage(
+    titel: sichtbar ? 'Abschnitt sichtbar anlegen?' : 'Abschnitt verborgen anlegen?',
+    punkte: [
+      'Abschnitt „$name" in $kursText${nachAbschnittId == null ? ', am Ende' : ', hinter „${k.nachId[nachAbschnittId]!.titel}"'}',
+      sichtbar
+          ? 'Für Lernende SOFORT SICHTBAR (sonst legt die App verborgen an).'
+          : 'Für Lernende verborgen; sichtbar wird er erst mit sichtbarkeit_setzen.',
+    ],
+    vergleich: const [],
+    knopf: sichtbar ? 'Sichtbar anlegen' : 'Anlegen',
+    ohneEntscheidung: 'wird nichts angelegt',
+    ab: sichtbar ? Bestaetigungen.mittel : Bestaetigungen.alle,
+  ));
+  if (!ja) return 'Nicht angelegt: ${_nichtGefragt(freigaben)}';
   final vorher = k.nachId.keys.toSet();
   await kursAktion(moodle, kurs, 'section_add', const [], zielAbschnitt: nachAbschnittId);
   k = await kursLesen(moodle, kurs);
@@ -630,9 +676,6 @@ Future<String> abschnittAnlegen(MoodleZugang moodle, Freigaben freigaben,
         'Bitte mit kurs_uebersicht prüfen.');
   }
   final id = neu.single.id;
-  // Sofort verbergen, noch bevor er einen Namen hat: Lernende sollen keinen
-  // leeren „Thema 7" sehen.
-  if (!sichtbar) await kursAktion(moodle, kurs, 'section_hide', [id]);
 
   final ziel = Formularziel.abschnitt(id);
   Future<(Map<String, String>, List<dynamic>)> fuellen() async {
@@ -648,11 +691,28 @@ Future<String> abschnittAnlegen(MoodleZugang moodle, Freigaben freigaben,
     return e;
   }
 
+  // Der Abschnitt steht schon im Kurs, ohne Namen. Scheitert das Verbergen
+  // oder das Füllen -- die Verbindung reißt ab, eine unbekannte Einstellung
+  // (das Formular gibt es erst jetzt), HTTP 403, weil ein Filter vor der
+  // Instanz den Inhalt abweist --, muss die Meldung das sagen; sonst hält die
+  // KI den Abschnitt für nicht angelegt und legt beim nächsten Versuch einen
+  // zweiten an.
+  var verborgen = false;
   (Map<String, String>, List<dynamic>) e;
   try {
-    e = await fuellen();
-  } on SitzungAbgelaufen {
-    e = await fuellen();
+    // Sofort verbergen, noch bevor er einen Namen hat: Lernende sollen keinen
+    // leeren „Thema 7" sehen.
+    if (!sichtbar) {
+      await kursAktion(moodle, kurs, 'section_hide', [id]);
+      verborgen = true;
+    }
+    try {
+      e = await fuellen();
+    } on SitzungAbgelaufen {
+      e = await fuellen();
+    }
+  } on MoodleFehler catch (x) {
+    throw MoodleFehler(halbAngelegt(id, kurs, x.meldung, verborgen: verborgen));
   }
   final g = await formularLesen(moodle, ziel, arbeitsordner);
   final probe = await zuruecklesen(g,

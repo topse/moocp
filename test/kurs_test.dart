@@ -1,5 +1,6 @@
 // Offline prüfbar: die Auswertung der Kursstruktur an einem erfundenen Kurs.
 import 'package:flutter_test/flutter_test.dart';
+import 'package:moocp/freigabe.dart';
 import 'package:moocp/moodle/kurs.dart';
 
 Map<String, Object?> cm(int id, String modul, String name, int abschnitt,
@@ -65,5 +66,35 @@ void main() {
       'cm': [cm(7, 'subsection', 'U', 200)],
     });
     expect(k.nachCmid[7]!.unterabschnittId, 201);
+  });
+
+  test('Füllen fragt erst bei „alle", solange die Aktivität der Arbeitssitzung gehört', () {
+    final k = kursAuswerten(12, {
+      'course': {
+        'id': 12,
+        'sectionlist': [100]
+      },
+      'section': [
+        {'id': '100', 'number': 0, 'title': 'Allgemeines', 'visible': true, 'cmlist': ['1', '2', '3', '4']},
+      ],
+      'cm': [
+        cm(1, 'board', 'Neu und verborgen', 100, sichtbar: false),
+        cm(2, 'kanban', 'Neu, inzwischen sichtbar', 100),
+        cm(3, 'checklist', 'Von Hand angelegt, verborgen', 100, sichtbar: false),
+        cm(4, 'page', 'Neu, ohne Link erreichbar', 100, stealth: true),
+      ],
+    });
+    final selbst = {1, 2, 4};
+    expect(fuellenAbIn(k, selbst, [1]), Bestaetigungen.alle);
+    // Sichtbar oder erreichbar: Lernende können es sehen.
+    expect(fuellenAbIn(k, selbst, [2]), Bestaetigungen.mittel);
+    expect(fuellenAbIn(k, selbst, [4]), Bestaetigungen.mittel);
+    // Nicht von der App angelegt: Bestehendes, wie immer ab „mittel".
+    expect(fuellenAbIn(k, selbst, [3]), Bestaetigungen.mittel);
+    // Mehrere zusammen nur, wenn jede dazugehört; ohne Aktivität (Abschnitt,
+    // Frage) nie.
+    expect(fuellenAbIn(k, selbst, [1, 3]), Bestaetigungen.mittel);
+    expect(fuellenAbIn(k, selbst, [1, null]), Bestaetigungen.mittel);
+    expect(fuellenAbIn(k, selbst, const []), Bestaetigungen.mittel);
   });
 }

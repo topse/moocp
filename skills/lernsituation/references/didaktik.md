@@ -130,13 +130,15 @@ gerade da ist:
 
 | Träger | Wann |
 |---|---|
-| **Arbeitsblatt (Papier)** | immer als Rückfall; die Blätter müssen auch ohne Netz funktionieren |
+| **Arbeitsblatt** | gedruckt oder am Bildschirm — jedes Blatt taugt für beides, dafür sorgen die HTML-Regeln. Auf Papier, wo mit der Hand gearbeitet wird: zeichnen, skizzieren, ein Rechenweg mit Nebenrechnungen |
 | **Informationsblatt** | Stoff, den die Lernenden für den nächsten Schritt brauchen, kompakt — wenn es ihn nirgends passend gibt oder die vorhandene Quelle zu breit ist |
 | **Lehrbuch, Tabellenbuch, Programmhilfe, Internet** | Wenn das Nötige dort schon gut steht, und wenn das Suchen selbst Ziel ist (Informieren): die Lernenden lernen, eine Quelle zu finden und zu lesen, die es auch im Betrieb gibt. Auf dem Blatt genau genannt oder als Recherche verlangt (`references/vorlagen.md`, Regel 5 unter „Jedes Blatt steht für sich") |
 | **Video / Link** | Wenn etwas gezeigt werden muss, was ein Blatt nicht kann — mit ausgeschriebener Adresse und Angabe, wofür es gebraucht wird |
 | **Simulation / Software** | Wenn das Produkt darin entsteht (Netzsimulation, CAD, Tabellenkalkulation) — Version und Voraussetzung in der Handreichung unter „Lernumgebung" |
 | **Laborgerät / Werkstück** | Wenn es real geht; Sicherheitshinweis in der Handreichung |
-| **Moodle** | Abgabe des Produkts, Test, die Blätter als Textseiten — die Zuordnung steht in der Brücke |
+| **Moodle-Aktivitäten** | Abgabe des Produkts, Board zum Sammeln und Vergleichen, Kanban-Board zum Planen, Wiki für ein gemeinsames Produkt, Fortschrittsliste als Prüfliste oder Laufzettel, Test zum Üben oder Feststellen — wofür sich welche anbietet, am Gerät und auf Papier, steht in `references/einsatz.md`, die Zuordnung zu den Blättern in der Brücke |
+
+Papier und Gerät sind kein Entweder-oder. Die Ausgangslage ist die Arbeitsweise aus dem Steckbrief des Kurses; für jeden Schritt wählst du neu, was ihn trägt, und eine Abwechslung — der Gang in den Computerraum in einem Kurs auf Papier, die Skizze von Hand in einem Kurs am Gerät — ist einen Vorschlag wert, wenn sie dem Schritt dient. Lernträger, die es nur am Gerät gibt, stehen mit dem, was sie brauchen, unter „Lernumgebung".
 
 ## Binnendifferenzierung: Zusatz, nicht Fassungen
 
@@ -269,7 +271,7 @@ erlaubt, wenn der Grund dasteht.
 | Gibt es eine Reflexionsphase? | | |
 | Dienen die Inhalte der Handlung? | | |
 | Benennt die Handlungssituation den Rahmen? | | |
-| Sind schulische Entscheidungen berücksichtigt? | | *Lernumgebung, Bewertungsgrundsätze, Lernortkooperation — was der Skill nicht weiß, steht als „vom Nutzer zu ergänzen" da* |
+| Sind schulische Entscheidungen berücksichtigt? | | *Lernumgebung (welcher Schritt auf Papier, welcher am Gerät, in welchem Raum), Bewertungsgrundsätze, Lernortkooperation — was der Skill nicht weiß, steht als „vom Nutzer zu ergänzen" da* |
 
 Drei „Nein" ohne guten Grund heißen: Das ist keine Lernsituation. Dann zurück
 zu den Vorschlägen, nicht weiter mit der Ausarbeitung.

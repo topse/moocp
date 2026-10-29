@@ -21,7 +21,9 @@ import 'dart:typed_data';
 import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
 
+import 'elemente.dart';
 import 'formeln.dart';
+import 'stack_skripte.dart';
 
 String kurz(String s, [int max = 160]) {
   final t = s.replaceAll(RegExp(r'\s+'), ' ').trim();
@@ -67,6 +69,14 @@ class Dateiinfo {
   String? titel;
   String? beschreibung;
   List<String> beschriftungen = [];
+  // HTML: ob die Datei den Kopf der App trägt und was als Element nicht
+  // ginge (elemente.dart). Zum Befund wird beides erst, wenn ein Rahmen die
+  // Datei als Element einbindet (uebersichtText) -- ein Verweis auf eine
+  // HTML-Datei ist keins. Bindet keiner sie ein, zählt nur, ob sie Code
+  // enthält (code): Geöffnet liefe er in der Sitzung des Betrachters.
+  bool elementKopf = false;
+  List<String> elementFehler = const [];
+  List<String> code = const [];
   final Befunde befunde = Befunde();
 
   Map<String, Object?> toJson() => {
@@ -80,6 +90,7 @@ class Dateiinfo {
           'beschreibung': beschreibung,
           'beschriftungen': beschriftungen,
         },
+        if (format == 'HTML') ...{'kopfDerApp': elementKopf, 'elementFehler': elementFehler, 'code': code},
       };
 }
 
@@ -148,6 +159,14 @@ Dateiinfo dateiAuswerten(String name, Uint8List b) {
     d.format = const {'ODT', 'ODS', 'ODP', 'ODG', 'DOCX', 'XLSX', 'PPTX', 'EPUB'}.contains(endung)
         ? endung
         : 'ZIP';
+  } else if (istElementdatei(name)) {
+    // Vor dem Blick auf <svg>: Ein Element zeichnet oft mit SVG.
+    final text = utf8.decode(b, allowMalformed: true);
+    d
+      ..format = 'HTML'
+      ..elementKopf = hatKopf(text)
+      ..elementFehler = elementFehler(text)
+      ..code = skriptstellen(text);
   } else {
     final anfang = utf8.decode(b.length > 4096 ? b.sublist(0, 4096) : b, allowMalformed: true);
     if (anfang.contains('<svg')) _svgAuswerten(d, utf8.decode(b, allowMalformed: true));
@@ -189,7 +208,11 @@ void _svgAuswerten(Dateiinfo d, String text) {
   if (attr('role') != 'img') b.add('Zeichnung', '${d.name}: kein role="img" am <svg>');
   if (t == null) b.add('Zeichnung', '${d.name}: kein <title>');
   if (ds == null) b.add('Zeichnung', '${d.name}: kein <desc>');
-  if (svg.querySelector('script') != null) b.add('Zeichnung', '${d.name}: enthält <script>');
+  final code = skriptstellen(text);
+  if (code.isNotEmpty) {
+    b.add('Zeichnung', '${d.name}: enthält Code (${kurz(code.first, 60)}) -- in einem neuen Tab geöffnet, liefe er '
+        'in der Sitzung des Betrachters');
+  }
   if (svg.querySelectorAll('*').any((e) => e.localName?.toLowerCase() == 'foreignobject')) {
     b.add('Zeichnung', '${d.name}: enthält <foreignObject> -- Text gehört in <text>');
   }
@@ -280,6 +303,10 @@ class Feldauswertung {
   final List<Punkt> gliederung = [];
   final List<Einbindung> bilder = [];
   final List<Verweis> verweise = [];
+
+  /// Dateinamen der Elemente, die ein abgeschotteter oder offener Rahmen
+  /// einbindet (elemente.dart).
+  final List<String> elemente = [];
   final Befunde befunde = Befunde();
 
   /// Fehler, keine Hinweise: Die Lernenden sehen kaputten Text (formeln.dart).
@@ -296,6 +323,7 @@ class Feldauswertung {
         'gliederung': [for (final p in gliederung) p.toJson()],
         'bilder': [for (final b in bilder) b.toJson()],
         'verweise': [for (final v in verweise) v.toJson()],
+        'elemente': elemente,
         'formelfehler': formelfehler,
         'befunde': befunde.zeilen,
       };
@@ -368,6 +396,17 @@ Feldauswertung feldAuswerten(String feld, String html,
     {required String host, Map<String, String> lokalerName = const {}}) {
   final a = Feldauswertung(feld, html.length);
   a.formelfehler.addAll(formelFehler(html));
+  for (final f in stackSkriptFehler(html)) {
+    a.befunde.add('Skript', f);
+  }
+  // Code direkt im Text (elemente.dart); srcdoc meldet der Rahmen selbst.
+  for (final s in skriptstellen(html)) {
+    if (RegExp(r'^<\w+ srcdoc=').hasMatch(s)) continue;
+    a.befunde.add('Skript', '${kurz(s, 60)}: läuft ohne Abschottung bei jedem Betrachter, auch der Lehrkraft -- '
+        'die App schreibt keinen neuen Code in den Text; Interaktives als Element');
+  }
+  // Der Code einer STACK-Zeichnung ist kein HTML (stack_skripte.dart).
+  html = ohneJsxgraphCode(html);
   var punkt = Punkt(0, '');
   a.gliederung.add(punkt);
   var letzteEbene = 2;
@@ -553,7 +592,25 @@ Feldauswertung feldAuswerten(String feld, String html,
         }
 
       case 'iframe':
-        punkt.inhalt.add('Einbettung ${kurz(Uri.tryParse(e.attributes['src'] ?? '')?.host ?? '', 40)}');
+        final src = e.attributes['src'] ?? '';
+        final datei = lokal(src.replaceAll('&amp;', '&'));
+        if (datei != null && istElementdatei(datei)) {
+          a.elemente.add(datei);
+          punkt.inhalt.add('Element $datei');
+          final r = elementRahmen(e.outerHtml).firstOrNull;
+          if (r != null && !r.abgeschottet) {
+            b.add('Element', '$datei ${unter()}: Rahmen ohne sandbox="allow-scripts" -- nicht abgeschottet; '
+                'ein Element mit dem Kopf der App hält dann an');
+          }
+        } else if (e.attributes.containsKey('srcdoc')) {
+          b.add('Element', 'Rahmen mit srcdoc ${unter()}: Der Moodle-Editor löscht den Inhalt beim nächsten '
+              'Speichern -- als Elementdatei einbinden');
+        } else if (src.trim().isEmpty) {
+          b.add('Element', 'leerer Rahmen ${unter()}: Das Element fehlt, etwa weil der Moodle-Editor ein srcdoc '
+              'gelöscht hat');
+        } else {
+          punkt.inhalt.add('Einbettung ${kurz(Uri.tryParse(src)?.host ?? '', 40)}');
+        }
 
       default:
         final c4l = klassen.where((k) => k.startsWith('c4lv-')).firstOrNull;
@@ -670,6 +727,7 @@ String uebersichtText(List<Feldauswertung> felder, Map<String, Dateiinfo> dateie
   }
 
   final eingebunden = <String, List<Einbindung>>{};
+  final alsElement = {for (final f in felder) ...f.elemente};
   final extern = <Einbindung>[];
   for (final f in felder) {
     for (final b in f.bilder) {
@@ -705,7 +763,9 @@ String uebersichtText(List<Feldauswertung> felder, Map<String, Dateiinfo> dateie
           t.writeln('    Beschriftungen (${d.beschriftungen.length}): $zeigen${rest > 0 ? ' … ($rest weitere)' : ''}');
         }
       }
-      if (!eingebunden.containsKey(d.name) && verlinkt.isEmpty) {
+      if (alsElement.contains(d.name)) {
+        t.writeln('    als interaktives Element eingebunden');
+      } else if (!eingebunden.containsKey(d.name) && verlinkt.isEmpty) {
         t.writeln('    (nur in einem anderen Feld oder als Adresse ohne <img>/<a> referenziert)');
       }
     }
@@ -737,6 +797,21 @@ String uebersichtText(List<Feldauswertung> felder, Map<String, Dateiinfo> dateie
   }
   for (final d in dateien.values) {
     alle.addAll(d.befunde);
+    if (d.format != 'HTML') continue;
+    if (!alsElement.contains(d.name)) {
+      if (d.code.isNotEmpty) {
+        alle.add('Skript', '${d.name}: enthält Code und ist kein Element -- über einen Link oder in einem neuen Tab '
+            'geöffnet, liefe er in der Sitzung des Betrachters; die App lädt so etwas nicht hoch');
+      }
+      continue;
+    }
+    if (!d.elementKopf) {
+      alle.add('Element', '${d.name}: ohne den Kopf der App (Content-Security-Policy, Wächter) -- die App setzt '
+          'ihn ein, sobald die Datei geändert wird');
+    }
+    for (final f in d.elementFehler) {
+      alle.add('Element', '${d.name}: $f');
+    }
   }
   if (weitere != null) alle.addAll(weitere);
   final formelfehler = [for (final f in felder) for (final x in f.formelfehler) '${f.feld}.html: $x'];
@@ -749,7 +824,7 @@ String uebersichtText(List<Feldauswertung> felder, Map<String, Dateiinfo> dateie
   }
   if (alle.isEmpty) {
     t.writeln('\nBefunde: keine (geprüft: style, Überschriften, Alternativtexte, Linktexte, '
-        'Adressen, leere Absätze, Altlasten, Tabellen, Zeichnungen, Formeln).');
+        'Adressen, leere Absätze, Altlasten, Tabellen, Zeichnungen, Formeln, Skripte, Elemente).');
   } else {
     t.writeln('\nBefunde nach den Regeln der Skills (${alle.length}), nur Hinweise, nichts geändert:');
     for (final z in alle.zeilen) {

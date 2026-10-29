@@ -8,7 +8,8 @@ Projekt moocp gepflegt; der Nutzer kann den Befund nur weitergeben, wenn
 er vollständig ist.
 
 **Repariere den Skill nicht selbst.** Du arbeitest aus einer installierten
-Kopie unter `~/.claude/skills/`; sie wird beim nächsten Bau überschrieben.
+Kopie im Skill-Ordner deines KI-Werkzeugs (etwa `~/.claude/skills/` oder
+`~/.codex/skills/`); die App überschreibt sie beim nächsten Start.
 
 ### Was gemeldet gehört
 

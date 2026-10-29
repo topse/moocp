@@ -40,20 +40,26 @@ Lernsituation gut ist. Das kann kein Skript. Was es kann:
   - jedes Blatt steht für sich: Abschnitte „1. …", Abbildungen und Aufgaben
     zählen je Blatt ab 1 ohne Präfix; "Abb. n" ohne Blattkennung gibt es auf
     dem eigenen Blatt; Verweise auf Abschnitte, Abbildungen und Aufgaben
-    anderer Blätter treffen etwas, das es dort gibt; "Lies"-Zeilen der
-    Arbeitsblätter und "→ für"-Zeilen der Infoblätter stimmen in beide
-    Richtungen; "Gehört zu" nennt jedes Blatt, das das Infoblatt unter
-    "Dazu" oder "Lies" verwendet
+    anderer Blätter treffen etwas, das es dort gibt; jedes Infoblatt wird
+    von einem Arbeitsblatt unter "Dazu" oder in einer "Lies"-Zeile genannt
+  - jede weitere Aktivität (Board, Kanban, Wiki, Fortschrittsliste, Test,
+    Verzeichnis, Datei, Link) trägt keine Kennung und steht mit ihrem Namen
+    in Anführungszeichen im Ablaufplan oder in der Materialübersicht; was
+    dort in Anführungszeichen steht, gibt es
   - nur im Entwurf: lernsituation.json vollständig, jeder Ordner darin
     genannt, jedes Bild in dateien/ seines Blatts, die HTML-Regeln
     (references/html.md), keine Formelfehler, keine Platzhalter, kein Markdown, kein Name eines Ordners oder
-    einer Zeichnung im Text
+    einer Zeichnung im Text; jede weitere Aktivität mit dem, was ihre
+    Übertragung braucht (Spalten, Einträge, Seiten, Fragen mit Sachnummer
+    und Ort, Dateien, Adresse)
   - nur in Moodle: jede Nennung eines Blatts ist ein Link auf seine
-    Aktivität, mit passendem Text, und keine für Lernende erreichbare Seite
-    verlinkt eine Lösung
+    Aktivität, mit passendem Text, ebenso der Name einer weiteren Aktivität
+    in Anführungszeichen, und keine für Lernende erreichbare Seite verlinkt
+    eine Lösung
 
 Rückgabe 0 = keine Befunde, 1 = Befunde, 2 = nichts zu prüfen.
 """
+import gzip
 import html
 import io
 import json
@@ -62,6 +68,7 @@ import re
 import shutil
 import sys
 import tempfile
+import xml.etree.ElementTree as ET
 from html.parser import HTMLParser
 from urllib.parse import unquote
 
@@ -125,14 +132,8 @@ VERWEIS_AUFGABE = re.compile(r'\bAufgaben?\s+(%s)\s+(?:auf|von)\s+(%s)|(%s),\s*A
 # Leerzeile. Nennt sie ein Lehrbuch oder eine Adresse statt eines Infoblatts,
 # gibt es hier nichts zu prüfen; ebenso bei "**Recherchiere:**".
 LIES = re.compile(r'^\*\*(?:Lies|Lest|Lesen\s+Sie)\b[^*\n]*:\*\*(.*?)(?=\n[ \t]*\n|\Z)', re.M | re.S)
-LIES_ZIEL = re.compile(r'(Infoblatt\s+\d+)(?:,\s*Abschnitte?\s+(%s))?' % NUMMERN)
-# "→ für Arbeitsblatt 1, Aufgabe 2, und Hilfe zu Arbeitsblatt 1, Aufgabe 1"
-# unter einem Abschnitt eines Infoblatts.
-PFEIL = re.compile(r'^→\s*für\s+(.*?)(?=\n[ \t]*\n|\Z)', re.M | re.S)
-PFEIL_ZIEL = re.compile(r'(%s),\s*Aufgaben?\s+(%s)' % (BLATT, NUMMERN))
-# Kopfzeilen; sie dürfen umbrochen sein und enden am nächsten Feld.
+# Kopfzeile; sie darf umbrochen sein und endet am nächsten Feld.
 DAZU = re.compile(r'\*\*Dazu:\*\*(.*?)(?=·|\*\*|\n[ \t]*\n|\Z)', re.S)
-GEHOERT_ZU = re.compile(r'\*\*Gehört zu:\*\*(.*?)(?=·|\*\*|\n[ \t]*\n|\Z)', re.S)
 
 
 def norm(t):
@@ -272,12 +273,15 @@ def vorlagen():
 
 
 class Pruefung:
-    def __init__(self, ordner, bilddateien=True):
+    def __init__(self, ordner, bilddateien=True, weitere=()):
         """`bilddateien`: ob ein eingebundenes Bild, das im Ordner fehlt, ein
         Befund ist. Am Entwurf nicht -- dort meldet lies_entwurf genauer, in
-        welchem dateien/ es fehlt."""
+        welchem dateien/ es fehlt. `weitere`: {Name: wie ein Befund sie nennt}
+        der weiteren Aktivitäten (WEITERE), die keine Blätter sind."""
         self.ordner = ordner
         self.bilddateien = bilddateien
+        self.weitere = dict(weitere)
+        self.zitiert = set()      # Namen in Anführungszeichen in Ablaufplan und Materialübersicht
         self.befunde = []
         self.hinweise = []
 
@@ -363,9 +367,12 @@ class Pruefung:
                     self.befund(name, 'Ablaufplan Zeile %d: Phase fehlt' % nr)
                 if isf is not None and not z[isf].strip():
                     self.befund(name, 'Ablaufplan Zeile %d: Sozialform fehlt' % nr)
-                # Material: Kennungen, durch Komma getrennt, oder "—".
+                # Material: Kennungen und Namen weiterer Aktivitäten in
+                # Anführungszeichen, durch Komma getrennt, oder "—".
                 for k in re.findall(r'(?:Lösung\s+zur?\s+)?%s|Handlungssituation' % BLATT, z[im]):
                     genannt.add(schluessel(k))
+                for q in ZITIERT.findall(z[im]):
+                    self.zitiert.add(norm(q))
             if summenzeile is None:
                 self.befund(name, 'Ablaufplan: Summenzeile fehlt oder nicht lesbar')
             elif summenzeile != summe:
@@ -388,7 +395,7 @@ class Pruefung:
 
         # Materialübersicht: je Zeile der Name eines Blatts, so wie er im Titel
         # steht und in Moodle heisst -- dort wird er ein Link mit genau diesem
-        # Text --, oder eine Zeichnung als "Abb. n auf <Kennung>".
+        # Text. Zeichnungen stehen nicht darin; sie gehören zu ihrem Blatt.
         namen = []
         for tab in tabs:
             kopf = [c.lower() for c in tab[0]]
@@ -397,7 +404,15 @@ class Pruefung:
                                   'Aktivitäten; erste Spalte "Blatt" mit dem Namen des Blatts')
             if kopf and kopf[0] == 'blatt':
                 for z in tab[1:]:
-                    if self.ist_trenner(z) or not z[0].strip() or VERWEIS_ABB.fullmatch(z[0].strip()):
+                    if self.ist_trenner(z) or not z[0].strip():
+                        continue
+                    if VERWEIS_ABB.fullmatch(z[0].strip()):
+                        self.befund(name, 'Materialübersicht: "%s" -- Zeichnungen gehören zu ihrem '
+                                          'Blatt und stehen hier nicht' % norm(z[0]))
+                        continue
+                    q = ZITIERT.fullmatch(z[0].strip())
+                    if q:                 # eine weitere Aktivität
+                        self.zitiert.add(norm(q.group(1)))
                         continue
                     namen.append(norm(z[0]))
 
@@ -720,77 +735,23 @@ class Pruefung:
                     gemeldet.add((d, s))
                     self.befund(d, '"%s": dieses Blatt gibt es nicht' % norm(m.group(0)))
 
-        # "Lies"-Zeilen der Arbeitsblätter, je Aufgabe:
-        # (Arbeitsblatt, Aufgabe) -> {Infoblatt: Abschnitte oder None = ganz}
-        lies = {}
+        # Jedes Infoblatt nennt ein Arbeitsblatt (auch Hilfe oder Vertiefung)
+        # unter "Dazu" oder in einer "Lies"-Zeile -- eines, das keines nennt,
+        # liest niemand. Verwiesen wird nur in diese Richtung; Rückverweise
+        # auf dem Infoblatt stünden doppelt und veralteten still.
+        genannt = set()
         for d, t in texte.items():
             k, loes = kennung(d)
             if not k or loes or 'Arbeitsblatt' not in k:
                 continue
             m = DAZU.search(t)
-            verwendet = set(norm(x) for x in re.findall(r'Infoblatt\s+\d+', m.group(1) if m else ''))
-            teile = AUFGABE_KOPF.split(t)
-            for nr, stueck in [(0, teile[0])] + list(zip(teile[1::2], teile[2::2])):
-                for zeile in LIES.findall(stueck):
-                    verwendet.update(norm(x) for x in re.findall(r'Infoblatt\s+\d+', zeile))
-                    # "Abb. 1 auf Infoblatt 2" in der Zeile heißt nicht "lies
-                    # das ganze Infoblatt 2" -- sonst überdeckte es die
-                    # Abschnitte, die dieselbe Zeile nennt.
-                    for z in LIES_ZIEL.finditer(VERWEIS_ABB.sub(' ', zeile)):
-                        ib = norm(z.group(1))
-                        eintrag = lies.setdefault((k, int(nr)), {})
-                        if z.group(2) is None:
-                            eintrag[ib] = None
-                        elif ib not in eintrag or eintrag[ib] is not None:
-                            eintrag[ib] = (eintrag.get(ib) or set()) | set(nummern(z.group(2)))
-            # "Gehört zu" nennt jedes Blatt, das das Infoblatt verwendet --
-            # wer das Infoblatt austeilt, sieht daran, wozu.
-            for ib in sorted(verwendet):
-                z = verzeichnis.get(ib)
-                if z is None:
-                    if (d, ib) not in gemeldet:
-                        self.befund(d, 'verwendet %s, das es nicht gibt' % ib)
-                    continue
-                g = GEHOERT_ZU.search(texte[z])
-                liste = [norm(x) for x in re.findall(BLATT, g.group(1))] if g else []
-                if k not in liste:
-                    self.befund(z, '"Gehört zu" nennt %s nicht, obwohl es dieses Blatt unter '
-                                   '"Dazu" oder "Lies" verwendet' % k)
-
-        # "→ für" unter den Abschnitten der Infoblätter:
-        # (Infoblatt, Abschnitt) -> {(Arbeitsblatt, Aufgabe)}
-        pfeile = {}
-        for d, t in texte.items():
-            k, loes = kennung(d)
-            if not k or loes or not k.startswith('Infoblatt'):
-                continue
-            teile = re.split(r'^##\s+(\d+)\.\s.*$', t, flags=re.M)
-            for nr, stueck in zip(teile[1::2], teile[2::2]):
-                ziele = pfeile.setdefault((k, int(nr)), set())
-                for zeile in PFEIL.findall(stueck):
-                    for z in PFEIL_ZIEL.finditer(zeile):
-                        for a in nummern(z.group(2)):
-                            ziele.add((norm(z.group(1)), a))
-
-        # Beide Richtungen: Wer bei einer Aufgabe einen Abschnitt lesen lässt,
-        # steht dort unter "→ für" -- und jeder Pfeil hat seine "Lies"-Zeile.
-        # Sonst veraltet die eine Seite still, wenn die andere sich ändert.
-        for (ab, a), ibs in sorted(lies.items()):
-            if a == 0:
-                continue          # vor der ersten Aufgabe: gilt dem ganzen Blatt
-            for ib, abschnitte in ibs.items():
-                for s in sorted(abschnitte or ()):
-                    if (ib, s) in pfeile and (ab, a) not in pfeile[(ib, s)]:
-                        self.befund(verzeichnis[ib], 'Abschnitt %d: "→ für %s, Aufgabe %d" fehlt -- '
-                                                     'dort lässt eine "Lies"-Zeile ihn lesen' % (s, ab, a))
-        for (ib, s), ziele in sorted(pfeile.items()):
-            for ab, a in sorted(ziele):
-                if verzeichnis.get(ab) is None or a not in glied[verzeichnis[ab]][2]:
-                    continue      # als Verweis ins Leere schon gemeldet
-                ibs = lies.get((ab, a), {})
-                if ib not in ibs or (ibs[ib] is not None and s not in ibs[ib]):
-                    self.befund(verzeichnis[ib], 'Abschnitt %d: "→ für %s, Aufgabe %d", aber dort '
-                                                 'nennt keine "Lies"-Zeile diesen Abschnitt' % (s, ab, a))
+            zeilen = [m.group(1)] if m else []
+            zeilen += LIES.findall(t)
+            for zeile in zeilen:
+                genannt.update(norm(x) for x in re.findall(r'Infoblatt\s+\d+', zeile))
+        for k, d in sorted(verzeichnis.items()):
+            if k.startswith('Infoblatt') and k not in genannt:
+                self.befund(d, 'kein Arbeitsblatt nennt %s unter "Dazu" oder in einer "Lies"-Zeile' % k)
 
     # ---- Querschnitt -----------------------------------------------------
     HTML = {'ul', '/ul', 'li', '/li', 'br', 'br/', 'br /'}
@@ -914,6 +875,15 @@ class Pruefung:
             k, _ = kennung(d)
             if k and k not in genannt:
                 self.befund(d, 'steht weder im Ablaufplan noch in der Materialübersicht')
+        # Ebenso jede weitere Aktivität, mit ihrem Namen in Anführungszeichen --
+        # und was dort in Anführungszeichen steht, gibt es.
+        for n, wo in self.weitere.items():
+            if n not in self.zitiert:
+                self.befund(wo, 'steht weder im Ablaufplan noch in der Materialübersicht -- dort mit ihrem '
+                                'Namen in Anführungszeichen („%s")' % n)
+        for n in sorted(self.zitiert - set(self.weitere)):
+            self.befund(hand, '„%s" in Ablaufplan oder Materialübersicht ist keine Aktivität dieser Lernsituation '
+                              '-- in Anführungszeichen steht dort nur der Name einer weiteren Aktivität' % n)
 
         # Kein Name aus dem Entwurf im Text: In Moodle gibt es nur Aktivitäten,
         # und ein Blatt heißt dort nach seiner Kennung.
@@ -955,6 +925,13 @@ class Pruefung:
 # Links zwischen den Blättern, die erst nach dem Anlegen entstehen können.
 
 MANIFEST = 'lernsituation.json'
+# Weitere Aktivitäten: keine Blätter und ohne Kennung. Ihr Name sagt, wozu sie
+# da sind, und Blätter wie Handreichung nennen ihn in Anführungszeichen
+# (references/vorlagen.md, „Weitere Aktivitäten im Entwurf"); in Moodle wird
+# genau diese Nennung ein Link (links_setzen). Was im Ordner liegt, prüft
+# weitere_aktivitaet.
+WEITERE = {'board', 'kanban', 'checklist', 'wiki', 'quiz', 'folder', 'resource', 'url'}
+ZITIERT = re.compile(r'[„“"»]([^„“”"«»\n]+?)[“”"«]')
 # Der Name einer Aktivität, die ein Blatt ist: Kennung, dann Doppelpunkt.
 ROLLE = re.compile(r'(Lösung\s+zur?\s+)?(?:(Hilfe|Vertiefung)\s+zu\s+)?(Arbeitsblatt|Infoblatt)\s+(\d+)\s*(?::|$)')
 # Die Namen der Prüfform, wenn sie in einem Befund stehen.
@@ -1225,6 +1202,111 @@ MARKDOWN = [
 ]
 
 
+# Interaktive Elemente: dieselbe Prüfung wie elementFehler in
+# lib/moodle/elemente.dart, an der die App das Schreiben abbricht -- hier
+# fällt es schon am Entwurf auf. Den Kopf (Content-Security-Policy, Wächter)
+# setzt erst die App bei der Übertragung; im Entwurf fehlt er.
+ELEMENT_KOPF = re.compile(r'<!-- moocp: Kopf des Elements, setzt die App -->[\s\S]*?<!-- /moocp -->\n?')
+ELEMENT_ADRESSE = re.compile(r'(?:[=("\'`]\s*|@import\s+)((?:https?:)?//[^\s"\'`)<>]+)', re.I)
+ELEMENT_NETZ = [
+    (re.compile(r'(^|[;{}\s])import\b', re.M), 'import'),
+    (re.compile(r'\bfetch\s*\('), 'fetch'),
+    (re.compile(r'\bXMLHttpRequest\b'), 'XMLHttpRequest'),
+    (re.compile(r'\bWebSocket\b'), 'WebSocket'),
+    (re.compile(r'\bEventSource\b'), 'EventSource'),
+    (re.compile(r'\bsendBeacon\b'), 'sendBeacon'),
+    (re.compile(r'\bimportScripts\b'), 'importScripts'),
+]
+ELEMENT_CODE = [
+    (re.compile(r'\b(?:localStorage|sessionStorage|indexedDB)\b|document\s*\.\s*cookie'),
+     'Speichern im Browser: Ein Element merkt sich nichts, und der Rahmen sperrt es.'),
+    (re.compile(r'(?<![\w$.])(?:window\s*\.\s*)?(?:parent|top|opener)\s*\.'),
+     'Zugriff auf die Moodle-Seite (parent/top/opener): Der Rahmen sperrt ihn.'),
+]
+# Netz, Speicher und Moodle-Seite nur im Code: Inhalt der <script> und Werte
+# der Ereignis-Attribute. „We import goods" auf einer Vokabelkarte ist Text.
+ELEMENT_SKRIPT = re.compile(r'<script\b[^>]*>([\s\S]*?)</script\s*>', re.I)
+ELEMENT_EREIGNIS = re.compile(r'''\son[a-z]+\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))''', re.I)
+ELEMENT_SONST = [
+    (re.compile(r'<script\b[^>]*\bsrc\s*=', re.I), 'Nachgeladenes Skript (<script src>): Der Code steht im Element selbst.'),
+    (re.compile(r'<(?:iframe|frame|object|embed)\b', re.I), 'Rahmen oder Einbettung im Element: Ein Element bettet nichts ein.'),
+    (re.compile(r'<meta\b[^>]*http-equiv', re.I), '<meta http-equiv> setzt nur die App (im Kopf).'),
+    (re.compile(r'<base\b', re.I), '<base> verbiegt Adressen und ist gesperrt.'),
+]
+
+
+def element_fehler(text):
+    """Was in einem interaktiven Element nicht geht, je als Satz
+    (references/elemente.md)."""
+    t = ELEMENT_KOPF.sub('', text)
+    raus = []
+    if not re.search(r'<head\b', t, re.I):
+        raus.append('braucht ein Gerüst mit <head> (<!DOCTYPE html><html lang="de"><head>…</head><body>…)')
+    for m in ELEMENT_ADRESSE.finditer(t):
+        if not re.match(r'(?:https?:)?//www\.w3\.org/', m.group(1), re.I):
+            raus.append('Adresse „%s": Ein Element lädt nichts und verweist nirgendwohin -- Bilder als SVG im '
+                        'Element, Verweise in den Text der Seite' % m.group(1)[:60])
+            break
+    code = '\n'.join([m.group(1) for m in ELEMENT_SKRIPT.finditer(t)] +
+                     [next(g for g in m.groups() if g is not None) for m in ELEMENT_EREIGNIS.finditer(t)])
+    for muster, was in ELEMENT_NETZ:
+        if muster.search(code):
+            raus.append('Im Code steht %s: Ein Element lädt und sendet nichts.' % was)
+    for muster, satz in ELEMENT_CODE:
+        if muster.search(code):
+            raus.append(satz)
+    for muster, satz in ELEMENT_SONST:
+        if muster.search(t):
+            raus.append(satz)
+    return raus
+
+
+# Code in Dateien, die kein Element sind: dieselbe Grenze wie codeInDatei in
+# lib/moodle/elemente.dart. Moodle liefert HTML, SVG und XML direkt aus; über
+# einen Link oder in einem neuen Tab geöffnet, liefe ihr Code in der Sitzung
+# des Betrachters, und die App lädt so eine Datei nicht hoch.
+DOKUMENT = re.compile(r'\.(?:x?html?|xht|shtml|svgz?|xml|xslt?)$', re.I)
+
+
+class Skriptstellen(HTMLParser):
+    """Stellen, an denen Code läuft: <script>, Ereignis-Attribute (auch per
+    SVG-Animation gesetzt), srcdoc und javascript:-Adressen."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.stellen = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == 'script':
+            self.stellen.append('<script>')
+        for k, w in attrs:
+            w = w or ''
+            if k.startswith('on') or (k == 'attributename' and w.strip().lower().startswith('on')):
+                self.stellen.append('%s an <%s>' % (k if k.startswith('on') else w.strip(), tag))
+            elif k == 'srcdoc':
+                self.stellen.append('<%s srcdoc>' % tag)
+            elif re.sub(r'[\s\x00-\x1f]', '', w).lower().startswith('javascript:'):
+                self.stellen.append('javascript: an <%s>' % tag)
+
+    handle_startendtag = handle_starttag
+
+
+def code_in_datei(name, daten):
+    """Die Stellen mit Code in einer Datei, die der Browser als Dokument
+    öffnet; bei anderen Dateien leer."""
+    if not DOKUMENT.search(name):
+        return []
+    if name.lower().endswith('.svgz'):
+        try:
+            daten = gzip.decompress(daten)
+        except (OSError, EOFError):
+            return ['komprimierte SVG, die sich nicht entpacken lässt']
+    p = Skriptstellen()
+    p.feed(daten.decode('utf-8', 'replace'))
+    p.close()
+    return p.stellen
+
+
 # Formelfehler: dieselbe Prüfung wie formelFehler in lib/moodle/formeln.dart,
 # die das Schreiben in Moodle abbricht -- hier fällt der Fehler schon am
 # Entwurf auf. Ein Block ist ein Absatz, eine Zelle, ein Listenpunkt; ein
@@ -1341,6 +1423,7 @@ class HtmlRegeln(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
         self.befunde, self.dateien, self.text = [], [], []
+        self.elemente = set()      # Dateien, die ein Rahmen als Element einbindet
         self.svg = self.code = 0
         self.ebene, self.kaesten, self.absatz = 2, set(), None
 
@@ -1380,10 +1463,34 @@ class HtmlRegeln(HTMLParser):
             self.text.append(d)
 
     def element(self, tag, a, roh):
+        # Code im Text: dieselbe Grenze wie skripteImTextPruefen in
+        # lib/moodle/elemente.dart -- die App schriebe das Blatt nicht. Auch in
+        # einer eingebetteten Zeichnung, die sonst eigene Regeln hat.
+        if tag == 'script':
+            self.befund('Code im Text (<script>) -- Interaktives als Element in einen Rahmen '
+                        '(references/elemente.md)')
+            return
+        for k, w in a.items():
+            w = w or ''
+            if k.startswith('on') or (k == 'attributename' and w.strip().lower().startswith('on')):
+                self.befund('Code im Text (%s an <%s>) -- Interaktives als Element (references/elemente.md)'
+                            % (k if k.startswith('on') else w.strip(), tag))
+            elif k == 'srcdoc':
+                self.befund('<%s srcdoc>: Der Moodle-Editor löscht ihn -- als Elementdatei in dateien/ einbinden' % tag)
+            elif re.sub(r'[\s\x00-\x1f]', '', w).lower().startswith('javascript:'):
+                self.befund('javascript:-Adresse an <%s> -- Code gehört in ein Element' % tag)
         if self.svg:
             return                # eine eingebettete Zeichnung hat eigene Elemente
         if tag in BLOCK:
             self.text.append('\n')
+        if tag == 'iframe':
+            src = a.get('src') or ''
+            if src.startswith('@@PLUGINFILE@@/') and re.search(r'\.html?$', src, re.I):
+                self.elemente.add(unquote(src[len('@@PLUGINFILE@@/'):]))
+                if ' '.join(sorted(set((a.get('sandbox') or '-').split()))) != 'allow-scripts':
+                    self.befund('Element %s ohne sandbox="allow-scripts" -- die App schreibt es so nicht' % src[15:])
+                if not (a.get('title') or '').strip():
+                    self.befund('Element %s ohne title -- er sagt Screenreadern, was es ist' % src[15:])
         if tag not in HTML_ELEMENTE:
             self.befund('Platzhalter steht noch da: %s' % norm(roh)[:60])
             return
@@ -1463,6 +1570,7 @@ def lies_entwurf(ordner):
     if not isinstance(ab, dict) or not norm(str(ab.get('name') or '')) or not isinstance(liste, list) or not liste:
         return '%s braucht "abschnitt" mit "name" und eine nicht leere Liste "aktivitaeten"' % MANIFEST
     vorab, seiten, ohne_inhalt, verboten, genutzt = [], [], [], set(), set()
+    weitere = {}              # Name -> wie ein Befund sie nennt
 
     def befund(wo, text):
         vorab.append((wo, text))
@@ -1490,11 +1598,144 @@ def lies_entwurf(ordner):
             if n not in da_ist:
                 befund(wo, '%s liegt nicht in %s/dateien/ -- jedes Blatt bringt seine Bilder selbst mit'
                        % (n, rel(o)))
+            elif n in r.elemente:
+                for t in element_fehler(io.open(os.path.join(da, n), encoding='utf-8', errors='replace').read()):
+                    befund(wo, 'Element %s: %s' % (n, t))
+            else:
+                with open(os.path.join(da, n), 'rb') as f:
+                    stellen = code_in_datei(n, f.read())
+                if stellen:
+                    befund(wo, 'Datei %s enthält Code (%s) und ist kein Element -- die App lädt sie so nicht hoch '
+                               '(references/elemente.md)' % (n, stellen[0]))
         for f in da_ist:
             if f not in r.dateien:
                 befund(wo, '%s/dateien/%s wird nicht eingebunden' % (rel(o), f))
             if re.search(r'\.(svg|png|jpe?g|gif|webp)$', f, re.I):
                 verboten.add(f)
+
+    def json_in(d, datei, wo):
+        p = os.path.join(d, datei)
+        if not os.path.isfile(p):
+            befund(wo, '%s fehlt in %s' % (datei, rel(d)))
+            return None
+        try:
+            return json.load(io.open(p, encoding='utf-8'))
+        except ValueError as x:
+            befund(wo, '%s ist kein gültiges JSON: %s' % (datei, x))
+            return None
+
+    def weitere_aktivitaet(typ, d, e, wo):
+        """Was eine weitere Aktivität braucht, damit die Übertragung sie
+        anlegen und füllen kann (references/vorlagen.md, „Weitere Aktivitäten
+        im Entwurf"). `d`: ihr Ordner, None bei einem Link ohne Ordner."""
+        einst = e.get('einstellungen') if isinstance(e.get('einstellungen'), dict) else {}
+        if typ == 'url' and not str(einst.get('externalurl') or '').startswith('https://'):
+            befund(wo, 'Link ohne Adresse: "einstellungen": {"externalurl": "https://…"}')
+        if d is None:
+            return
+        texte = []
+        intro = os.path.join(d, 'introeditor.html')
+        if os.path.isfile(intro):
+            texte.append(io.open(intro, encoding='utf-8').read())
+        if typ in ('board', 'kanban'):
+            j = json_in(d, typ + '.json', wo)
+            if j is not None:
+                spalten = j.get('spalten') if isinstance(j, dict) else None
+                if not isinstance(spalten, list) or not spalten or not all(isinstance(s, str) and norm(s)
+                                                                           for s in spalten):
+                    befund(wo, '%s.json braucht "spalten", eine Liste von Namen' % typ)
+                    spalten = []
+                elif len({norm(s) for s in spalten}) != len(spalten):
+                    befund(wo, '%s.json: zwei Spalten mit demselben Namen' % typ)
+                was = 'notizen' if typ == 'board' else 'karten'
+                for x in (j.get(was) or []) if isinstance(j, dict) else []:
+                    if not isinstance(x, dict) or norm(str(x.get('spalte') or '')) not in {norm(s) for s in spalten}:
+                        befund(wo, '%s.json: %s nennt keine Spalte, die es gibt'
+                               % (typ, 'eine Notiz' if typ == 'board' else 'eine Karte'))
+                    elif typ == 'kanban' and not norm(str(x.get('titel') or '')):
+                        befund(wo, 'kanban.json: eine Karte ohne "titel"')
+        elif typ == 'checklist':
+            j = json_in(d, 'eintraege.json', wo)
+            if j is not None and (not isinstance(j, list) or not j):
+                befund(wo, 'eintraege.json braucht eine Liste von Einträgen')
+            elif j is not None:
+                vorher = -1
+                for i, x in enumerate(j, 1):
+                    if not isinstance(x, dict) or not norm(str(x.get('text') or '')):
+                        befund(wo, 'eintraege.json: Eintrag %d ohne "text"' % i)
+                        continue
+                    tiefe = x.get('tiefe', 0)
+                    if not isinstance(tiefe, int) or tiefe < 0 or tiefe > vorher + 1:
+                        befund(wo, 'eintraege.json: „%s" springt in der Einrückung -- höchstens eine Stufe '
+                                   'tiefer als der Eintrag davor' % norm(x['text']))
+                        tiefe = vorher + 1
+                    vorher = tiefe
+                    if x.get('zustand') not in (None, 'pflicht', 'optional', 'ueberschrift'):
+                        befund(wo, 'eintraege.json: „%s" hat "zustand" %r -- möglich sind pflicht, optional, '
+                                   'ueberschrift' % (norm(x['text']), x.get('zustand')))
+        elif typ == 'wiki':
+            j = json_in(d, 'seiten.json', wo)
+            if j is not None and (not isinstance(j, list) or not j):
+                befund(wo, 'seiten.json braucht eine Liste von Seiten')
+            elif j is not None:
+                titel_ = []
+                for i, x in enumerate(j, 1):
+                    t_ = norm(str(x.get('titel') or '')) if isinstance(x, dict) else ''
+                    f = x.get('datei') if isinstance(x, dict) else None
+                    if not t_ or not isinstance(f, str) or not os.path.isfile(os.path.join(d, f)):
+                        befund(wo, 'seiten.json: Seite %d braucht "titel" und eine "datei", die im Ordner liegt' % i)
+                        continue
+                    titel_.append(t_)
+                    texte.append(io.open(os.path.join(d, f), encoding='utf-8').read())
+                if len(set(titel_)) != len(titel_):
+                    befund(wo, 'seiten.json: zwei Seiten mit demselben Titel')
+                start = norm(str(einst.get('firstpagetitle') or ''))
+                if titel_ and start != titel_[0]:
+                    befund(wo, 'die erste Seite „%s" ist die Startseite und muss heißen wie "firstpagetitle" in den '
+                               'Einstellungen%s' % (titel_[0], ' („%s")' % start if start else ' -- dort fehlt er'))
+        elif typ == 'quiz':
+            fr = e.get('fragen')
+            if not isinstance(fr, dict) or not norm(str(fr.get('sammlung') or '')) \
+                    or not norm(str(fr.get('kategorie') or '')):
+                befund(wo, 'Test ohne Ort für seine Fragen: "fragen": {"sammlung": "…", "kategorie": "…"} im Eintrag')
+            p = os.path.join(d, 'fragen.xml')
+            wurzel = None
+            if not os.path.isfile(p):
+                befund(wo, 'fragen.xml fehlt -- die Fragen schreibt der Skill moodle-fragen')
+            else:
+                try:
+                    wurzel = ET.parse(p).getroot()
+                except ET.ParseError as x:
+                    befund(wo, 'fragen.xml ist kein gültiges XML: %s' % x)
+            if wurzel is not None:
+                fragen = [q for q in wurzel.iter('question') if q.get('type') != 'category']
+                if not fragen:
+                    befund(wo, 'fragen.xml enthält keine Frage')
+                gesehen = set()
+                for q in fragen:
+                    idn = norm(q.findtext('idnumber') or '')
+                    if not idn:
+                        befund(wo, 'Frage „%s" ohne Sachnummer (<idnumber>) -- sie ist die einzige Kennung, die '
+                                   'eine Änderung überlebt' % (norm(q.findtext('name/text') or '') or '?'))
+                    elif idn in gesehen:
+                        befund(wo, 'Sachnummer %s steht zweimal in fragen.xml' % idn)
+                    gesehen.add(idn)
+        elif typ in ('folder', 'resource'):
+            b = os.path.join(d, 'bereiche', 'files')
+            n = sum(len(fs) for _, _, fs in os.walk(b)) if os.path.isdir(b) else 0
+            if typ == 'folder' and n == 0:
+                befund(wo, 'Verzeichnis ohne Dateien -- sie liegen in %s/bereiche/files/' % rel(d))
+            if typ == 'resource' and n != 1:
+                befund(wo, 'eine Datei braucht genau eine Datei in %s/bereiche/files/ (gefunden: %d)' % (rel(d), n))
+            for wurzel, _, fs in (os.walk(b) if os.path.isdir(b) else []):
+                for f in sorted(fs):
+                    with open(os.path.join(wurzel, f), 'rb') as datei:
+                        stellen = code_in_datei(f, datei.read())
+                    if stellen:
+                        befund(wo, '%s enthält Code (%s) -- die App lädt sie so nicht hoch (references/elemente.md)'
+                               % (rel(os.path.join(wurzel, f)), stellen[0]))
+        if texte:
+            html_pruefen(d, '\n'.join(texte), wo)
 
     # Die Beschreibung des Abschnitts: die Kurzfassung der Handlungssituation.
     titel = norm(str(ab['name']))
@@ -1529,6 +1770,13 @@ def lies_entwurf(ordner):
         if not isinstance(typ, str) or not re.fullmatch(r'[a-z]+', typ):
             befund(wo, '"typ" fehlt oder ist kein Moodle-Typ (page, assign, label, book, subsection …)')
             continue
+        if typ in WEITERE:
+            weitere[name] = wo
+            if ROLLE.match(name) or name in (NAME_SCHUCU, NAME_HAND, NAME_SITUATION):
+                befund(wo, 'ist kein Blatt und trägt keine Kennung -- der Name sagt, wozu die Aktivität da ist')
+        if typ == 'url' and not o:
+            weitere_aktivitaet(typ, None, e, wo)      # ein Link braucht keinen Ordner
+            continue
         if not isinstance(o, str) or not o or not os.path.isdir(os.path.join(ordner, o)):
             befund(wo, 'Ordner fehlt' if isinstance(o, str) and o else 'ohne "ordner"')
             continue
@@ -1557,6 +1805,8 @@ def lies_entwurf(ordner):
                 else:
                     html_pruefen(ko, kh, kwo)
             seiten.append(seite(o, typ, name, False, h, md, [k[0] for k in kapitel], wo))
+        elif typ in WEITERE:
+            weitere_aktivitaet(typ, d, e, wo)
         elif typ in INHALT:
             erstes = INHALT[typ][0] + '.html'
             if not os.path.isfile(os.path.join(d, erstes)):
@@ -1577,7 +1827,7 @@ def lies_entwurf(ordner):
         else:
             befund(f, 'hat im Entwurf keinen Platz -- neben %s gibt es nur die Ordner der Aktivitäten'
                    % MANIFEST)
-    return titel, seiten, ohne_inhalt, vorab, verboten
+    return titel, seiten, ohne_inhalt, vorab, verboten, weitere
 
 
 def lies_moodle(ao, abschnitt_id):
@@ -1588,10 +1838,15 @@ def lies_moodle(ao, abschnitt_id):
     if gefunden is None:
         return None
     kurs, titel, cms = gefunden
-    seiten, ohne_inhalt, fehlen = [], [], []
+    seiten, ohne_inhalt, fehlen, weitere = [], [], [], {}
     for cmid, modul, name, erreichbar in cms:
         wo = '„%s" (cm %d)' % (name, cmid)
         if modul == 'subsection':
+            continue
+        if modul in WEITERE:
+            # Ihr Inhalt steht nicht im Formular; geprüft wird, dass die
+            # Handreichung sie nennt und jede Nennung ein Link ist.
+            weitere[name] = wo
             continue
         if modul == 'book':
             b = lies_buch(os.path.join(ao, 'buch-%d' % cmid))
@@ -1609,22 +1864,22 @@ def lies_moodle(ao, abschnitt_id):
             seiten.append(seite(cmid, modul, name, erreichbar, h, zu_markdown(h), [o], wo))
         else:
             ohne_inhalt.append(wo)
-    return titel, kurs, seiten, ohne_inhalt, fehlen, {cmid: name for cmid, _, name, _ in cms}
+    return titel, kurs, seiten, ohne_inhalt, fehlen, {cmid: name for cmid, _, name, _ in cms}, weitere
 
 
 # ---- Die Prüfung -----------------------------------------------------------
-def pruefe(kopf, seiten, ohne_inhalt, vorab=(), verboten=(), ziele=None):
+def pruefe(kopf, seiten, ohne_inhalt, vorab=(), verboten=(), ziele=None, weitere=None):
     """Prüft die Seiten an der Prüfform und druckt das Ergebnis. `ziele`
     ({cmid: Name}) gibt es nur in Moodle; dann werden auch die Links
     geprüft. Rückgabe wie das Skript."""
     tmp = tempfile.mkdtemp(prefix='ls-pruefform-')
     try:
-        return _pruefe(kopf, seiten, ohne_inhalt, vorab, verboten, ziele, tmp)
+        return _pruefe(kopf, seiten, ohne_inhalt, vorab, verboten, ziele, weitere or {}, tmp)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
 
-def _pruefe(kopf, seiten, ohne_inhalt, vorab, verboten, ziele, tmp):
+def _pruefe(kopf, seiten, ohne_inhalt, vorab, verboten, ziele, weitere, tmp):
     belegt, ohne_rolle = {}, []
     for s in seiten:
         datei = rolle(s['name'], s['h'], s['md'], belegt)
@@ -1647,7 +1902,7 @@ def _pruefe(kopf, seiten, ohne_inhalt, vorab, verboten, ziele, tmp):
         for wo, text in vorab:
             print('  %-40s %s' % (wo, text))
         return 2
-    pr = Pruefung(tmp, bilddateien=ziele is not None)
+    pr = Pruefung(tmp, bilddateien=ziele is not None, weitere=weitere)
     if pr.pruefen(verboten) is None:
         return 2
     for wo, text in vorab:
@@ -1656,7 +1911,7 @@ def _pruefe(kopf, seiten, ohne_inhalt, vorab, verboten, ziele, tmp):
         pr.befund(HAND, 'SchuCu-Tabelle steht in der Handreichung -- sie gehört allein auf die Seite „%s"'
                   % NAME_SCHUCU)
     if ziele is not None:
-        links(pr, belegt, ziele)
+        links(pr, belegt, ziele, weitere)
     for s in ohne_rolle:
         if ziele is None:
             pr.befund(s['wo'], 'Name ohne Kennung -- ein Blatt heißt „Arbeitsblatt n: …", „Infoblatt n: …", '
@@ -1674,10 +1929,10 @@ def _pruefe(kopf, seiten, ohne_inhalt, vorab, verboten, ziele, tmp):
         return ('Lösung zu ' + k if loes else k) if k else d
 
     return pr.ausgabe('%d Aktivitäten, %d davon Teil der Lernsituation'
-                      % (len(seiten) + len(ohne_inhalt), len(belegt)), anzeige)
+                      % (len(seiten) + len(ohne_inhalt) + len(weitere), len(belegt) + len(weitere)), anzeige)
 
 
-def links(pr, belegt, ziele):
+def links(pr, belegt, ziele, weitere=()):
     """Die Links in Moodle: Ziel im Abschnitt, Text wie der Name des Ziels
     (Kennung oder ganzer Name), keine Lösung von einer Seite aus, die
     Lernende sehen -- und jede Nennung eines Blatts ist ein Link."""
@@ -1717,6 +1972,10 @@ def links(pr, belegt, ziele):
             k = schluessel(m.group(0))
             if k != eigen and k in kennungen:
                 pr.befund(datei, 'nennt "%s" ohne Link' % norm(m.group(0)))
+        # Ebenso der Name einer weiteren Aktivität in Anführungszeichen.
+        for m in ZITIERT.finditer(ohne_links):
+            if norm(m.group(1)) in weitere:
+                pr.befund(datei, 'nennt „%s" ohne Link' % norm(m.group(1)))
 
 
 def main(argv):
@@ -1727,12 +1986,12 @@ def main(argv):
             print('Abschnitt %d steht in keiner kurs-*.json im Arbeitsordner %s -- zuerst '
                   'kurs_uebersicht(kurs).' % (abschnitt_id, ao))
             return 2
-        titel, kurs, seiten, ohne_inhalt, fehlen, ziele = gelesen
+        titel, kurs, seiten, ohne_inhalt, fehlen, ziele, weitere = gelesen
         if fehlen:
             print('Erst lesen, dann prüfen -- es fehlt: %s' % '; '.join(fehlen))
             return 2
         return pruefe('Stand in Moodle: Abschnitt „%s" (id %d, Kurs %d)' % (titel, abschnitt_id, kurs),
-                      seiten, ohne_inhalt, ziele=ziele)
+                      seiten, ohne_inhalt, ziele=ziele, weitere=weitere)
     if len(argv) != 2 or argv[1].startswith('-'):
         print(__doc__)
         return 2
@@ -1740,8 +1999,9 @@ def main(argv):
     if isinstance(gelesen, str):
         print(gelesen)
         return 2
-    titel, seiten, ohne_inhalt, vorab, verboten = gelesen
-    return pruefe('Entwurf: Abschnitt „%s" (%s)' % (titel, argv[1]), seiten, ohne_inhalt, vorab, verboten)
+    titel, seiten, ohne_inhalt, vorab, verboten, weitere = gelesen
+    return pruefe('Entwurf: Abschnitt „%s" (%s)' % (titel, argv[1]), seiten, ohne_inhalt, vorab, verboten,
+                  weitere=weitere)
 
 
 if __name__ == '__main__':

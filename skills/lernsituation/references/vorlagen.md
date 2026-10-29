@@ -54,8 +54,27 @@ Regeln:
 - **`einstellungen`** nur, wenn der Plan welche nennt: Frist und Abgabetypen einer Aufgabe, beim Buch die Kapitelgliederung. Schlüssel wie bei `aktivitaet_anlegen`.
 - **Ein Unterabschnitt** ist ein Eintrag ohne Ordner, `{"typ": "subsection", "name": "<Phase>"}`; die Einträge danach kommen hinein, bis zum nächsten. Nur bei Bedarf (Brücke).
 - **Die Ordnernamen** sind kurz, klein, mit Bindestrichen und ohne Umlaute. Sie sind nur für dich und die Übertragung da: In Moodle gibt es sie nicht, und im Text steht keiner — ein Blatt wird immer mit seiner Kennung genannt. `ab-01-…`, `ib-01-…` sortiert sie nach dem ersten Einsatz. Wird später ein Blatt geteilt, bekommt der neue Teil die nächste freie Nummer; alle übrigen umzunummerieren, riefe nur Verwechslungen hervor.
-- **Jede Datei, die ein Blatt einbindet, liegt in `dateien/` seines Ordners** und steht im Text als `@@PLUGINFILE@@/<name>`. Dieselbe Zeichnung auf zwei Blättern liegt in beiden `dateien/`, unter demselben Namen.
+- **Jede Datei, die ein Blatt einbindet, liegt in `dateien/` seines Ordners** und steht im Text als `@@PLUGINFILE@@/<name>`. Dieselbe Zeichnung auf zwei Blättern liegt in beiden `dateien/`, unter demselben Namen. Ebenso ein interaktives Element (unten).
 - **Sonst liegt nichts im Entwurf** — keine Notizen, keine Kopien, kein Ordner, der nicht in `lernsituation.json` steht. Was dort fehlt, käme nicht in den Kurs.
+
+## Weitere Aktivitäten im Entwurf
+
+Neben den Blättern kann eine Lernsituation jede Aktivität enthalten, die die App anlegt; wofür sich welche anbietet, steht in `references/einsatz.md`. Jede steht wie ein Blatt in `lernsituation.json`, an der Stelle ihres ersten Einsatzes im Ablaufplan, mit `typ`, `name` und `ordner`, und im Ordner liegt, was sie braucht:
+
+| `typ` | im Ordner | so sieht es aus |
+|---|---|---|
+| `board` | `board.json`; `introeditor.html` für den Auftrag, optional | `{"spalten": ["Unsere Aufteilung", "Offene Fragen"], "notizen": [{"spalte": "Offene Fragen", "titel": "Beispiel", "inhalt": "Wer darf ins Gäste-WLAN?"}]}` — Notizen nur als Beispiel oder Anstoß, die übrigen schreiben die Lernenden |
+| `kanban` | `kanban.json`; `introeditor.html` optional | `{"spalten": ["Zu erledigen", "In Arbeit", "Erledigt"], "karten": [{"spalte": "Zu erledigen", "titel": "Abteilungen erfassen", "beschreibung": "Wer braucht welches Netz?"}]}` — die Karten sind Vorlagen, die die Lernenden ziehen |
+| `checklist` | `eintraege.json`; `introeditor.html` optional | `[{"text": "Planung", "zustand": "ueberschrift"}, {"text": "Jede Abteilung hat ein VLAN", "tiefe": 1}, {"text": "Gäste-WLAN getrennt", "tiefe": 1, "zustand": "optional"}]` |
+| `wiki` | `seiten.json` und je Seite eine HTML-Datei; `introeditor.html` optional | `[{"titel": "Begriffe", "datei": "begriffe.html"}, {"titel": "Tagging", "datei": "tagging.html"}]` — die erste ist die Startseite und heißt wie `einstellungen.firstpagetitle`; Verweise zwischen Seiten als `[[Titel]]` |
+| `quiz` | `fragen.xml` mit `dateien/`; `introeditor.html` optional | die Fragen nach dem Skill `moodle-fragen`, jede mit Sachnummer; im Eintrag `"fragen": {"sammlung": "<Name>", "kategorie": "<Name>"}` und die `einstellungen`, die aus dem Testzweck folgen |
+| `folder` | `bereiche/files/`, Unterordner erlaubt; `introeditor.html` optional | Vorlagen zum Weiterarbeiten, Datenblätter |
+| `resource` | `bereiche/files/` mit genau einer Datei; `introeditor.html` optional | eine Vorlage, eine Projektdatei |
+| `url` | `introeditor.html` optional; die Adresse als `einstellungen.externalurl` | `"einstellungen": {"externalurl": "https://…"}` |
+
+**Weitere Aktivitäten tragen keine Kennung.** Ihr Name sagt, wozu sie da sind („Unsere VLAN-Aufteilung", „Prüfliste zum VLAN-Konzept"), und Blätter, Ablaufplan und Handreichung nennen sie mit genau diesem Namen in Anführungszeichen — „Heftet eure Entscheidung an die Pinnwand „Unsere VLAN-Aufteilung"." —, damit man sie auf Papier wiederfindet und die App die Nennung in Moodle zum Link machen kann. Jede steht im Ablaufplan; eine Aktivität, die kein Schritt benutzt, benutzt im Unterricht niemand.
+
+**Die Fragen eines Tests** kommen in eine Fragensammlung der Lernsituation oder ihres Themas, nicht in die Sammlung, die Moodle für den ganzen Kurs angelegt hat (Skill `moodle-fragen`, „Sammlung oder Kategorie?"). Welche Sammlung und welche Kategorie, steht im Plan (SKILL.md, Schritt 2); gibt es sie noch nicht, legt die Übertragung sie an.
 
 Zu **jedem** Arbeitsblatt — auch Hilfe und Vertiefung — gibt es eine Lösung. Infoblätter und die Handlungssituation haben keine.
 
@@ -68,14 +87,14 @@ Jedes Blatt — Arbeitsblatt, Infoblatt, Hilfe, Vertiefung, Lösung — wird ein
 1. **Die Zählung beginnt auf jedem Blatt neu:** Abschnitte bei `<h3>1. …</h3>`, Abbildungen bei „Abb. 1", Aufgaben bei 1. Keine Zählung über Blätter hinweg und keine Präfixe wie „Abb. L3" — sonst beginnt ein Blatt bei Abb. 5, und wer es allein liest, sucht Abb. 1 bis 4.
 2. **Ein Bezug auf ein anderes Blatt nennt dessen Kennung und die Stelle,** in genau diesen Formen: „Infoblatt 1, Abschnitt 4" (auch „Abschnitte 1 bis 3", „Abschnitte 2 und 4"), „Abb. 1 auf Infoblatt 2", „Abb. 1 in der Lösung zu Arbeitsblatt 3", „Aufgabe 3 auf Arbeitsblatt 1" oder „Arbeitsblatt 1, Aufgabe 3". „Abb. 1" ohne Kennung meint immer das eigene Blatt. Im Entwurf ist der Verweis Text; in Moodle wird die Kennung ein Link auf ihr Blatt: online führt er mit einem Klick hin, gedruckt bleibt der Text — und der trägt allein, weil jedes Blatt mit seiner Kennung beginnt.
 3. **Braucht ein Abschnitt eine Zeichnung zum Verständnis, steht sie auf demselben Blatt** — dieselbe SVG-Datei darf auf mehreren Blättern eingebunden sein, je mit der Abbildungsnummer des Blatts. Sonst sagt der Text, wo sie ist und worauf dort zu achten ist. Nie stillschweigend voraussetzen, dass die Zeichnung eines anderen Blatts noch vor Augen ist.
-4. **Baut ein Blatt auf einem anderen auf, sagt die Einleitung das in einem Satz:** „Auf Infoblatt 1 hast du … kennengelernt. Dieses Blatt …". „Gehört zu" auf einem Infoblatt nennt jedes Blatt, das es unter „Dazu" oder in einer „Lies"-Zeile verwendet — wer das Infoblatt austeilt, sieht daran, wozu.
+4. **Baut ein Blatt auf einem anderen auf, sagt die Einleitung das in einem Satz:** „Auf Infoblatt 1 hast du … kennengelernt. Dieses Blatt …". Verwiesen wird nur in eine Richtung: vom Arbeitsblatt („Dazu", „Lies") auf das, was es braucht. Ein Infoblatt nennt die Blätter nicht, die es verwenden — das stünde doppelt und veraltete bei jeder Änderung an einem Arbeitsblatt.
 5. **Setzt eine Aufgabe Wissen voraus, das in dieser Lernsituation neu ist, sagt sie, woher es kommt.** Ein eigenes Infoblatt ist dafür kein Muss; es gibt drei gleichwertige Wege, und welcher es wird, entscheidet die Lehrkraft (SKILL.md, Schritt 2):
-   - **ein Infoblatt der Lernsituation:** Die „Lies"-Zeile nennt Blatt und Abschnitt („**Lies:** Infoblatt 1, Abschnitt 2"), und unter dem Abschnitt steht umgekehrt „→ für Arbeitsblatt 1, Aufgabe 3" — wer nur das Infoblatt in der Hand hat, sieht, wofür er einen Abschnitt liest;
+   - **ein Infoblatt der Lernsituation:** Die „Lies"-Zeile nennt Blatt und Abschnitt („**Lies:** Infoblatt 1, Abschnitt 2"). Jedes Infoblatt nennt mindestens ein Arbeitsblatt unter „Dazu" oder in einer „Lies"-Zeile — eines, das keines nennt, liest niemand;
    - **etwas, das es schon gibt:** Lehrbuch oder Tabellenbuch mit Titel und Kapitel oder Seite, die Hilfe eines Programms mit Stichwort, eine Seite im Netz mit ausgeschriebener Adresse — in der „Lies"-Zeile so genannt, dass man es findet. Titel und Seiten nennt die Lehrkraft; erfunden wird keine;
    - **Recherche als Teil der Aufgabe:** ausdrücklich verlangt, gern auch ausführlich, in einer Zeile „**Recherchiere:**" mit einem Hinweis, wo man anfängt, und was dabei herauskommen soll.
 
    Vorwissen aus früheren Lernsituationen gehört in die Handreichung („Vorwissen, Anschluss und Anrede"), nicht in eine „Lies"-Zeile. Was nirgends steht und nicht recherchiert werden soll, setzt keine Aufgabe voraus.
-6. **Nach jeder Teilung oder Umnummerierung werden alle Verweise nachgezogen:** „Lies"-Zeilen und „Dazu" der Arbeitsblätter, „→ für" und „Gehört zu" der Infoblätter, die Lösungen und die Handreichung (Ablaufplan, Schritte, Materialübersicht). Das Skript meldet jeden Verweis, der ins Leere zeigt, und jede „Lies"-Zeile ohne ihr „→ für" und umgekehrt.
+6. **Nach jeder Teilung oder Umnummerierung werden alle Verweise nachgezogen:** „Lies"-Zeilen und „Dazu" der Arbeitsblätter, Verweise in den Einleitungen, die Lösungen und die Handreichung (Ablaufplan, Schritte, Materialübersicht). Das Skript meldet jeden Verweis, der ins Leere zeigt, und jedes Infoblatt, das kein Arbeitsblatt nennt.
 
 **Ist ein Blatt zu lang,** prüfe erst, ob es zusammengehört. Geteilt wird nur an einer inhaltlichen Grenze, nicht nach Länge. Die Prüffrage: Lässt sich jeder Teil unter einem eigenen Titel erklären, und gehören zu jedem Teil ganze Aufgaben eines Arbeitsblatts? Gibt es keine solche Grenze, bleibt es ein Blatt und wird gekürzt, nicht zerschnitten — ein nach Länge geteiltes Blatt beginnt mitten im Gedanken und erklärt mit Zeichnungen, die auf dem ersten stehen. Das neue Blatt bekommt einen eigenen Titel, eine eigene Einleitung, eine eigene Zählung ab 1 und die nächste freie Nummer.
 
@@ -103,7 +122,7 @@ Nichts als die SchuCu-Tabelle: der Inhalt von `references/schucu-berufsschule.ht
 <h3>Vorwissen, Anschluss und Anrede</h3>
 <p><Was vorausgesetzt wird und woher es kommt; woran die Lernsituation anschließt — andere Lernfelder, Fächer, Praxis, die nächste Lernsituation. Anrede der Lernenden auf den Blättern: „du" / „Sie".></p>
 <h3>Lernumgebung</h3>
-<p><Raum, Geräte, Software mit Version, Netz ja/nein, Papier, die Lehr- und Tabellenbücher der Klasse, auf die die Blätter verweisen; was vorher vorzubereiten ist (Dateien, Aufbau) und was geht, wenn etwas davon fehlt.></p>
+<p><Welcher Schritt wo läuft — auf Papier, am Gerät, im Computerraum — und was dafür gebraucht wird: Raum, Geräte, Software mit Version, Netz ja/nein, die Lehr- und Tabellenbücher der Klasse, auf die die Blätter verweisen; was vorher vorzubereiten ist (Dateien, Aufbau) und was geht, wenn etwas davon fehlt.></p>
 <h3>Ablaufplan</h3>
 <table class="table table-bordered">
 <thead>
@@ -134,7 +153,6 @@ Nichts als die SchuCu-Tabelle: der Inhalt von `references/schucu-berufsschule.ht
 <tr><td>Arbeitsblatt 1: <Titel></td><td>Arbeitsblatt</td><td>3</td><td><Zweck></td></tr>
 <tr><td>Lösung zu Arbeitsblatt 1: <Titel></td><td>Lösung</td><td>— (Lehrkraft)</td><td><Zweck></td></tr>
 <tr><td>Infoblatt 1: <Titel></td><td>Infoblatt</td><td>2</td><td><Zweck></td></tr>
-<tr><td>Abb. 1 auf Infoblatt 1</td><td>Zeichnung</td><td>2</td><td><Zweck></td></tr>
 </tbody>
 </table>
 <h3>Leistungsfeststellung und -bewertung</h3>
@@ -159,16 +177,16 @@ Nichts als die SchuCu-Tabelle: der Inhalt von `references/schucu-berufsschule.ht
 <tr><td>Gibt es eine Reflexionsphase?</td><td>Nein</td><td>siehe oben</td></tr>
 <tr><td>Dienen die Inhalte der Handlung?</td><td>Ja</td><td>…</td></tr>
 <tr><td>Benennt die Handlungssituation den Rahmen?</td><td>Ja</td><td>Betrieb, Einrichtung oder Fall, …</td></tr>
-<tr><td>Sind schulische Entscheidungen berücksichtigt?</td><td>Ja</td><td>Lernumgebung, Bewertungsgrundsätze, Lernortkooperation: …</td></tr>
+<tr><td>Sind schulische Entscheidungen berücksichtigt?</td><td>Ja</td><td>Lernumgebung mit Papier, Geräten und Räumen, Bewertungsgrundsätze, Lernortkooperation: …</td></tr>
 </tbody>
 </table>
 ```
 
 Dazu, was die Vorlage nur andeutet:
 
-- **Ablaufplan:** Die Summenzeile ist Pflicht; das Skript vergleicht sie mit dem Zeitrichtwert und rechnet die Zeilen nach. Material sind die Kennungen der Blätter („Arbeitsblatt 1", „Hilfe zu Arbeitsblatt 1"), durch Komma getrennt, oder „—".
+- **Ablaufplan:** Die Summenzeile ist Pflicht; das Skript vergleicht sie mit dem Zeitrichtwert und rechnet die Zeilen nach. Material sind die Kennungen der Blätter („Arbeitsblatt 1", „Hilfe zu Arbeitsblatt 1") und die Namen weiterer Aktivitäten in Anführungszeichen („Unsere VLAN-Aufteilung"), durch Komma getrennt, oder „—".
 - **Die Schritte im Einzelnen:** je Zeile des Ablaufplans ein `<h4>Schritt n: …</h4>` mit seiner Liste. Keine Zeile ohne Schritt.
-- **Materialübersicht:** erste Spalte der Name des Blatts, genau wie sein Titel — in Moodle heißt die Aktivität so, und der Eintrag wird ein Link mit diesem Text. Zeichnungen sind keine Aktivitäten; sie stehen als „Abb. n auf <Kennung>" da.
+- **Materialübersicht:** erste Spalte der Name des Blatts oder der weiteren Aktivität, genau wie er in `lernsituation.json` steht — in Moodle heißt die Aktivität so, und der Eintrag wird ein Link mit diesem Text. Zeichnungen und interaktive Elemente stehen nicht darin: Sie gehören zu ihrem Blatt und kommen mit ihm.
 - **Quellen und fremde Inhalte:** Kommen fremde Inhalte vor, endet die Handreichung mit `<h3>Quellen und fremde Inhalte</h3>` und einer Tabelle „Wo verwendet · Was · Herkunft · Lizenz · Angabe" (unten). Die Lehrkraft sieht so auf einen Blick, was sie verteilt.
 
 **Als Buch** (wenn der Plan es sagt, Richtwert in SKILL.md, Schritt 2): derselbe Inhalt, in Kapitel geteilt. Jedes `<h3>` wird ein Kapitel, unter „Die Schritte im Einzelnen" jeder Schritt ein Unterkapitel; der Titel steht in `kapitel.json`, nicht im Inhalt, und weitere `<h4>` im Kapitel werden `<h3>`. Das Kapitel „Die Schritte im Einzelnen" trägt einen Satz, was in den Unterkapiteln steht — Moodle verlangt in jedem Kapitel Inhalt. In `lernsituation.json` `"typ": "book"` mit `"einstellungen": {"numbering": "Keine"}`, weil die Unterkapitel schon „Schritt n" heißen. Gedruckt wird das Buch als Ganzes mit „Buch drucken".
@@ -215,7 +233,7 @@ Die Anforderungen stammen aus der Leitlinie SchuCu-BBS („Grundlegende Anforder
 | **fachliche Kompetenz Wissen / Fertigkeit** | getrennt: was gewusst, was gekonnt wird, `<ul><li>` | Handreichung: Ziele der Schritte | Berufsschule |
 | **fachliche Kompetenz** | beides in einer Liste, `<ul><li>` | Handreichung: Ziele der Schritte | Berufl. Gymnasium |
 | **Vereinbarungen zur Umsetzung** | Verknüpfung mit anderen Lernfeldern, Fächern, Praxis und Lernortkooperation, dann `<br>` und der didaktisch-methodische Kommentar: Schwerpunkt, welche Phasen, warum | Handreichung: „Vorwissen, Anschluss und Anrede", „Phasen der vollständigen Handlung" | Berufsschule |
-| **Lernumgebung** | Raum, Geräte, Software mit Version, Netz ja/nein, Papier | Handreichung: „Lernumgebung" | Berufsschule |
+| **Lernumgebung** | welcher Schritt auf Papier, welcher am Gerät; Raum, Geräte, Software mit Version, Netz ja/nein | Handreichung: „Lernumgebung" | Berufsschule |
 | **Leistungsfeststellung und -bewertung** | Gewichtung personale/fachliche Kompetenzen, Kriterien, Format, Zeitpunkt — nach den Grundsätzen der Leistungsbewertung der Schule, die der Skill nicht kennt: nicht erfinden, sondern fragen oder „vom Nutzer zu ergänzen" | Handreichung: „Leistungsfeststellung und -bewertung" | Berufsschule |
 | **Abgedeckte Kompetenzbereiche** | **nur die abgedeckten** Buchstaben, durch Leerzeichen getrennt: `A C` | — nur hier | Berufl. Gymnasium |
 
@@ -297,13 +315,11 @@ Eine Hilfe gibt Geländer — einen Zwischenschritt, ein Beispiel, eine vorstruk
 ## `ib-nn-<kurztitel>/page.html` — Infoblatt
 
 ```html
-<p><strong>Lernsituation:</strong> <Titel> · <strong>Gehört zu:</strong> Arbeitsblatt 1, Hilfe zu Arbeitsblatt 1 · <strong>Lesezeit:</strong> <n> min</p>
+<p><strong>Lernsituation:</strong> <Titel> · <strong>Lesezeit:</strong> <n> min</p>
 <p><Einleitung in ein bis zwei Sätzen: wozu das Blatt da ist. Baut es auf einem anderen Blatt auf, sagt sie das: „Auf Infoblatt 1 hast du … kennengelernt. Dieses Blatt …"></p>
 <h3>1. <Zwischenüberschrift></h3>
-<p>→ für Arbeitsblatt 1, Aufgabe 1</p>
 <p><Der Stoff, den die Lernenden für den nächsten Schritt brauchen. Kompakt, Zeichnung wo sie hilft. Keine Aufgaben.></p>
 <h3>2. <Zwischenüberschrift></h3>
-<p>→ für Arbeitsblatt 1, Aufgaben 2 und 3, und Hilfe zu Arbeitsblatt 1, Aufgabe 1</p>
 <p>…</p>
 <h3>Zum Nachschlagen</h3>
 <ul>
@@ -313,13 +329,17 @@ Eine Hilfe gibt Geländer — einen Zwischenschritt, ein Beispiel, eine vorstruk
 
 Ein Infoblatt erklärt, es fragt nicht. Verständnisfragen dazu stehen auf einem Arbeitsblatt.
 
-Die Abschnitte sind nummeriert, damit eine „Lies"-Zeile genau einen nennen kann; „Zum Nachschlagen" bleibt ohne Nummer. „→ für" steht als eigener Absatz direkt unter dem Abschnittskopf und nennt jede Aufgabe, deren „Lies"-Zeile den Abschnitt nennt — nicht mehr und nicht weniger. Wird ein Infoblatt nur als Ganzes gelesen („**Lies:** Infoblatt 1."), entfällt „→ für".
+Die Abschnitte sind nummeriert, damit eine „Lies"-Zeile genau einen nennen kann; „Zum Nachschlagen" bleibt ohne Nummer.
 
 ## `dateien/Z-nn-<kurztitel>.svg` — Zeichnung
 
 Eine Datei in `dateien/` jedes Blatts, das sie einbindet. Hausstil, Muster und Maße: `references/zeichnungen.md`. Jede Zeichnung hat eine Bildunterschrift im Blatt („Abb. 1: Netz der Muster GmbH vor der Umstellung") und wird im Text erwähnt.
 
 „Abb. n" zählt je Blatt, nicht je Lernsituation: Dieselbe Datei `Z-03-….svg` kann auf Infoblatt 2 „Abb. 1" sein und auf Arbeitsblatt 4 wieder „Abb. 1". Die Nummer im Dateinamen zählt die Zeichnungen der Lernsituation und erscheint nie im Text eines Blatts.
+
+## `dateien/<kurztitel>.html` — interaktives Element
+
+Eine eigene HTML-Datei in `dateien/` des Blatts, das sie trägt, eingebunden mit `<iframe sandbox="allow-scripts" src="@@PLUGINFILE@@/<kurztitel>.html" title="…" class="w-100 border-0" height="…">` und einem Satz davor, was man damit tut. Wie sie gebaut wird und was darin nicht geht: `references/elemente.md`; den Anfang ihres Kopfs setzt die App bei der Übertragung, im Entwurf fehlt er. Ein Element ergänzt das Blatt, es ersetzt keine Aufgabe: Was die Lernenden damit herausfinden sollen, steht als Auftrag im Blatt, und gedruckt trägt der Text allein. Im Ablaufplan steht es nicht als eigenes Material — es gehört zum Blatt —, wohl aber, wenn der Schritt dafür ein Gerät braucht.
 
 ## Quellen und fremde Inhalte — am Ende der Handreichung
 

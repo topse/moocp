@@ -263,6 +263,7 @@ Future<String> testAendern(MoodleZugang moodle, Freigaben freigaben,
   }
   final ja = await freigaben.anfragen(FreigabeAnfrage(
     titel: 'Test ändern?',
+    ab: await fuellenAb(moodle, kurs, [cmid]),
     punkte: [
       'Test „${c.name}" (cmid $cmid, ${await kursBezeichnung(moodle, kurs!)}): ${t.plaetze.length} Plätze, '
           'Summe ${_z(t.summe)}, Beste Bewertung ${_z(t.beste)}',

@@ -1,4 +1,4 @@
-// Entwicklerfassung: startet die App mit flutter run und lädt Änderungen am
+// Entwicklerversion: startet die App mit flutter run und lädt Änderungen am
 // Code im laufenden Betrieb nach (Hot Reload). Die Anmeldung bei Moodle
 // bleibt dabei bestehen -- die Lehrkraft meldet sich einmal an, nicht nach
 // jeder Änderung.

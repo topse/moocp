@@ -85,6 +85,7 @@ Schreiblinien, leere Kästen und leere Tabellenzeilen im Original sind Platz fü
   Lehrkraft.
 - **Personenbezogenes** — ein Blatt mit Namen der Klasse, Noten, eine
   ausgefüllte Liste: nicht übernehmen, dem Nutzer sagen, warum.
+- **Ein fachlicher Fehler** — eine falsche Rechnung, ein falsches Ergebnis: im Plan nennen, mit deiner Korrektur als Vorschlag. Nicht still verbessern und nicht wissentlich übernehmen — es ist das Material der Lehrkraft, und was falsch auf dem Blatt steht, lernen die Lernenden falsch.
 
 ## Der Plan vor dem Anlegen
 

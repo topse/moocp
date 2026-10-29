@@ -25,6 +25,7 @@ import 'dart:convert';
 
 import 'package:html/parser.dart' as html_parser;
 
+import '../freigabe.dart';
 import 'moodle_zugang.dart';
 
 // Die Fragensammlungen eines Kurses. Sie stehen NICHT in der Kursstruktur
@@ -280,6 +281,28 @@ Future<KursStruktur> kursLesen(MoodleZugang moodle, int kurs) async {
   }
   return kursAuswerten(kurs, zustand);
 }
+
+/// Ab welcher Stufe das Füllen oder Ändern von [cmids] gefragt wird: „alle",
+/// wenn die App jede davon seit der Anmeldung selbst verborgen angelegt hat
+/// ([MoodleZugang.selbstAngelegt]) und sie noch verborgen ist. Dann gehört
+/// sie der Arbeitssitzung, Lernende haben sie nie gesehen, und sie zu füllen
+/// ist Teil des Anlegens -- „mittel" fragt nur, was Bestehendes anfasst oder
+/// sofort sichtbar wird (E20). Sonst „mittel". Löschen, Sichtbarkeit und
+/// Verschieben fragen nicht hierüber, sondern immer.
+Future<Bestaetigungen> fuellenAb(MoodleZugang moodle, int? kurs, Iterable<int?> cmids) async {
+  // Die Kursstruktur nur lesen, wenn es darauf ankommt: Meist ist es eine
+  // Aktivität, die die App nicht selbst angelegt hat.
+  if (kurs == null || cmids.isEmpty || !cmids.every((c) => c != null && moodle.selbstAngelegt.contains(c))) {
+    return Bestaetigungen.mittel;
+  }
+  return fuellenAbIn(await kursLesen(moodle, kurs), moodle.selbstAngelegt, cmids);
+}
+
+/// [fuellenAb] an einer gelesenen Kursstruktur.
+Bestaetigungen fuellenAbIn(KursStruktur s, Set<int> selbstAngelegt, Iterable<int?> cmids) =>
+    cmids.isNotEmpty && cmids.every((c) => c != null && selbstAngelegt.contains(c) && s.nachCmid[c]?.sichtbar == false)
+        ? Bestaetigungen.alle
+        : Bestaetigungen.mittel;
 
 /// Ein Kurs der eigenen Kursliste.
 class MeinKurs {
