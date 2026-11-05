@@ -48,7 +48,7 @@ class Kategorie {
 Future<List<Kategorie>> kategorienLesen(MoodleZugang moodle, int sammlung) async {
   final r = await moodle.lesen('/question/bank/importquestions/import.php?cmid=$sammlung');
   final sel = html_parser.parse(r.text).querySelector('select[name="category"]');
-  if (sel == null) throw MoodleFehler('Keine Kategorieliste -- ist cmid $sammlung eine Fragensammlung?');
+  if (sel == null) throw MoodleFehler('Keine Kategorieliste für cmid $sammlung. sammlung muss eine Fragensammlung auf der aktuell angesprochenen Instanz sein. Mit fragensammlungen auf dieser Instanz ermitteln; außerdem die Importberechtigung prüfen.');
   return [
     for (final o in sel.querySelectorAll('option'))
       () {
@@ -158,18 +158,26 @@ Future<String> fragenLesen(MoodleZugang moodle, String arbeitsordner,
 /// Kategorien: Das Bearbeitungsformular nennt die Kategorie nicht immer
 /// (gemessen: gapselect ohne Feld category).
 Future<Set<int>> fragenNamens(MoodleZugang moodle, {required int sammlung, required String name}) async => {
-      for (final k in await kategorienLesen(moodle, sammlung))
-        if (k.anzahl > 0)
-          for (final f in fragenAusXml(await exportieren(moodle, sammlung, k)))
-            if (f.name == name && f.id != null) f.id!
-    };
+  for (final k in await kategorienLesen(moodle, sammlung))
+    if (k.anzahl > 0)
+      for (final f in fragenAusXml(await exportieren(moodle, sammlung, k)))
+        if (f.name == name && f.id != null) f.id!,
+};
 
 // ---------------------------------------------------------------------------
 // frage_lesen
 // ---------------------------------------------------------------------------
 
-Future<String> frageLesen(MoodleZugang moodle, String arbeitsordner, {required int sammlung, required int frage}) async {
-  final g = await formularLesen(moodle, Formularziel.frage(sammlung, frage), arbeitsordner);
+/// Die Sperre des Ordners umfasst das Lesen, das frage.xml-Schreiben und
+/// damit auch die Zeit bis zum Ende des Lesens; sonst lösche ein Parallelaufruf den Ordner.
+Future<String> frageLesen(MoodleZugang moodle, String arbeitsordner, {required int sammlung, required int frage}) {
+  final ziel = Formularziel.frage(sammlung, frage);
+  return ordnerSperre(ordnerSchluessel(ziel, arbeitsordner), () => _frageLesenOhneSperre(moodle, arbeitsordner, ziel, sammlung, frage));
+}
+
+Future<String> _frageLesenOhneSperre(
+    MoodleZugang moodle, String arbeitsordner, Formularziel ziel, int sammlung, int frage) async {
+  final g = await formularLesenOhneSperre(moodle, ziel, arbeitsordner);
   // Dazu die Frage als XML: vollständig, auch für Typen mit vielen Feldern.
   var xmlHinweis = '';
   try {

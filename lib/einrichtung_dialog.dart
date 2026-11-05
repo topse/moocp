@@ -33,6 +33,10 @@ class EinrichtungDialog extends StatefulWidget {
     required this.pruefen,
     required this.einstellungen,
     required this.protokoll,
+    required this.port,
+    required this.schluessel,
+    this.servername = mcpName,
+    this.profilname,
     super.key,
   });
 
@@ -45,6 +49,19 @@ class EinrichtungDialog extends StatefulWidget {
 
   final Einstellungen einstellungen;
   final Protokoll protokoll;
+
+  /// Port, Zugangsschlüssel und Servername des Profils, für das die Einrichtung
+  /// gilt (E31, E6). Der Schlüssel ist je Profil verschieden
+  /// (Einstellungen.schluesselFuer); ein Eintrag mit dem eines anderen gilt als
+  /// veraltet und wird hier erneuert.
+  final int port;
+  final String schluessel;
+  final String servername;
+
+  /// Der Anzeigename des Profils, nur mit mehreren Profilen; sonst null, und
+  /// der Titel nennt weder Profil noch Servername -- wer eine Instanz hat,
+  /// muss davon nichts wissen.
+  final String? profilname;
 
   @override
   State<EinrichtungDialog> createState() => _EinrichtungDialogState();
@@ -122,7 +139,6 @@ class _EinrichtungDialogState extends State<EinrichtungDialog> {
   Future<void> _installieren() async {
     final s = _s!;
     setState(() => _laeuft = true);
-    final e = widget.einstellungen;
     final fehler = <String, String>{};
     final geblieben = <String, List<String>>{};
 
@@ -134,7 +150,9 @@ class _EinrichtungDialogState extends State<EinrichtungDialog> {
       // nur, wenn das Werkzeug es zulässt (Claude Code ohne claude.exe nicht).
       if (soll ? w.bedienbar && !ws.verbunden : ws.austragbar && ws.verbindung != Verbindung.fehlt) {
         try {
-          final f = soll ? await w.eintragen(e.port, e.schluessel) : await w.austragen();
+          final f = soll
+              ? await w.eintragen(widget.port, widget.schluessel, name: widget.servername)
+              : await w.austragen(name: widget.servername);
           if (f != null) fehler['${w.id}/verbindung'] = f;
         } catch (x, st) {
           fehler['${w.id}/verbindung'] = 'Fehler (${x.runtimeType})';
@@ -352,7 +370,9 @@ class _EinrichtungDialogState extends State<EinrichtungDialog> {
       ];
     }
     return AlertDialog(
-      title: const Text('KI-Werkzeuge einrichten'),
+      title: Text(widget.profilname == null
+          ? 'KI-Werkzeuge einrichten'
+          : '${widget.profilname} (${widget.servername}) — KI-Werkzeuge einrichten'),
       content: SizedBox(
         width: 560,
         child: SingleChildScrollView(

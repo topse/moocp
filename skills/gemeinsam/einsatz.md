@@ -42,7 +42,7 @@ Ein Wechsel kostet etwas, und das gehört in den Plan: Raum buchen, Geräte hole
 | Präsentieren | Board als Galeriegang, jede Gruppe heftet ihr Ergebnis an | Plakate, Galeriegang |
 | Reflektieren, Rückmeldung | Board als Exit-Ticket | Ein-Satz-Rückmeldung, Zielscheibe |
 | Üben, Festigen | Test mit mehreren Versuchen und sofortiger Rückmeldung; ein interaktives Element, das Aufgaben würfelt und sofort antwortet | Übungsblatt mit Lösung zum Vergleich |
-| Selbst steuern | Fortschrittsliste als Laufzettel bei Stationenarbeit; Unterabschnitte je Phase | Laufzettel |
+| Selbst steuern | Fortschrittsliste als Laufzettel bei Stationenarbeit; Lernlandkarte als sichtbarer Lernweg; Unterabschnitte je Phase | Laufzettel |
 | Leistung feststellen | Aufgabe mit Bewertungsraster; Test (Skill `moodle-fragen`) | Klassenarbeit, Produktbewertung |
 
 Die Tabelle zeigt die naheliegenden Wege. Bessere findest du oft, wenn du von der Handlungssituation ausgehst: Was täte eine Fachkraft im Betrieb an dieser Stelle, und womit? Ein Team plant mit einem Kanban-Board, dokumentiert in einem Wiki und sammelt Ideen an einer Pinnwand. Dann ist die Aktivität nicht nur Abwechslung, sondern Teil der Handlung.
@@ -100,6 +100,10 @@ Wofür welcher Test und welcher Fragetyp taugt, steht im Skill `moodle-fragen` (
 ### Kanban-Board (`kanban`)
 
 **Bewährt für** Arbeit in Paketen: eine Projektphase, in der Gruppen Aufgaben verteilen, ziehen und abschließen. Die Lehrkraft legt Vorlagenkarten an, die Lernenden ziehen sie. Im Betrieb ist das eine verbreitete Arbeitsweise; wer sie in der Schule übt, übt sie für den Beruf. **Denkbar auch** als Fahrplan einer Lernsituation, an dem die Klasse sieht, was erledigt ist. **Grenzen:** Die App arbeitet nur am gemeinsamen Kursboard, ohne Ersteller und Zuweisung; Termine, Farben und Zuweisungen bleiben der Oberfläche. Ob Lernende sehen, wer eine Karte angelegt hat, steuert `showauthors`. **Papier und Gerät:** Auf Papier sind es Spalten an der Tafel mit Haftnotizen; das Board lohnt, wenn über mehrere Stunden geplant wird.
+
+### Lernlandkarte (`learningmap`)
+
+**Bewährt für** einen Lernweg, den die Lernenden sehen: Die Karte zeigt Stationen, jede ein Ort, der auf eine Aktivität des Kurses verweist, und die Wege dazwischen zeigen, wie es weitergeht. Das passt zu Stationenarbeit, zu einer Lernsituation mit Pflicht- und Wahlstationen und zu einer Phase, in der weitergeht, wer eine Station abgeschlossen hat. **Denkbar auch** zum Differenzieren, wenn sich der Weg teilt (ein Weg mit Hilfe, einer mit Vertiefung) und wieder zusammenkommt, als Kursstart, der einen Abschnitt oder ein Halbjahr als Reise zeigt, oder als Wiederholungsroute vor einer Klausur, auf der jede Station ein Thema ist. **Grenzen:** Das Plugin `mod_learningmap` muss auf der Instanz installiert sein; die App erkennt es am Formular, und ohne das Plugin kann sie keine Karte anlegen. Die App legt die Karte verborgen an und setzt die Ziele ihrer Orte erst nach einer Entscheidung der Lehrkraft; Grafik, Orte und Wege einer vorhandenen Karte ändert sie nicht, und wer welche Station abgeschlossen hat, sind Personendaten, die sie nie liest. Auf der Testinstanz erschien ein Ort nur mit sichtbarem Ziel. Das Freischalten der Stationen über den Abschluss braucht Abschlussverfolgung an den Aktivitäten der Orte; wie genau das Plugin sie auswertet, prüft die Lehrkraft vor dem Einsatz. **Papier und Gerät:** Die Karte lebt am Gerät. Auf Papier bleibt von ihr nur ein Übersichtsbild des Wegs; das Freischalten gibt es dort nicht, und wer Stationen auf Papier laufen lässt, nimmt dafür einen Laufzettel. **Im Plan** stehen die Stationen mit der Aktivität, auf die jeder Ort verweist, die Wege (wo müssen alle vorbei, wo darf gewählt werden), ob ein Ort Pflicht- oder Wahlstation ist, das Hintergrundbild und welche Aktivitäten Abschlussverfolgung bekommen.
 
 ## Interaktive Elemente
 

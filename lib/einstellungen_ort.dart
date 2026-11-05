@@ -7,7 +7,42 @@ import 'package:path/path.dart' as p;
 
 const standardPort = 47811;
 
-/// `%APPDATA%\moocp`: Einstellungen und Protokoll.
-String get einstellungenOrdner => p.join(Platform.environment['APPDATA'] ?? Directory.systemTemp.path, 'moocp');
+/// `%APPDATA%\moocp` unter Windows, `~/Library/Application Support/moocp` auf
+/// dem Mac: Einstellungen und Protokoll.
+String get einstellungenOrdner => einstellungenOrdnerFuer(
+  Platform.environment,
+  macos: Platform.isMacOS,
+);
+
+/// Der Ordner für eine gegebene Umgebung; getrennt, damit sich der Pfad auch
+/// ohne den Rechner prüfen lässt, auf dem er gebraucht wird.
+String einstellungenOrdnerFuer(
+  Map<String, String> umgebung, {
+  required bool macos,
+}) {
+  // Ohne Benutzerordner gäbe es nur den Temp-Ordner, und Einstellungen wie
+  // Sicherungen lägen dann dort, wo der Rechner sie jederzeit löscht. Also
+  // lieber ein klarer Fehler (E29).
+  if (macos) {
+    final heim = umgebung['HOME'];
+    if (heim == null || heim.isEmpty) {
+      throw StateError('Der Benutzerordner (HOME) ist nicht gesetzt; die Einstellungen können nicht gespeichert werden.');
+    }
+    return p.join(heim, 'Library', 'Application Support', 'moocp');
+  }
+  final appdata = umgebung['APPDATA'];
+  if (appdata == null || appdata.isEmpty) {
+    throw StateError('Der Ordner %APPDATA% ist nicht gesetzt; die Einstellungen können nicht gespeichert werden.');
+  }
+  return p.join(appdata, 'moocp');
+}
 
 File get einstellungenDatei => File(p.join(einstellungenOrdner, 'einstellungen.json'));
+
+/// Der Ordner für Sicherungen einer Aktivität (E29): außerhalb des Arbeitsordners,
+/// der beim Start und Beenden geleert wird. Unter Windows `%APPDATA%\moocp\sicherungen`,
+/// auf dem Mac `~/Library/Application Support/moocp/sicherungen`.
+String get sicherungenOrdner => sicherungenOrdnerFuer(Platform.environment, macos: Platform.isMacOS);
+
+String sicherungenOrdnerFuer(Map<String, String> umgebung, {required bool macos}) =>
+    p.join(einstellungenOrdnerFuer(umgebung, macos: macos), 'sicherungen');

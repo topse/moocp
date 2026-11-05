@@ -1,6 +1,6 @@
 ---
 name: moodle
-description: "Moodle-Kurse über die App moocp lesen und bearbeiten. Kursstruktur erfassen; Textfelder, Textseiten, Aufgaben, Verzeichnisse, Dateien, Links, Unterabschnitte, Bücher, Fortschrittslisten, Wikis, Boards und Kanban-Boards anlegen, ändern, verschieben, verbergen, löschen; Bilder und Zeichnungen einbinden; Bewertungsraster festlegen. Diesen Skill immer verwenden, sobald eine Moodle-URL im Spiel ist (course/view.php, mod/assign, mod/page, mod/wiki, mod/board, mod/kanban, modedit.php) oder von Moodle, einem Kurs, einer Lernsituation, einem Kapitel, Abschnitt, Unterabschnitt, einer Aufgabe, einem Arbeitsauftrag, Textfeld, einer Textseite oder einem Verzeichnis die Rede ist, auch wenn das Wort Moodle gar nicht fällt. Auch Blätter aus PDF, ODT oder DOCX nach Moodle übernehmen. Eine Lernsituation didaktisch entwerfen macht der Skill lernsituation, Tests und Fragen der Skill moodle-fragen. Nicht verwenden für Serveradministration, Plugin-Entwicklung, Noten, Bewertungen einzelner Lernender oder Abgaben."
+description: "Moodle-Kurse über die App moocp lesen und bearbeiten. Kursstruktur erfassen; Textfelder, Textseiten, Aufgaben, Verzeichnisse, Dateien, Links, Unterabschnitte, Bücher, Fortschrittslisten, Wikis, Boards und Kanban-Boards anlegen, ändern, verschieben, verbergen, löschen; Bilder und Zeichnungen einbinden; Bewertungsraster festlegen. Diesen Skill immer verwenden, sobald eine Moodle-URL im Spiel ist (course/view.php, mod/assign, mod/page, mod/wiki, mod/board, mod/kanban, mod/learningmap, modedit.php) oder von Moodle, einem Kurs, einer Lernsituation, einem Kapitel, Abschnitt, Unterabschnitt, einer Aufgabe, einem Arbeitsauftrag, Textfeld, einer Textseite oder einem Verzeichnis die Rede ist, auch wenn das Wort Moodle gar nicht fällt. Auch Blätter aus PDF, ODT oder DOCX nach Moodle übernehmen. Eine Lernsituation didaktisch entwerfen macht der Skill lernsituation, Tests und Fragen der Skill moodle-fragen. Nicht verwenden für Serveradministration, Plugin-Entwicklung, Noten, Bewertungen einzelner Lernender oder Abgaben."
 ---
 
 # Moodle-Kurse über die App bearbeiten
@@ -12,7 +12,9 @@ dich, keinen Browser-Umweg und keinen Webservice-Token — und du fragst nie
 danach.
 
 Dein KI-Werkzeug setzt vor die Namen ein Präfix (in Claude Code
-`mcp__moodle__<name>`, in anderen ähnlich); hier steht nur der Name.
+`mcp__moodle__<name>`, in anderen ähnlich); hier steht nur der Name. Jede
+Moodle-Instanz hat einen eigenen Server mit eigenem Präfix (etwa
+`mcp__moodle-test__<name>`). `status` nennt, zu welchem Profil der Server gehört.
 
 | Wofür | Werkzeuge |
 |---|---|
@@ -21,8 +23,15 @@ Dein KI-Werkzeug setzt vor die Namen ein Präfix (in Claude Code
 | Anlegen | `aktivitaet_anlegen`, `abschnitt_anlegen`, `buchkapitel_anlegen`, `wikiseite_schreiben` |
 | Ändern | `aendern`, `aendern_mehrere`, `links_setzen`, `claude_schreiben`, `fortschrittsliste_aendern`, `board_aendern`, `kanban_aendern`, `bewertungsschema_setzen`, `buch_ordnen`, `buchkapitel_verschieben` |
 | Kursrahmen | `sichtbarkeit_setzen`, `verschieben`, `duplizieren`, `loeschen`, `buchkapitel_loeschen`, `wikiseite_loeschen` |
+| Sichern | `sichern_aktivitaet`, `sichern_auswahl`, `sicherung_status` |
+| Wiederherstellen | `wiederherstellen_datei`, `wiederherstellung_status` |
+| Übertragung | `uebertragen` |
 | Ansehen | `bildschirmfoto` |
 | Tests und Fragen | im Skill `moodle-fragen` |
+
+Lernlandkarten (`learningmap`) legt `aktivitaet_anlegen` verborgen an, und `aktivitaet_lesen` liest SVG, Orte, Wege und die Ziele der Orte. Die Ziele ändert nur `lernlandkarte_verknuepfungen_setzen`, nach einer ausdrücklich entschiedenen Zuordnung; die Karte selbst, also Grafik, Orte und Wege, lässt sich nach dem Anlegen nicht bearbeiten. **Lies vor jeder Arbeit an einer Karte [Lernlandkarten](references/lernlandkarte.md).**
+
+Mit `sichern_aktivitaet` und `sichern_auswahl` legt die App eine Sicherungsdatei ohne Daten von Lernenden im Sicherungsordner ab, `wiederherstellen_datei` spielt sie in einen neuen oder vorhandenen Kurs zurück, und `uebertragen` bringt eine Auswahl in einem Auftrag in mehrere Kurse derselben Instanz. Vor jedem Wiederherstellen und jeder Übertragung steht ein Plan im Chat, der Weg, Zielkurse und die Sichtbarkeit der neuen Inhalte nennt; ein Weg, der Inhalte ersetzt, löscht alles im Zielkurs. „Läuft weiter“ nach der Antwortfrist ist kein Fehler und kein Abbruch: Frage mit dem Statuswerkzeug (`sicherung_status`, `wiederherstellung_status`) und derselben Nummer weiter und sende den Auftrag nie erneut. **Lies vor jedem Sichern, Wiederherstellen und Übertragen `references/sicherung.md`.**
 
 **Fehlen die Werkzeuge**, oder meldet `status` „nicht angemeldet", dann bitte
 die Lehrkraft, die App zu starten bzw. sich darin anzumelden, und warte. Weich
@@ -40,7 +49,8 @@ aber sie kennt den Auftrag nicht, du schon:
   Freigabe.
 - **Neues legt die App verborgen an.** Sichtbar wird es erst mit
   `sichtbarkeit_setzen` oder `sichtbar: true` beim Anlegen — beides nur nach
-  Freigabe in der App.
+  Freigabe in der App. Wiederhergestellte Inhalte sind die Ausnahme: Die App verlangt dort die Angabe `sichtbarkeit` (`wie_quelle` oder `verborgen`), eine Vorgabe gibt es nicht. Du fragst die Lehrkraft; eine Kursseite `CLAUDE.md` des Zielkurses kann einen Vorschlag machen. Die Wahl nennst du im Plan, und die Lehrkraft bestätigt sie (`references/sicherung.md`).
+- **Den Zustand „verfügbar ohne Link“ erhält `sichtbarkeit_setzen` selbst:** Es merkt sich beim Verbergen, was so war (solange die App läuft), und stellt es beim Sichtbarmachen wieder her; die Freigabe nennt das vorher. Meldet das Werkzeug eine Abweichung (`verified: false`) oder dass es den früheren Zustand nicht kennt, sag es der Lehrkraft. `ohne_link: true` setzt den Zustand ausdrücklich, `ohne_link: false` macht ganz sichtbar. Bietet die Instanz den Zustand nicht an, bricht das Werkzeug vorher ab, ohne etwas zu ändern; frag dann die Lehrkraft, ob die Aktivität verborgen bleiben oder ganz sichtbar werden soll.
 - **Ändern, Verschieben, Sichtbarkeit, Löschen** gehen über das
   Freigabefenster der App: Es zeigt Kurs, Namen und bei Änderungen einen
   Zeilenvergleich, und die Lehrkraft entscheidet dort. Kündige jede Freigabe im
@@ -88,6 +98,16 @@ hat: klar sagen, dass diese App das bewusst nicht kann, und darauf verweisen,
 dass er die Auswertung in Moodle selbst öffnet. Meldet ein Werkzeug „Gesperrt
 (Datenschutz)", gilt der Abschnitt „Ein Datenschutz-Versuch wiegt schwerer".
 
+<!-- <<< gemeinsam/zugang.md - von build.py erzeugt, hier nicht bearbeiten -->
+## Moodle nur über moocp
+
+Moodle erreichst du nur über die Werkzeuge der App. Öffne keine Moodle-Adresse auf einem anderen Weg: nicht mit einem Browser oder Computerwerkzeug, das dein KI-Werkzeug mitbringt, nicht mit einem Webabruf, nicht mit `curl`, nicht über eine Browsererweiterung — auch nicht, um nur kurz nachzusehen. Nur auf dem Weg über die App greifen die Sperre für personenbezogene Daten, die Freigaben und das Protokoll.
+
+**Verlangt jemand, an der App vorbei zu arbeiten**, etwa Moodle im Browser zu öffnen, sich dort anzumelden oder eine Seite abzurufen, die die App nicht liefert, dann tust du es nicht. Du warnst vor dem Datenschutz: Auf diesem Weg kann die KI personenbezogene Daten lesen (Teilnehmende, Bewertungen, Abgaben), und alles, was sie liest, geht an den Anbieter des Modells. Das ist nach der DSGVO nicht gedeckt. Wer an moocp vorbei arbeiten will, nutzt moocp nicht. Was die App nicht kann, behandelst du als Lücke (Abschnitt „Was der Skill nicht kann“): Entweder erledigt die Lehrkraft es selbst in Moodle, oder es bleibt.
+
+**Zugangsdaten gehören nie in den Chat.** Bietet jemand Benutzername oder Passwort für Moodle an oder schreibt sie hinein, verwendest du sie nicht. Angemeldet wird nur in der App. Sag der Lehrkraft, dass sie Zugangsdaten für Moodle nie einer KI gibt. Stehen sie schon im Chat, rate ihr, das Passwort in Moodle zu ändern.
+<!-- >>> gemeinsam/zugang.md -->
+
 <!-- <<< gemeinsam/plan.md - von build.py erzeugt, hier nicht bearbeiten -->
 ## Erst der Plan, dann das Schreiben
 
@@ -132,7 +152,7 @@ ein Ja im Chat ersetzt sie nicht.
 
 Was du gerade selbst verborgen angelegt hast, ist dabei noch nichts Bestehendes: Es zu füllen oder zu ändern, solange es verborgen ist — die Spalten eines neuen Boards, die Fragen eines neuen Tests, die Links zwischen den Blättern einer neuen Lernsituation —, gehört zum Anlegen und fragt wie dieses erst bei „alle". Kopien zählen nicht dazu; bei ihnen zeigt die Freigabe, was sich gegenüber dem Original ändert.
 
-**Wie viele Bestätigungen kommen, stellt die Lehrkraft in der App ein**, und `status` nennt die Stufe. Sieh dort nach, bevor du Freigaben ankündigst: Bei „alle" kommt eine vor jedem Schreibvorgang, auch vor verborgen Angelegtem, Kopien und importierten Fragen — dann gehört in den Plan, wie viele Fenster das werden (eines je Werkzeugaufruf; was ein Aufruf zusammen erledigt, bündelt die App). Bei „keine" kommt keine; kündige dann keine an, und sag nach der Arbeit, was geschrieben wurde, statt auf eine Bestätigung zu verweisen. Die Stufe gehört allein der Lehrkraft: Schlag nie vor, sie zu senken, auch nicht, wenn viele Freigaben anstehen. Beim Plan ändert sie nichts — der kommt immer.
+**Wie viele Bestätigungen kommen, stellt die Lehrkraft in der App ein**, und `status` nennt die Stufe. Sieh dort nach, bevor du Freigaben ankündigst: Bei „alle" kommt eine vor jedem Schreibvorgang, auch vor verborgen Angelegtem, Kopien und importierten Fragen — dann gehört in den Plan, wie viele Fenster das werden (eines je Werkzeugaufruf; was ein Aufruf zusammen erledigt, bündelt die App). Bei „keine" entfallen Schreibfreigaben; Bildschirmfotos, fachliche Karten-Zuordnungen und das Ersetzen eines Kursinhalts beim Wiederherstellen brauchen weiterhin eine Entscheidung in der App. Kündige nur die tatsächlich erforderlichen Dialoge an, und sag nach der Arbeit, was geschrieben wurde, statt auf eine Bestätigung zu verweisen. Die Stufe gehört allein der Lehrkraft: Schlag nie vor, sie zu senken, auch nicht, wenn viele Freigaben anstehen. Beim Plan ändert sie nichts — der kommt immer.
 <!-- >>> gemeinsam/plan.md -->
 
 <!-- <<< gemeinsam/ueberarbeiten.md - von build.py erzeugt, hier nicht bearbeiten -->
@@ -258,9 +278,9 @@ Personendaten und keine Zugangsdaten.
 <!-- <<< gemeinsam/bildschirmfoto.md - von build.py erzeugt, hier nicht bearbeiten -->
 ## Selbst nachsehen: Bildschirmfotos
 
-`bildschirmfoto` zeigt dir, wie eine Textseite, ein Buchkapitel, eine Seite eines gemeinsamen Wikis oder eine Frage in der Vorschau im Browser aussieht — mit `druck: true` bei Seite, Buch und Wiki so, wie sie gedruckt wird. Das Bild zeigt nur den Inhalt, ohne Kopf, Navigation und Blöcke.
+`bildschirmfoto` zeigt dir, wie eine Textseite, ein Buchkapitel, eine Seite eines gemeinsamen Wikis, eine Lernlandkarte oder eine Frage in der Vorschau im Browser aussieht — mit `druck: true` bei Seite, Buch und Wiki so, wie sie gedruckt wird. Eine Lernlandkarte wird nur am Bildschirm und nur im Kartenbereich gezeigt. Das Bild zeigt den Inhalt, ohne Kopf, Navigation und Blöcke.
 
-**Wofür:** prüfen, was du geschrieben hast, wo der Quelltext es nicht verrät — ob Formeln gesetzt sind, wie ein Blatt im Ausdruck umbricht, ob eine Frage in der Vorschau läuft und richtig aussieht. Bitte die Lehrkraft nicht um ein Bildschirmfoto, wenn du selbst nachsehen kannst.
+**Wofür:** prüfen, was du geschrieben hast, wo der Quelltext es nicht verrät — ob Formeln gesetzt sind, wie ein Blatt im Ausdruck umbricht, ob eine Lernlandkarte im Kartenbereich korrekt dargestellt wird oder eine Frage in der Vorschau läuft und richtig aussieht. Bitte die Lehrkraft nicht um ein Bildschirmfoto, wenn du selbst nachsehen kannst.
 
 **Nicht wofür:** zum Lesen von Inhalten — das tun die Lesewerkzeuge, vollständig und als Text. Und nicht routinemäßig nach jedem Schreiben: Jedes Bild erscheint in der App, und die Lehrkraft muss es freigeben.
 
@@ -589,7 +609,9 @@ Rechenaufgaben **variierende Zahlenwerte**. Nenne alle drei und verweise auf
 Textseite (`page`), Textfeld (`label`), Aufgabe (`assign`), Verzeichnis
 (`folder`), Datei (`resource`), Link (`url`), Unterabschnitt (`subsection`),
 Buch (`book`), Test (`quiz`), Fragensammlung (`qbank`), Fortschrittsliste
-(`checklist`), Wiki (`wiki`), Board (`board`), Kanban-Board (`kanban`).
+(`checklist`), Wiki (`wiki`), Board (`board`), Kanban-Board (`kanban`) und
+Lernlandkarte (`learningmap`), die du anlegst und deren Ziele du setzt, deren
+Karte du aber nicht bearbeitest (`references/lernlandkarte.md`).
 
 *Lesen* geht bei allen Typen. Für Forum, Glossar, H5P und die übrigen Plugins ist das Formular nicht gemessen; die App weigert sich mit „Typ … kann die App nicht anlegen" bzw. „Ändern geht bisher für …". Das ist eine **Lücke** (Abschnitt „Was der Skill nicht kann"). Offen bleiben die **Kursrahmen-Aktionen**: Ein von Hand angelegtes Forum darf verborgen, verschoben, dupliziert und gelöscht werden — sie sind typunabhängig. Nicht so die **Fragensammlung** (`qbank`): Sie steht nicht in der Kursstruktur, deshalb geht von diesen vieren nur `loeschen`. Moodle legt sie außerdem immer im allgemeinen Abschnitt an, einerlei welchen du angibst.
 
@@ -706,6 +728,7 @@ Der Skill `lernsituation` entwirft, der Skill `moodle` bringt den Entwurf in den
 | Handlungsprodukt | Abgabe der Aufgabe (assign) | ja |
 | Leistungsfeststellung mit Test | Test (quiz) — Skill `moodle-fragen` | ja |
 | Weitere Lernträger: Sammeln und Vergleichen, Planen in Arbeitspaketen, gemeinsames Produkt, Prüfliste oder Laufzettel, Üben, Material zum Weiterarbeiten | Board, Kanban-Board, Wiki, Fortschrittsliste, Test, Verzeichnis, Datei, Link — Name ohne Kennung, er sagt, wozu die Aktivität da ist | ja |
+| Lernweg durch die Aktivitäten des Abschnitts: Stationen, Pflicht und Wahl, Verzweigung | Lernlandkarte (learningmap) — Name ohne Kennung; jeder Ort verweist auf eine andere Aktivität des Abschnitts und wird erst verknüpft, wenn alle stehen | ja |
 | Quellen und fremde Inhalte | Abschnitt am Ende der Lehrerhandreichung | verborgen |
 
 **Von links nach rechts** (anlegen), in dieser Reihenfolge: die Seite „SchuCu", die Lehrerhandreichung, die Handlungssituation, dann die Aktivitäten des Ablaufplans, jede Lösung direkt hinter ihrem Blatt. SchuCu, Handreichung und Lösungen sind verborgen. Was für die Lehrkraft allein ist, steht vorn, damit sie es sofort sieht — die SchuCu-Seite zudem, damit sie bei einer Inspektion ohne Suchen zu finden ist; die Lösung steht beim Blatt, weil die Lehrkraft sie dort bei Bedarf für die Lernenden freigibt. Weil neue Aktivitäten ans Ende des Abschnitts kommen, entsteht die Reihenfolge beim Anlegen von selbst — ohne Verschieben und ohne Freigabe. Ob etwas davon später sichtbar wird, entscheidet die Lehrkraft in Moodle. Nummeriert der Kurs seine Aktivitäten, bekommen SchuCu, Handreichung und Lösungen keine Nummer; sie stehen außerhalb der Zählung, eine Lösung nennt im Namen ihr Blatt. Darüber hinaus führst du keine eigene Nummerierung ein. Vor der Übergabe `kurs_uebersicht` — es warnt, wenn etwas erreichbar ist, das nach Lösung klingt; die Lösungen sind der klassische Unfall, und „verfügbar ohne Link" (stealth) schützt sie nicht.
@@ -720,7 +743,7 @@ Der Skill `lernsituation` entwirft, der Skill `moodle` bringt den Entwurf in den
 
 **Die SchuCu-Tabelle bleibt Zeichen für Zeichen, wie die Vorlage sie vorgibt.** Sie steht allein auf der Seite „SchuCu" (`<table class="lernsituation">`) und ist fein abgestimmt — `style`-Angaben, `&nbsp;` in den Abstandszellen, eigene Klassen. Beim Anlegen und bei jeder späteren Änderung der Seite bleibt sie, wie sie ist, samt den Absätzen darunter: keine Klasse tauschen, kein `style` entfernen, nicht in `table table-bordered` umbauen. Was in ihre Zellen gehört, regelt der Skill `lernsituation`.
 
-**Von rechts nach links** (lesen, beurteilen): Ein Textfeld oben ist ein Kandidat für die Handlungssituation, eine Textseite für ein Informationsblatt, eine Aufgabe für ein Arbeitsblatt, ein Unterabschnitt für eine Phase, ein Test für die Leistungsfeststellung. Ein Board, ein Kanban-Board, ein Wiki, eine Fortschrittsliste oder ein Test, die der Ablaufplan nennt, sind weitere Lernträger. Was keine Entsprechung hat — ein Forum, ein Video ohne Auftrag, ein Verzeichnis voller PDFs, eine Aktivität, die kein Schritt benutzt — steht im Bericht als „ohne Rolle" und ist oft der Hinweis, dass es eine Materialsammlung ist.
+**Von rechts nach links** (lesen, beurteilen): Ein Textfeld oben ist ein Kandidat für die Handlungssituation, eine Textseite für ein Informationsblatt, eine Aufgabe für ein Arbeitsblatt, ein Unterabschnitt für eine Phase, ein Test für die Leistungsfeststellung. Ein Board, ein Kanban-Board, ein Wiki, eine Fortschrittsliste oder ein Test, die der Ablaufplan nennt, sind weitere Lernträger; eine Lernlandkarte ist der Lernweg durch andere Aktivitäten des Abschnitts. Was keine Entsprechung hat — ein Forum, ein Video ohne Auftrag, ein Verzeichnis voller PDFs, eine Aktivität, die kein Schritt benutzt — steht im Bericht als „ohne Rolle" und ist oft der Hinweis, dass es eine Materialsammlung ist.
 
 Wer im Chat „Lernsituation" sagt, meint also beides zugleich: die Didaktik und den Abschnitt. Der Skill `lernsituation` entwirft sie, der Skill `moodle` legt sie an, und ein Auftrag, der beides berührt, läuft über beide.
 <!-- >>> gemeinsam/bruecke.md -->
@@ -779,6 +802,7 @@ Diese Typen haben eigene Werkzeuge, weil ihr Inhalt nicht im Formular steht. **L
 | Board | `board_lesen`, `board_aendern` | Spalten und **eigene** Notizen; Notizen anderer werden nur gezählt |
 | Kanban | `kanban_lesen`, `kanban_aendern` | nur das Kursboard, ohne Ersteller und Zuweisung |
 | Bewertungsschema einer Aufgabe | `bewertungsschema_lesen`, `bewertungsschema_setzen` | nur die Definition, nie ausgefüllte Raster |
+| Gruppierungen eines Kurses | `gruppierungen_lesen`, `gruppierung_anlegen`; zugeordnet wird mit `aendern` (`groupingid`) | nur Namen, nie Mitglieder; fehlt eine Gruppierung, fragst du die Lehrkraft (`references/bearbeiten.md`) |
 
 **Ein Link auf eine Wikiseite** (`mod/wiki/view.php?pageid=…`) nennt nicht das Wiki: Die `pageid` ist keine cmid, und `wiki_lesen` braucht die cmid. Frag dann zuerst nach dem Link zum Wiki selbst (`mod/wiki/view.php?id=…`) — die Lehrkraft findet ihn, wenn sie im Kurs auf das Wiki klickt oder oben in der Navigationsleiste auf seinen Namen. Hat sie ihn nicht zur Hand, nennt dir der Kurs mit `kurs_uebersicht` seine Wikis. Danach liest `wiki_lesen` das ganze Wiki, und die genannte Seite liegt als `seite-<pageid>.html` im Arbeitsordner. Die App löst eine Seitennummer bewusst nicht selbst auf: Sie müsste dazu die Seite abrufen, bevor sie weiß, ob sie zu einem persönlichen Wiki gehört.
 

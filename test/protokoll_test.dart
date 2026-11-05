@@ -69,4 +69,22 @@ void main() {
     p.leeren();
     expect(p.eintraege, isEmpty);
   });
+
+  test('Protokoll: der Profilname steht nur vor den Zeilen, solange es mehrere Profile gibt', () {
+    final p = Protokoll();
+    final sicht = p.fuer('Moodle');
+    sicht.eintrag(Art.info, 'mit Namen');
+    p.profilnamenZeigen = false;
+    sicht.eintrag(Art.info, 'ohne Namen');
+    // Eine Sicht von einer Sicht liest dieselbe Einstellung.
+    sicht.fuer('Moodle Test').eintrag(Art.info, 'verschachtelt, ohne Namen');
+    p.profilnamenZeigen = true;
+    p.fuer('Moodle Test').eintrag(Art.info, 'wieder mit Namen');
+    expect(p.eintraege.map((e) => e.text), [
+      '[Moodle] mit Namen',
+      'ohne Namen',
+      'verschachtelt, ohne Namen',
+      '[Moodle Test] wieder mit Namen',
+    ]);
+  });
 }

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.10.0
+- Einrichtung: Claude Code aus aktuellen Versionen von Claude Desktop wird wieder gefunden; die App startet nur ein Claude Code, das von Anthropic signiert ist.
+- Datenschutz: Soll die KI an moocp vorbei mit Moodle arbeiten, etwa in einem eigenen Browser oder mit Ihrem Passwort, lehnt sie ab und warnt Sie.
+- Neu: Abschnitte und Aktivitäten sichern und in einen oder mehrere Kurse übertragen, Lernlandkarten anlegen und ihre Orte verknüpfen, Gruppierungen lesen und anlegen, bei Collabora und Gruppenwahl Gruppenmodus und Gruppierung ändern, Optionsfelder in Einstellungen setzen. Ob Sie in denselben Kurs wiederherstellen oder einen Kurs ersetzen dürfen, entscheidet Ihre Moodle-Instanz; die App sagt Ihnen, welcher Weg Ihnen offensteht.
+- Sicherungen wiederherstellen: Die Freigabe sagt im Titel, ob eingefügt, ersetzt oder ein neuer Kurs angelegt wird. Die KI fragt Sie, ob die wiederhergestellten Inhalte sichtbar bleiben oder verborgen werden, statt es selbst zu entscheiden. Beim Ersetzen eines Kurses sehen Sie vorher jede Aktivität, die gelöscht wird, mit Link, bestätigen ausdrücklich, und Einschreibungen und Gruppen bleiben bestehen – auf jeder Stufe der Bestätigungen.
+- Mehrere Moodle-Instanzen: Wer nur eine nutzt, sieht keine Profile; eine weitere verbinden Sie unter dem Zahnrad. Jede Instanz hat einen eigenen Zugangsschlüssel, und ein Profil ohne Rückfragen („keine") ist in der Profilauswahl rot.
+- Anmeldung: Ein gespeichertes Passwort, das Moodle ablehnt, wird verworfen, statt bei jedem Start und Profilwechsel einen weiteren Fehlversuch zu erzeugen; hält ein Schutzdienst erst den letzten Anmeldeschritt an, bleiben Ihre Zugangsdaten.
+- Sichtbarkeit: „Verfügbar ohne Link“ bleibt erhalten, wo Moodle diesen Zustand anbietet – wer eine solche Aktivität verbirgt und später wieder sichtbar macht, bekommt den Zustand zurück, solange die App läuft; die Freigabe sagt es vorher, und weicht das Ergebnis ab, meldet die App es.
+- Sicherungen: Die App prüft jede heruntergeladene Sicherung auf Nutzerdaten und löscht sie, wenn welche darin sind; die Freigabe sagt nur noch, was geprüft ist und was nicht. Eine Datei, die die App nicht selbst gesichert hat, fragt vor dem Wiederherstellen immer nach, und Sicherungen mit Skripten im Text oder in Dateien werden nicht wiederhergestellt.
+- Übertragung: Steht ein Ziel nach einem Abbruch auf „unklar“, nennt die App die Nummer des Vorgangs, damit sich der Stand mit der Statusabfrage klären lässt.
+- Speichern: Hält ein Schutzdienst vor Moodle das Speichern an oder weist es ab, sagt die App es klar und übergibt es an Sie, damit Sie selbst im Browser speichern – beim Ändern, bei mehreren Seiten auf einmal, beim Setzen von Links und beim Anlegen, auch mit neuen Bildern und Dateien. Die App meldet nur dann „verified", wenn Moodle danach den übergebenen Stand zeigt.
+- Speichern im Browser: Der Inhalt lässt sich unter Windows in der gewöhnlichen Editoransicht einfügen, mit Kästen, Tabellen, Bildern und Code-Blöcken; auf dem Mac liegt er als Text in der Zwischenablage. Die Schritte gehen der Reihe nach, und zeigt Moodle den neuen Stand noch nicht, lässt sich so oft neu prüfen, wie Sie wollen.
+- Anmeldung: Hält ein Schutzdienst vor Moodle die Anmeldung an, gilt das nicht als falsches Passwort; Ihre Zugangsdaten bleiben, und das Protokoll nennt die Ray-ID für den Betreiber.
+- Neu angelegte Textfelder: Die Rückleseprobe prüft keinen Namen mehr, den ein Textfeld gar nicht hat.
+- Ändern: Wer unverändert neu speichert, bekommt „verified" nicht mehr ohne eine einzige Prüfung; eine Frage ohne neue Version wird als Abweichung gemeldet.
+
 ## 0.9.32
 - Fragen: Muss eine Frage neu angelegt werden, etwa weil sich ihr Aufbau ändert, tauscht die KI sie in einem Schritt und mit einer Freigabe aus – die neue steht im Test an derselben Stelle mit denselben Punkten, und die alte wird auf Wunsch gelöscht.
 - Aufträge mit Quelle: Kann die KI eine genannte Seite nicht lesen, etwa über den Link auf eine einzelne Wikiseite, fragt sie nach, statt ohne die Quelle weiterzuarbeiten.

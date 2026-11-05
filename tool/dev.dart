@@ -8,6 +8,10 @@
 // Gesteuert wird über die Steuerdatei: Inhalt „r" = Änderungen nachladen,
 // „R" = App neu starten (Anmeldung weg), „q" = beenden. Die Ausgabe der App
 // (logging, siehe lib/log.dart) und von flutter run steht in der Logdatei.
+//
+// Ist eine der Variablen MOOCP_TESTZUGANG_PROFILE, MOOCP_TESTZUGANG oder
+// MOOCP_TESTZUGANG_ADRESSE gesetzt, startet flutter run mit
+// --dart-define=MOOCP_TESTBETRIEB=true (lib/testschalter.dart); sonst ohne.
 
 import 'dart:async';
 import 'dart:convert';
@@ -24,7 +28,18 @@ Future<void> main(List<String> args) async {
   void schreib(String s) =>
       log.writeln('${DateTime.now().toIso8601String().substring(11, 19)} $s');
 
-  final p = await Process.start('flutter', ['run', '-d', 'windows', '--machine'], runInShell: true);
+  final geraet = Platform.isMacOS ? 'macos' : 'windows';
+  final testbetrieb = const [
+    'MOOCP_TESTZUGANG_PROFILE',
+    'MOOCP_TESTZUGANG',
+    'MOOCP_TESTZUGANG_ADRESSE',
+  ].any((n) => (Platform.environment[n] ?? '').isNotEmpty);
+  if (testbetrieb) schreib('Start mit Testbetrieb (MOOCP_TESTBETRIEB)');
+  final p = await Process.start(
+    'flutter',
+    ['run', '-d', geraet, '--machine', if (testbetrieb) '--dart-define=MOOCP_TESTBETRIEB=true'],
+    runInShell: true,
+  );
   String? appId;
   var id = 0;
 

@@ -28,12 +28,14 @@ import 'package:flutter/foundation.dart';
 
 import 'moodle/zeilenvergleich.dart';
 import 'protokoll.dart';
+import 'testschalter.dart';
 
 /// Wie viele Bestätigungen die Lehrkraft vor Änderungen in Moodle will.
 /// Die Reihenfolge ist die Mechanik: Gefragt wird, wenn die eingestellte
 /// Stufe mindestens so hoch ist wie die der Anfrage ([FreigabeAnfrage.ab]).
 enum Bestaetigungen {
-  /// Keine Freigabe vor einer Änderung in Moodle; alles läuft sofort. Die
+  /// Schreibfreigaben entfallen; fachliche Karten-Zuordnungen und das Ersetzen
+  /// eines Kurses (Wiederherstellung, die alle Inhalte löscht) fragen weiter. Die
   /// Freigabe je Bildschirmfoto bleibt davon unberührt: Sie entscheidet
   /// nicht über eine Änderung, sondern darüber, welches Bild aus dem Kurs an
   /// Claude geht (E18).
@@ -63,6 +65,28 @@ enum Bestaetigungen {
       values.where((x) => x.text == t).firstOrNull ?? vorgabe;
 }
 
+/// Ein Verweis in einer Freigabe: Die Lehrkraft öffnet das Ziel im Browser, um
+/// vor ihrer Entscheidung nachzusehen (Moodle-Aktivität, die gelöscht wird).
+class FreigabeLink {
+  const FreigabeLink(this.text, this.adresse, {this.warnung});
+
+  final String text;
+  final Uri adresse;
+
+  /// Warum die Zeile Aufmerksamkeit verlangt; null, wenn nicht.
+  final String? warnung;
+}
+
+/// Eine Gruppe von Verweisen unter einer Überschrift. Eine Gruppe mit
+/// [warnung] zeigt der Dialog hervorgehoben (Warnzeichen, Farbe).
+class FreigabeLinkGruppe {
+  const FreigabeLinkGruppe(this.titel, this.links, {this.warnung = false});
+
+  final String titel;
+  final List<FreigabeLink> links;
+  final bool warnung;
+}
+
 class FreigabeAnfrage {
   FreigabeAnfrage({
     required this.titel,
@@ -78,7 +102,9 @@ class FreigabeAnfrage {
     this.schritteVerlangt = true,
     this.ordner,
     this.oeffnen,
+    this.links = const [],
     this.ab = Bestaetigungen.mittel,
+    this.bildschirmfoto = false,
   });
 
   final String titel;
@@ -87,10 +113,20 @@ class FreigabeAnfrage {
   /// alles, was Bestehendes anfasst oder sofort sichtbar wird. Wer nur bei
   /// „alle" fragen will (Anlegen, Duplizieren, Importieren), gibt
   /// [Bestaetigungen.alle] an; [Bestaetigungen.keine] heißt „immer fragen, auch
-  /// bei keine" und gilt nur für das, was keine Änderung durch die App ist:
-  /// das Bildschirmfoto und die Übergabe an die Lehrkraft, wenn ein
-  /// Schutzdienst das Speichern anhält ([kopieren]).
+  /// bei keine" gilt für Bildschirmfotos, fachliche Karten-Zuordnungen, das
+  /// Ersetzen eines Kurses (E20: Löschen fragt immer) und die
+  /// Übergabe an die Lehrkraft, wenn ein Schutzdienst das Speichern anhält
+  /// ([kopieren]; E34).
   final Bestaetigungen ab;
+
+  /// Ob dies die Freigabe je Bildschirmfoto ist (E18). Nur im Testbetrieb
+  /// ([testbetriebAktiv]) von Bedeutung: Dort wird automatisch freigegeben, was
+  /// nicht „immer fragen" ist ([ab] über [Bestaetigungen.keine]) -- das
+  /// Bildschirmfoto ist die einzige ausdrücklich benannte Ausnahme, weil es nur
+  /// ein Bild des eigenen Testkurses betrifft. Übergabe-Bitten, fachliche
+  /// Karten-Zuordnungen und die Rückfrage vor einer Wiederholung gehen im
+  /// Testbetrieb wie sonst an die Lehrkraft.
+  final bool bildschirmfoto;
 
   /// Wozu Claude das braucht, in Claudes eigenen Worten -- steht oben im
   /// Dialog (Bildschirmfotos).
@@ -120,21 +156,29 @@ class FreigabeAnfrage {
   /// kopiert hat.
   final List<(String, String)> kopieren;
 
-  /// Schritte der Übergabe, die die Lehrkraft im Browser von Hand tut und in
-  /// der App abhakt, etwa eine Einstellung setzen. Erst wenn jeder abgehakt
-  /// und alles kopiert ist, geht der Abschlussknopf.
+  /// Schritte, die die Lehrkraft in der App abhakt. Bei der Übergabe sind es
+  /// Schritte, die sie im Browser von Hand tut, etwa eine Einstellung setzen;
+  /// ohne Übergabe eine ausdrückliche Bestätigung (etwa vor dem Löschen eines
+  /// ganzen Kurses). Erst wenn jeder abgehakt und alles kopiert ist, geht der
+  /// Abschlussknopf.
   final List<String> abhaken;
 
   /// Ob der Abschlussknopf erst nach allen Schritten geht. Nein beim zweiten
   /// Blick („Noch einmal prüfen"): Dann sind sie meist schon getan.
   final bool schritteVerlangt;
 
-  /// Ein Ordner mit neuen Dateien, den der Dialog im Explorer öffnet: Die
+  /// Ein Ordner mit neuen Dateien, den der Dialog im Dateimanager öffnet: Die
   /// Lehrkraft zieht sie von dort in den Editor im Browser.
   final String? ordner;
 
   /// Eine Seite in Moodle, die der Dialog im Standardbrowser öffnet.
   final Uri? oeffnen;
+
+  /// Verweise, die der Dialog anklickbar zeigt und im Standardbrowser öffnet:
+  /// bei einer löschenden Wiederherstellung jede Aktivität, die verschwindet.
+  /// Sie machen den Dialog nicht zur Übergabe ([uebergabe]): Die Lehrkraft
+  /// sieht nach und entscheidet dann hier.
+  final List<FreigabeLinkGruppe> links;
 
   /// Eine Übergabe an die Lehrkraft statt einer Freigabe: Sie arbeitet dabei
   /// im Browser, die App darf ihr Fenster also nicht oben halten.
@@ -154,10 +198,41 @@ class FreigabeAnfrage {
   bool get offen => !_antwort.isCompleted;
 }
 
-class Freigaben extends ChangeNotifier {
-  Freigaben(this.protokoll, {this.frist = fristVorgabe, this.stufe = Bestaetigungen.vorgabe});
+/// Was während eines Werkzeugaufrufs ohne persönliche Freigabe geschah. Der
+/// MCP-Dienst legt einen an ([Freigaben.mitAbbruch]) und sagt Claude danach,
+/// dass ohne Freigabe geschrieben wurde. Je Aufruf statt über die Zähler der
+/// [Freigaben]: Liefen zwei Aufrufe gleichzeitig, bekäme sonst einer die
+/// Auslassung des anderen gemeldet.
+class AufrufZaehler {
+  /// Freigaben, die die eingestellte Stufe ausgelassen hat.
+  int ausgelassen = 0;
 
-  /// Kürzer als das Zeitlimit, das die App in die KI-Werkzeuge einträgt
+  /// Freigaben, die der Testbetrieb automatisch erteilt hat.
+  int testfreigaben = 0;
+}
+
+class _AbbruchStand {
+  _AbbruchStand(this.signal, this.zaehler) {
+    signal.then((_) => abgebrochen = true);
+  }
+  final Future<void> signal;
+  final AufrufZaehler? zaehler;
+  bool abgebrochen = false;
+}
+
+class Freigaben extends ChangeNotifier {
+  Freigaben(this.protokoll,
+      {this.frist = fristVorgabe, this.stufe = Bestaetigungen.vorgabe});
+
+  static const _testfreigabe = #begrenzteTestfreigabe;
+  int testfreigaben = 0;
+
+  /// Nur der gebundene Testablauf darf seine eigenen Anfragen automatisch freigeben,
+  /// und nur im Testbetrieb ([testbetriebAktiv]); sonst läuft [f] unverändert.
+  Future<T> imTest<T>(Future<T> Function() f, {required Future<bool> Function() pruefen}) =>
+      runZoned(f, zoneValues: {_testfreigabe: testbetriebAktiv ? (freigaben: this, pruefen: pruefen) : null});
+
+  /// Kürzer als das Zeitlimit, das die App in ein KI-Werkzeug einträgt
   /// (`clientZeitlimit`, einrichtung.dart).
   static const fristVorgabe = Duration(minutes: 30);
 
@@ -190,9 +265,11 @@ class Freigaben extends ChangeNotifier {
   static const _abbruch = #freigabenAbbruch;
 
   /// Führt [f] so aus, dass seine Freigaben verfallen, sobald sich [abbruch]
-  /// erfüllt: Dann wartet der Client nicht mehr auf das Ergebnis.
-  static Future<T> mitAbbruch<T>(Future<void> abbruch, Future<T> Function() f) =>
-      runZoned(f, zoneValues: {_abbruch: abbruch});
+  /// erfüllt: Dann wartet der Client nicht mehr auf das Ergebnis. Mit [zaehler]
+  /// zählt [anfragen] mit, was in diesem Aufruf ohne persönliche Freigabe lief.
+  static Future<T> mitAbbruch<T>(Future<void> abbruch, Future<T> Function() f,
+          {AufrufZaehler? zaehler}) =>
+      runZoned(f, zoneValues: {_abbruch: _AbbruchStand(abbruch, zaehler)});
 
   /// Ob [a] bei der eingestellten Stufe überhaupt gefragt wird.
   bool fragt(FreigabeAnfrage a) => stufe.index >= a.ab.index;
@@ -216,8 +293,36 @@ class Freigaben extends ChangeNotifier {
   /// Solange ein Freigabedialog offen ist, sperrt er die Titelzeile mit dem
   /// Feld für die Stufe, und ohne offenen Dialog wartet keine Anfrage.
   Future<bool> anfragen(FreigabeAnfrage a) async {
+    final abbruch = Zone.current[_abbruch] as _AbbruchStand?;
+    bool abgebrochen() {
+      if (abbruch?.abgebrochen != true) return false;
+      protokoll.eintrag(Art.info, 'Die KI wartet nicht mehr -- nicht gespeichert');
+      a._antwort.complete(false);
+      return true;
+    }
+    if (abgebrochen()) return false;
+    // Testbetrieb: Automatisch freigegeben wird nur, was nicht „immer fragen"
+    // ist. Eine Anfrage mit `ab: keine` (Übergabe-Bitte, fachliche Zuordnung,
+    // Wiederholung) geht wie im Normalbetrieb an die Lehrkraft; einzige
+    // Ausnahme ist das Bildschirmfoto (FreigabeAnfrage.bildschirmfoto).
+    final test = Zone.current[_testfreigabe] as ({Freigaben freigaben, Future<bool> Function() pruefen})?;
+    if (testbetriebAktiv &&
+        test != null &&
+        identical(test.freigaben, this) &&
+        (a.ab != Bestaetigungen.keine || a.bildschirmfoto)) {
+      final erlaubt = await test.pruefen();
+      if (abgebrochen()) return false;
+      if (erlaubt) {
+        testfreigaben++;
+        abbruch?.zaehler?.testfreigaben++;
+        protokoll.eintrag(Art.schreiben, 'Testmodus, automatisch freigegeben: ${a.titel}');
+        a._antwort.complete(true);
+        return true;
+      }
+    }
     if (!fragt(a)) {
       ausgelassen++;
+      abbruch?.zaehler?.ausgelassen++;
       protokoll.eintrag(Art.schreiben, 'Ohne Freigabe (Bestätigungen: ${stufe.text}): ${a.titel}');
       a._antwort.complete(true);
       return true;
@@ -226,7 +331,7 @@ class Freigaben extends ChangeNotifier {
     // Die Frist hängt an einem eigenen Timer, nicht am Warten auf die Antwort:
     // So läuft sie sicher ab, auch wenn niemand den Dialog sieht.
     final uhr = Timer(frist, () => _verfallen(a, 'Frist abgelaufen'));
-    (Zone.current[_abbruch] as Future<void>?)?.then((_) => _verfallen(a, 'Die KI wartet nicht mehr'));
+    abbruch?.signal.then((_) => _verfallen(a, 'Die KI wartet nicht mehr'));
     if (_aktuell == null) {
       _oeffnen(a);
     } else {

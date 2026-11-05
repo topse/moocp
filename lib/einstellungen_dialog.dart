@@ -1,11 +1,15 @@
 // Der Dialog „Einstellungen": was sich dauerhaft einstellen lässt, ohne
 // Anmeldedaten -- die stehen auf der Hauptseite.
 //
-// Zwei Abschnitte: die Update-Prüfung (update/update.dart) und der Weg zum
-// Dialog „KI-Werkzeuge einrichten". Der Zugangsschlüssel steht hier bewusst
-// nicht: Eingetragen wird er nur von der App selbst (E13), und jede Anzeige
+// Drei Abschnitte: die Update-Prüfung (update/update.dart), der Weg zum
+// Dialog „KI-Werkzeuge einrichten" und, ganz unten und unauffällig, das
+// Verbinden einer weiteren Moodle-Instanz (E32). Wer nur eine hat -- fast
+// jeder --, braucht den letzten nie und sieht von Profilen sonst nichts.
+// Der Zugangsschlüssel steht hier bewusst nicht: Eingetragen wird er nur von der App selbst (E13), und jede Anzeige
 // wäre ein weiterer Weg, ihn aus Versehen weiterzugeben. Wer ihn braucht,
 // findet ihn in der README.
+
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 
@@ -24,6 +28,13 @@ enum EinstellungenErgebnis {
 
   /// Ein Update wird installiert: Die App muss sich jetzt beenden.
   beenden,
+
+  /// Das aktuell ausgewählte MCP-Profil entfernen.
+  profilLoeschen,
+
+  /// Eine weitere Moodle-Instanz verbinden: Der Aufrufer öffnet den
+  /// Profil-Dialog.
+  profilHinzufuegen,
 }
 
 class EinstellungenDialog extends StatefulWidget {
@@ -33,6 +44,10 @@ class EinstellungenDialog extends StatefulWidget {
     required this.eigene,
     required this.updateMoeglich,
     required this.sitzungLaeuft,
+    this.profilname,
+    this.mcpName,
+    this.profilLoeschenMoeglich = false,
+    this.weitereInstanzMoeglich = false,
     super.key,
   });
 
@@ -49,6 +64,18 @@ class EinstellungenDialog extends StatefulWidget {
   /// daran, die ein Update verlöre.
   final bool sitzungLaeuft;
 
+  /// Profilname und MCP-Name, nur mit mehreren Profilen; sonst null, und der
+  /// Titel heißt einfach „Einstellungen".
+  final String? profilname;
+  final String? mcpName;
+
+  /// Ob es mehr als ein Profil gibt, also eines zu löschen ist (eines bleibt
+  /// immer).
+  final bool profilLoeschenMoeglich;
+
+  /// Ob die App eine weitere Instanz anlegen kann (der Aufrufer weiß es).
+  final bool weitereInstanzMoeglich;
+
   @override
   State<EinstellungenDialog> createState() => _EinstellungenDialogState();
 }
@@ -61,13 +88,17 @@ class _EinstellungenDialogState extends State<EinstellungenDialog> {
     try {
       await widget.einstellungen.speichern();
     } catch (e) {
-      widget.protokoll.eintrag(Art.fehler, 'Einstellungen nicht gespeichert (${e.runtimeType})');
+      widget.protokoll.eintrag(
+        Art.fehler,
+        'Einstellungen nicht gespeichert (${e.runtimeType})',
+      );
     }
     widget.protokoll.eintrag(
-        Art.info,
-        an
-            ? 'Update-Prüfung eingeschaltet: einmal täglich bei GitHub'
-            : 'Update-Prüfung ausgeschaltet: keine Anfrage an GitHub');
+      Art.info,
+      an
+          ? 'Update-Prüfung eingeschaltet: einmal täglich bei GitHub'
+          : 'Update-Prüfung ausgeschaltet: keine Anfrage an GitHub',
+    );
   }
 
   Future<void> _suchen() async {
@@ -91,73 +122,146 @@ class _EinstellungenDialogState extends State<EinstellungenDialog> {
     final e = widget.einstellungen;
     final an = e.updatePruefen == true;
     return AlertDialog(
-      title: const Text('Einstellungen'),
+      title: Text(widget.profilname == null
+          ? 'Einstellungen'
+          : 'Einstellungen — ${widget.profilname} (${widget.mcpName})'),
       content: SizedBox(
         width: 560,
         child: SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Updates', style: Theme.of(context).textTheme.titleSmall),
-            if (!widget.updateMoeglich)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                    'Diese Version kann sich nicht selbst aktualisieren: Sie läuft nicht aus '
-                    'dem Installationsverzeichnis, oder die Prüfung ist über die Kommandozeile '
-                    'abgeschaltet ($keinUpdateSchalter).',
-                    style: klein),
-              )
-            else ...[
-              CheckboxListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                controlAffinity: ListTileControlAffinity.leading,
-                value: an,
-                onChanged: _sucht ? null : (v) => _umschalten(v ?? false),
-                title: const Text('Einmal täglich bei GitHub nach einer neuen Version sehen'),
-                subtitle: Text(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Updates', style: Theme.of(context).textTheme.titleSmall),
+              if (!widget.updateMoeglich)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    Platform.isWindows
+                        ? 'Diese Version kann sich nicht selbst aktualisieren: Sie läuft nicht aus '
+                              'dem Installationsverzeichnis, oder die Prüfung ist über die Kommandozeile '
+                              'abgeschaltet ($keinUpdateSchalter).'
+                        : 'Diese Version aktualisiert sich nicht selbst. Auf dem Mac prüft moocp nicht '
+                              'bei GitHub und lädt nichts herunter; eine neue Version kommt von Hand.',
+                    style: klein,
+                  ),
+                )
+              else ...[
+                CheckboxListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  value: an,
+                  onChanged: _sucht ? null : (v) => _umschalten(v ?? false),
+                  title: const Text(
+                    'Einmal täglich bei GitHub nach einer neuen Version sehen',
+                  ),
+                  subtitle: Text(
                     'GitHub erfährt dabei Ihre IP-Adresse und den Zeitpunkt. Nichts aus '
                     'Moodle wird übertragen.',
-                    style: klein),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
+                    style: klein,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
                     e.updateZuletzt == null
                         ? 'Noch nicht gesucht. Sie verwenden moocp ${widget.eigene}.'
                         : 'Zuletzt gesucht am ${e.updateZuletzt}. Sie verwenden moocp ${widget.eigene}.',
-                    style: klein),
+                    style: klein,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: OutlinedButton(
+                    onPressed: _sucht ? null : _suchen,
+                    child: Text(
+                      _sucht ? 'Sucht …' : 'Jetzt nach Updates suchen',
+                    ),
+                  ),
+                ),
+              ],
+              const Divider(height: 32),
+              Text(
+                'KI-Werkzeuge',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  'Claude Code, Codex CLI und LM Studio brauchen die Verbindung zu dieser App und '
+                  'die Skills in der Version, die zu ihr gehört. Dort wählen Sie auch, welche '
+                  'davon eingerichtet werden.',
+                  style: klein,
+                ),
               ),
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: OutlinedButton(
-                  onPressed: _sucht ? null : _suchen,
-                  child: Text(_sucht ? 'Sucht …' : 'Jetzt nach Updates suchen'),
+                  onPressed: _sucht
+                      ? null
+                      : () => Navigator.pop(
+                          context,
+                          EinstellungenErgebnis.einrichten,
+                        ),
+                  child: const Text('Verbindung und Skills prüfen'),
                 ),
               ),
+              if (widget.weitereInstanzMoeglich || widget.profilLoeschenMoeglich) ...[
+                const Divider(height: 32),
+                Text(
+                  'Mehrere Moodle-Instanzen',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                if (widget.weitereInstanzMoeglich) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      'Nur nötig, wenn Sie mit mehr als einer Moodle-Instanz arbeiten, etwa einer '
+                      'Test- neben der Produktivinstanz. Jede bekommt eine eigene Anmeldung, '
+                      'Freigabestufe und einen eigenen MCP-Server mit eigenem Schlüssel.',
+                      style: klein,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: OutlinedButton(
+                      key: const Key('add-profile'),
+                      onPressed: _sucht
+                          ? null
+                          : () => Navigator.pop(
+                              context,
+                              EinstellungenErgebnis.profilHinzufuegen,
+                            ),
+                      child: const Text('Weitere Moodle-Instanz verbinden …'),
+                    ),
+                  ),
+                ],
+                if (widget.profilLoeschenMoeglich)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: OutlinedButton.icon(
+                      key: const Key('delete-profile'),
+                      onPressed: _sucht
+                          ? null
+                          : () => Navigator.pop(
+                              context,
+                              EinstellungenErgebnis.profilLoeschen,
+                            ),
+                      icon: const Icon(Icons.delete_outline),
+                      label: const Text('MCP-Profil löschen'),
+                    ),
+                  ),
+              ],
             ],
-            const Divider(height: 32),
-            Text('KI-Werkzeuge', style: Theme.of(context).textTheme.titleSmall),
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                  'Claude Code, Codex CLI und LM Studio brauchen die Verbindung zu dieser App und '
-                  'die Skills in der Version, die zu ihr gehört. Dort wählen Sie auch, welche '
-                  'davon eingerichtet werden.',
-                  style: klein),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: OutlinedButton(
-                onPressed: _sucht ? null : () => Navigator.pop(context, EinstellungenErgebnis.einrichten),
-                child: const Text('Verbindung und Skills prüfen'),
-              ),
-            ),
-          ]),
+          ),
         ),
       ),
       actions: [
         FilledButton(
-          onPressed: _sucht ? null : () => Navigator.pop(context, EinstellungenErgebnis.fertig),
+          onPressed: _sucht
+              ? null
+              : () => Navigator.pop(context, EinstellungenErgebnis.fertig),
           child: const Text('Schließen'),
         ),
       ],

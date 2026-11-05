@@ -28,6 +28,8 @@ import 'dart:math';
 import 'package:archive/archive.dart';
 import 'package:path/path.dart' as p;
 
+import 'plattform/signatur_windows.dart';
+
 /// Die Skills, die die App mitbringt, liegen als Pakete von skills/build.py
 /// unter diesem Asset-Pfad (pubspec.yaml).
 const skillAssets = 'skills/dist/';
@@ -50,9 +52,21 @@ String? _v(Map<String, String> umgebung, String name) {
   return w == null || w.trim().isEmpty ? null : w;
 }
 
-/// Die Verzeichnisse aus PATH, in der Reihenfolge, in der Windows sucht.
-List<String> _pfad(Map<String, String> umgebung) =>
-    [for (final d in (_v(umgebung, 'PATH') ?? '').split(';')) if (d.trim().isNotEmpty) d.trim()];
+/// Die Verzeichnisse aus PATH, in der Reihenfolge, in der das Betriebssystem sucht.
+List<String> _pfad(Map<String, String> umgebung) => [
+      for (final d in (_v(umgebung, 'PATH') ?? '').split(Platform.isWindows ? ';' : ':'))
+        if (d.trim().isNotEmpty) d.trim(),
+    ];
+
+/// Das Benutzerverzeichnis: USERPROFILE unter Windows, sonst HOME.
+String? _heimOrdner(Map<String, String> umgebung) => _v(umgebung, Platform.isWindows ? 'USERPROFILE' : 'HOME');
+
+/// Der Dateiname eines Programms: unter Windows mit .exe, auf dem Mac nackt.
+String _programm(String name) => Platform.isWindows ? '$name.exe' : name;
+
+/// Wo Homebrew und ein Installer unter macOS Programme ablegen, die nicht im
+/// PATH einer App liegen (eine Finder-gestartete App erbt den PATH der Shell nicht).
+const _macVerzeichnisse = ['/opt/homebrew/bin', '/usr/local/bin'];
 
 // ---------------------------------------------------------------------------
 // Die Verbindung: der MCP-Eintrag „moodle"
@@ -117,15 +131,15 @@ abstract class KiWerkzeug {
   /// Was fehlt, wenn [bedienbar] false ist; sonst null.
   String? get hindernis;
 
-  /// Der Stand des MCP-Eintrags „moodle" in diesem Werkzeug.
-  Verbindung verbindung(int port, String schluessel);
+  /// Der Stand des MCP-Eintrags [name] (E31: je Instanzprofil einer) in diesem Werkzeug.
+  Verbindung verbindung(int port, String schluessel, {String name = mcpName});
 
   /// Trägt die App ein. null bei Erfolg, sonst eine Beschreibung -- nie mit
   /// der Ausgabe eines Programms, denn die kann den Schlüssel enthalten.
-  Future<String?> eintragen(int port, String schluessel);
+  Future<String?> eintragen(int port, String schluessel, {String name = mcpName});
 
-  /// Entfernt den Eintrag „moodle" wieder. null bei Erfolg.
-  Future<String?> austragen();
+  /// Entfernt den Eintrag [name] wieder. null bei Erfolg.
+  Future<String?> austragen({String name = mcpName});
 
 
   /// Der Stand der Verbindung in Worten für den Dialog.
@@ -141,35 +155,93 @@ abstract class KiWerkzeug {
 // Claude Code
 // ---------------------------------------------------------------------------
 
-// Claude Desktop gibt es als MSIX-Paket. Windows leitet dessen %APPDATA% in
-// den Paketordner um: Was Claude Desktop unter %APPDATA%\Claude\claude-code
-// ablegt, steht für jedes andere Programm unter
-// %LOCALAPPDATA%\Packages\<Paket>\LocalCache\Roaming\Claude\claude-code.
-// Der Paketname leitet sich aus Anthropics Signatur ab und ist auf allen
-// Rechnern gleich; bewusst kein Platzhalter „Claude_*", der auch ein fremdes
-// Paket träfe. Darunter liegt je Version ein Ordner (2.1.280, 2.1.281 …) --
-// Claude Desktop lädt Claude Code nach und behält ältere Versionen.
+// Welche claude.exe die App startet (und ihr damit den Zugangsschlüssel gibt),
+// entscheidet unter Windows die Signatur, nicht der Ort: Nur eine Datei mit
+// gültiger Authenticode-Signatur von Anthropic zählt (vonAnthropic,
+// lib/plattform/signatur_windows.dart). Der Ort beschleunigt nur die Suche;
+// Claude Desktop hat seine Ablage schon geändert und wird es wieder tun.
+//
+// Bekannte Ablagen von Claude Desktop (MSIX, Paketfamilie aus Anthropics
+// Herausgebernamen, bei Verteilung über die Webseite):
+// - %LOCALAPPDATA%\Claude-Data\claude_pzs8sxrjxfjjc\claude-code\<Version>\
+//   <Prüfsumme>\claude.exe, außerhalb der MSIX-Umleitung; neben der exe
+//   liegen .payload und .verified (undokumentiert, vermutlich nach geprüftem
+//   Download gesetzt);
+// - früher %LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\
+//   Claude\claude-code\<Version>\claude.exe (das umgeleitete %APPDATA%).
+// Claude Desktop lädt Claude Code nach und behält ältere Versionen. Findet
+// sich an keinem bekannten Ort eine signierte exe, sucht die App breiter
+// (_breiteSuche), auch für eine andere Verteilung, etwa ein Store-Paket mit
+// anderem Namen.
+//
+// macOS und Linux: keine Signaturprüfung (kein Authenticode; der Mac läuft
+// nur als Entwicklungsbau, E24); gesucht wird im Suchpfad, unter
+// ~/.local/bin und in den Mac-Ordnern.
 const _claudeDesktopPaket = 'Claude_pzs8sxrjxfjjc';
 
-/// Sucht die claude.exe: Claude Desktop (MSIX, dann klassischer Installer),
-/// der Suchpfad, der eigenständige Installer, die VS-Code-Erweiterung --
-/// jeweils die höchste Version. null, wenn nichts da ist.
-String? claudeFinden(Map<String, String> umgebung) {
+/// Prüft unter Windows, ob eine gefundene claude.exe von Anthropic stammt.
+/// Austauschbar für die Tests, die mit leeren Dateien arbeiten.
+bool Function(String exe) claudeSigniert = vonAnthropic;
+
+/// Sucht die claude.exe: Claude Desktop (neue, dann alte Ablage, dann
+/// klassischer Installer), der Suchpfad, der eigenständige Installer, die
+/// VS-Code-Erweiterung -- in dieser Reihenfolge, je Ort die höchste Version;
+/// unter Windows zuletzt die breite Suche. null, wenn nichts da ist. In
+/// [bericht] landen dann die durchsuchten Orte und die verworfenen Dateien
+/// (nur Pfade, E11) für das Protokoll.
+String? claudeFinden(Map<String, String> umgebung, {List<String>? bericht}) {
   final lokal = _v(umgebung, 'LOCALAPPDATA');
   final roaming = _v(umgebung, 'APPDATA');
-  final heim = _v(umgebung, 'USERPROFILE');
-  final kandidaten = <String?>[
-    if (lokal != null)
-      _neuesteVersion(p.join(lokal, 'Packages', _claudeDesktopPaket, 'LocalCache', 'Roaming', 'Claude', 'claude-code')),
-    if (roaming != null) _neuesteVersion(p.join(roaming, 'Claude', 'claude-code')),
-    for (final d in _pfad(umgebung)) p.join(d, 'claude.exe'),
-    if (heim != null) p.join(heim, '.local', 'bin', 'claude.exe'),
-    if (heim != null) _vsCode(p.join(heim, '.vscode', 'extensions')),
+  final heim = _heimOrdner(umgebung);
+  final verworfen = <String>[];
+  bool gut(String exe) {
+    if (!File(exe).existsSync()) return false;
+    if (!Platform.isWindows || claudeSigniert(exe)) return true;
+    verworfen.add(exe);
+    return false;
+  }
+
+  final orte = [
+    if (Platform.isWindows && lokal != null)
+      p.join(lokal, 'Claude-Data', _claudeDesktopPaket.toLowerCase(), 'claude-code'),
+    if (Platform.isWindows && lokal != null)
+      p.join(lokal, 'Packages', _claudeDesktopPaket, 'LocalCache', 'Roaming', 'Claude', 'claude-code'),
+    if (Platform.isWindows && roaming != null) p.join(roaming, 'Claude', 'claude-code'),
+  ];
+  final kandidaten = <String? Function()>[
+    for (final o in orte) () => _neuesteVersion(o, gut),
+    for (final d in _pfad(umgebung)) () => _einzeln(p.join(d, _programm('claude')), gut),
+    if (heim != null) () => _einzeln(p.join(heim, '.local', 'bin', _programm('claude')), gut),
+    if (!Platform.isWindows) for (final d in _macVerzeichnisse) () => _einzeln(p.join(d, 'claude'), gut),
+    if (Platform.isWindows && heim != null) () => _vsCode(p.join(heim, '.vscode', 'extensions'), gut),
   ];
   for (final k in kandidaten) {
-    if (k != null && File(k).existsSync()) return k;
+    final exe = k();
+    if (exe != null) return exe;
   }
+  final wurzeln = [
+    if (Platform.isWindows && lokal != null) ..._unterordner(p.join(lokal, 'Claude-Data')),
+    if (Platform.isWindows && lokal != null)
+      ..._unterordner(p.join(lokal, 'Packages')).where((d) => p.basename(d).toLowerCase().contains('claude')),
+    if (Platform.isWindows && roaming != null) p.join(roaming, 'Claude'),
+  ];
+  final breit = _besteVersion(_breiteSuche(wurzeln), gut);
+  if (breit != null) return breit;
+  bericht?.addAll([
+    'durchsucht: ${{...orte, ...wurzeln}.join('; ')}${orte.isEmpty ? '' : '; dazu Suchpfad, .local\\bin und VS Code'}',
+    if (verworfen.isNotEmpty) 'verworfen, keine Signatur von Anthropic: ${verworfen.join('; ')}',
+  ]);
   return null;
+}
+
+String? _einzeln(String exe, bool Function(String) gut) => gut(exe) ? exe : null;
+
+List<String> _unterordner(String ordner) {
+  try {
+    return [for (final e in Directory(ordner).listSync().whereType<Directory>()) e.path];
+  } on FileSystemException {
+    return const [];
+  }
 }
 
 /// Vergleicht Versionsnummern Stelle für Stelle als Zahlen: 2.10 kommt nach
@@ -189,35 +261,88 @@ List<int>? _version(String text) {
   return zahlen.any((z) => z == null) ? null : zahlen.cast<int>();
 }
 
-String? _neuesteVersion(String ordner) {
-  final d = Directory(ordner);
-  if (!d.existsSync()) return null;
-  (List<int>, String)? beste;
-  for (final e in d.listSync().whereType<Directory>()) {
-    final ver = _version(p.basename(e.path));
-    final exe = p.join(e.path, 'claude.exe');
-    if (ver == null || !File(exe).existsSync()) continue;
-    if (beste == null || versionVergleichen(ver, beste.$1) > 0) beste = (ver, exe);
+/// Ein Fund: Version (leer, wenn keine bekannt), ob `.verified` daneben
+/// liegt, Änderungszeit, Pfad.
+typedef _Fund = (List<int>, bool, DateTime, String);
+
+_Fund _fund(List<int> version, String exe) => (
+      version,
+      FileSystemEntity.typeSync(p.join(p.dirname(exe), '.verified')) != FileSystemEntityType.notFound,
+      File(exe).lastModifiedSync(),
+      exe,
+    );
+
+/// Die erste Datei, die [gut] besteht: höchste Version zuerst, bei gleicher
+/// Version die mit `.verified`, dann die neueste.
+String? _besteVersion(Iterable<_Fund> funde, bool Function(String) gut) {
+  final liste = funde.toList()
+    ..sort((a, b) {
+      final v = versionVergleichen(b.$1, a.$1);
+      if (v != 0) return v;
+      if (a.$2 != b.$2) return a.$2 ? -1 : 1;
+      return b.$3.compareTo(a.$3);
+    });
+  for (final f in liste) {
+    if (gut(f.$4)) return f.$4;
   }
-  return beste?.$2;
+  return null;
+}
+
+// Je Version ein Ordner; die exe liegt darin oder eine Ebene tiefer in einem
+// Ordner mit einer Prüfsumme (<Version>\<Prüfsumme>\claude.exe).
+String? _neuesteVersion(String ordner, bool Function(String) gut) {
+  final funde = <_Fund>[];
+  for (final d in _unterordner(ordner)) {
+    final ver = _version(p.basename(d));
+    if (ver == null) continue;
+    for (final o in [d, ..._unterordner(d)]) {
+      final exe = p.join(o, 'claude.exe');
+      if (File(exe).existsSync()) funde.add(_fund(ver, exe));
+    }
+  }
+  return _besteVersion(funde, gut);
+}
+
+// Ordner, in denen Claude Desktop Sitzungen, Zwischenspeicher und Protokolle
+// ablegt: groß und ohne Programme, darum nicht durchlaufen.
+const _nichtDurchsuchen = {
+  'claude-code-sessions', 'cache', 'code cache', 'gpucache', 'dawncache', 'logs', 'indexeddb',
+  'local storage', 'session storage', 'service worker', 'blob_storage', 'crashpad', 'node_modules',
+};
+
+/// Jede claude.exe unter [wurzeln] bis Tiefe 6, unabhängig vom Ordneraufbau.
+/// Die Version kommt aus dem nächsten Vorfahren mit einer Versionsnummer als
+/// Namen; sonst bleibt sie leer, und die Änderungszeit entscheidet.
+Iterable<_Fund> _breiteSuche(List<String> wurzeln) sync* {
+  for (final w in wurzeln) {
+    yield* _durchlaufen(w, const [], 0);
+  }
+}
+
+Iterable<_Fund> _durchlaufen(String ordner, List<int> version, int tiefe) sync* {
+  final exe = p.join(ordner, 'claude.exe');
+  if (File(exe).existsSync()) yield _fund(version, exe);
+  if (tiefe >= 6) return;
+  for (final d in _unterordner(ordner)) {
+    final name = p.basename(d).toLowerCase();
+    if (_nichtDurchsuchen.contains(name) || name.endsWith('-sessions')) continue;
+    yield* _durchlaufen(d, _version(p.basename(d)) ?? version, tiefe + 1);
+  }
 }
 
 // Die Erweiterung legt je Version einen Ordner
 // anthropic.claude-code-<Version>-win32-x64 an, die claude.exe darin unter
 // resources\native-binary.
-String? _vsCode(String erweiterungen) {
-  final d = Directory(erweiterungen);
-  if (!d.existsSync()) return null;
+String? _vsCode(String erweiterungen, bool Function(String) gut) {
   final muster = RegExp(r'^anthropic\.claude-code-([0-9.]+)-win32-');
-  (List<int>, String)? beste;
-  for (final e in d.listSync().whereType<Directory>()) {
-    final m = muster.firstMatch(p.basename(e.path));
+  final funde = <_Fund>[];
+  for (final d in _unterordner(erweiterungen)) {
+    final m = muster.firstMatch(p.basename(d));
     final ver = m == null ? null : _version(m.group(1)!);
-    final exe = p.join(e.path, 'resources', 'native-binary', 'claude.exe');
-    if (ver == null || !File(exe).existsSync()) continue;
-    if (beste == null || versionVergleichen(ver, beste.$1) > 0) beste = (ver, exe);
+    final exe = p.join(d, 'resources', 'native-binary', 'claude.exe');
+    if (ver != null && File(exe).existsSync()) funde.add(_fund(ver, exe));
   }
-  return beste?.$2;
+  return _besteVersion(funde, gut);
 }
 
 /// Claude Code. Eingetragen wird nur über die eigene Kommandozeile, nie durch
@@ -228,7 +353,7 @@ String? _vsCode(String erweiterungen) {
 class ClaudeCode extends KiWerkzeug {
   ClaudeCode(super.umgebung)
       : _eigen = umgebung['CLAUDE_CONFIG_DIR'],
-        _heim = umgebung['USERPROFILE'] ?? '';
+        _heim = _heimOrdner(umgebung) ?? '';
 
   final String? _eigen;
   final String _heim;
@@ -240,9 +365,21 @@ class ClaudeCode extends KiWerkzeug {
   @override
   String get datenziel => 'Inhalte gehen an das eingestellte Modell, in der Regel bei Anthropic';
 
-  /// Pfad der claude.exe; null, wenn sie nicht gefunden wurde.
-  String? get exe => _exe ??= claudeFinden(umgebung);
+  /// Pfad der claude-Programmdatei (unter Windows claude.exe); null, wenn sie nicht gefunden wurde.
+  String? get exe {
+    if (!_gesucht) {
+      _exe = claudeFinden(umgebung, bericht: suchbericht);
+      _gesucht = true;
+    }
+    return _exe;
+  }
+
   String? _exe;
+  bool _gesucht = false;
+
+  /// Wo gesucht und was verworfen wurde, wenn [exe] null ist; für das
+  /// Protokoll.
+  final List<String> suchbericht = [];
 
   File get konfiguration => File(p.join(_eigen ?? _heim, '.claude.json'));
 
@@ -265,12 +402,12 @@ class ClaudeCode extends KiWerkzeug {
           '„Code" öffnen, danach „Nochmal prüfen".';
 
   @override
-  Verbindung verbindung(int port, String schluessel) {
+  Verbindung verbindung(int port, String schluessel, {String name = mcpName}) {
     if (!konfiguration.existsSync()) return Verbindung.fehlt;
     try {
       final d = jsonDecode(konfiguration.readAsStringSync());
       final server = (d is Map) ? d['mcpServers'] : null;
-      final e = (server is Map) ? server[mcpName] : null;
+      final e = (server is Map) ? server[name] : null;
       if (e is! Map) return Verbindung.fehlt;
       final kopf = e['headers'] is Map ? (e['headers'] as Map)['Authorization'] : null;
       final passt = e['type'] == 'http' &&
@@ -293,8 +430,8 @@ class ClaudeCode extends KiWerkzeug {
   /// Werkzeug fertig ist (enableJsonResponse, mcp_dienst.dart). `timeout`
   /// gilt für den ganzen Werkzeugaufruf, Fortschrittsmeldungen verlängern ihn
   /// nicht ([clientZeitlimit]).
-  List<String> addArgumente(int port, String schluessel) => [
-        'mcp', 'add-json', '--scope', 'user', mcpName, //
+  List<String> addArgumente(int port, String schluessel, [String name = mcpName]) => [
+        'mcp', 'add-json', '--scope', 'user', name, //
         jsonEncode({
           'type': 'http',
           'url': mcpAdresse(port),
@@ -304,19 +441,19 @@ class ClaudeCode extends KiWerkzeug {
       ];
 
   @override
-  Future<String?> eintragen(int port, String schluessel) async {
-    if (exe == null) return 'claude.exe nicht gefunden';
+  Future<String?> eintragen(int port, String schluessel, {String name = mcpName}) async {
+    if (exe == null) return '${_programm('claude')} nicht gefunden';
     // Fehlt der Eintrag, endet remove mit Fehler; das ist hier der Normalfall.
-    await ausfuehren(exe!, ['mcp', 'remove', mcpName, '--scope', 'user']);
-    final code = await ausfuehren(exe!, addArgumente(port, schluessel));
-    return code == 0 ? null : 'claude mcp add-json endete mit Code $code';
+    await ausfuehren(exe!, ['mcp', 'remove', name, '--scope', 'user']);
+    final code = await ausfuehren(exe!, addArgumente(port, schluessel, name));
+    return code == 0 ? null : 'claude mcp add endete mit Code $code';
   }
 
   @override
-  Future<String?> austragen() async {
-    if (verbindung(0, '') == Verbindung.fehlt) return null;
-    if (exe == null) return 'claude.exe nicht gefunden';
-    final code = await ausfuehren(exe!, ['mcp', 'remove', mcpName, '--scope', 'user']);
+  Future<String?> austragen({String name = mcpName}) async {
+    if (verbindung(0, '', name: name) == Verbindung.fehlt) return null;
+    if (exe == null) return '${_programm('claude')} nicht gefunden';
+    final code = await ausfuehren(exe!, ['mcp', 'remove', name, '--scope', 'user']);
     return code == 0 ? null : 'claude mcp remove endete mit Code $code';
   }
 
@@ -357,10 +494,15 @@ class CodexCli extends KiWerkzeug {
   @override
   String get name => 'Codex CLI';
   @override
-  String get datenziel => 'Inhalte gehen an das eingestellte Modell, in der Regel bei OpenAI';
+  // Der Schlüssel für Moodle steht bei Codex im Klartext in der Datei
+  // (ADR 0021, 0013): Das muss die Anzeige sagen, bevor die Lehrkraft
+  // „Installieren" klickt.
+  String get datenziel =>
+      'Inhalte gehen an das eingestellte Modell, in der Regel bei OpenAI. Der Moodle-Schlüssel steht im '
+      'Klartext in config.toml im Codex-Ordner (in der Regel ~/.codex)';
 
   /// CODEX_HOME verlegt Konfiguration und Skills; sonst `~/.codex`.
-  Directory get heim => Directory(_v(umgebung, 'CODEX_HOME') ?? p.join(umgebung['USERPROFILE'] ?? '', '.codex'));
+  Directory get heim => Directory(_v(umgebung, 'CODEX_HOME') ?? p.join(_heimOrdner(umgebung) ?? '', '.codex'));
 
   File get konfiguration => File(p.join(heim.path, 'config.toml'));
 
@@ -371,8 +513,14 @@ class CodexCli extends KiWerkzeug {
   /// selbst), wohl aber einen Hinweis darauf, dass Codex benutzt wird. Über
   /// npm installiert, liegt nur ein .cmd im Suchpfad.
   String? get exe {
-    for (final d in [..._pfad(umgebung), if (_v(umgebung, 'APPDATA') != null) p.join(umgebung['APPDATA']!, 'npm')]) {
-      for (final n in const ['codex.exe', 'codex.cmd', 'codex.bat']) {
+    final dirs = [
+      ..._pfad(umgebung),
+      if (Platform.isWindows && _v(umgebung, 'APPDATA') != null) p.join(umgebung['APPDATA']!, 'npm'),
+      if (!Platform.isWindows) ..._macVerzeichnisse,
+    ];
+    final namen = Platform.isWindows ? const ['codex.exe', 'codex.cmd', 'codex.bat'] : const ['codex'];
+    for (final d in dirs) {
+      for (final n in namen) {
         if (File(p.join(d, n)).existsSync()) return p.join(d, n);
       }
     }
@@ -388,7 +536,7 @@ class CodexCli extends KiWerkzeug {
   String? get hindernis => null;
 
   @override
-  Verbindung verbindung(int port, String schluessel) {
+  Verbindung verbindung(int port, String schluessel, {String name = mcpName}) {
     if (!konfiguration.existsSync()) return Verbindung.fehlt;
     final String text;
     try {
@@ -396,7 +544,7 @@ class CodexCli extends KiWerkzeug {
     } catch (_) {
       return Verbindung.unlesbar;
     }
-    final block = tomlBlock(text, mcpName);
+    final block = tomlBlock(text, name);
     if (block == null) return Verbindung.fehlt;
     final url = _tomlWert(block, 'url');
     final kopf = _tomlWert(block, 'Authorization');
@@ -409,10 +557,10 @@ class CodexCli extends KiWerkzeug {
   }
 
   @override
-  Future<String?> eintragen(int port, String schluessel) async {
+  Future<String?> eintragen(int port, String schluessel, {String name = mcpName}) async {
     try {
       final alt = konfiguration.existsSync() ? konfiguration.readAsStringSync() : '';
-      final neu = tomlBlockSetzen(alt, mcpName, mcpAdresse(port), mcpKopf(schluessel));
+      final neu = tomlBlockSetzen(alt, name, mcpAdresse(port), mcpKopf(schluessel));
       konfiguration.parent.createSync(recursive: true);
       konfiguration.writeAsStringSync(neu, flush: true);
       return null;
@@ -422,12 +570,12 @@ class CodexCli extends KiWerkzeug {
   }
 
   @override
-  Future<String?> austragen() async {
+  Future<String?> austragen({String name = mcpName}) async {
     if (!konfiguration.existsSync()) return null;
     try {
       final alt = konfiguration.readAsStringSync();
-      if (tomlBlock(alt, mcpName) == null) return null;
-      konfiguration.writeAsStringSync(tomlBlockEntfernen(alt, mcpName), flush: true);
+      if (tomlBlock(alt, name) == null) return null;
+      konfiguration.writeAsStringSync(tomlBlockEntfernen(alt, name), flush: true);
       return null;
     } catch (x) {
       return 'config.toml nicht geschrieben (${x.runtimeType})';
@@ -559,6 +707,14 @@ String tomlBlockEntfernen(String text, String name) => _zeilenweise(text, (zeile
 ///   Sekunden; erlaubt ist jede positive ganze Zahl bis 2³¹−1. Danach bricht
 ///   Bionic den Werkzeugaufruf ab, auch während eine Freigabe offen ist --
 ///   darum trägt die App [clientZeitlimit] ein.
+/// - Bilder aus Werkzeugergebnissen gibt Bionic nicht ans Modell weiter,
+///   weder als Bildinhalt noch als eingebettete Ressource (darum legt
+///   `bildschirmfoto` Dateien ab).
+/// - Bionic verlangt in jeder Sitzung eine Erlaubnis für den Arbeitsordner;
+///   sie lässt sich nicht vorab eintragen.
+/// - Die Skills liegen in `~/.lmstudio/skills`, wie bei den anderen Werkzeugen
+///   im eigenen Ordner: Claude Code liest keinen gemeinsamen, und nur so
+///   bleibt das Deinstallieren eindeutig.
 ///
 /// Also schreibt die App selbst hinein, ohne dass Bionic beendet werden muss.
 /// Weil die Datei intern und nicht dokumentiert ist, so vorsichtig wie
@@ -568,7 +724,6 @@ String tomlBlockEntfernen(String text, String name) => _zeilenweise(text, (zeile
 /// überschrieben. Ob Bionic den Eintrag auch annimmt, sieht die App erst an
 /// der Verbindung („KI-Werkzeug verbunden" im Protokoll); der Dialog sagt
 /// deshalb „eingetragen", nicht mehr.
-
 class LmStudio extends KiWerkzeug {
   LmStudio(super.umgebung, {String? bruecke})
       : bruecke = bruecke ?? p.join(p.dirname(Platform.resolvedExecutable), brueckeExe);
@@ -583,7 +738,7 @@ class LmStudio extends KiWerkzeug {
   @override
   String get datenziel => 'Inhalte gehen an das eingestellte Modell, lokal oder in der Cloud';
 
-  Directory get heim => Directory(p.join(umgebung['USERPROFILE'] ?? '', '.lmstudio'));
+  Directory get heim => Directory(p.join(_heimOrdner(umgebung) ?? '', '.lmstudio'));
 
   /// Bionics Liste der MCP-Server.
   File get liste => File(p.join(heim.path, 'apps', 'bionic', '.internal', 'ng-mcp.json'));
@@ -593,8 +748,10 @@ class LmStudio extends KiWerkzeug {
 
   /// Gefunden ist LM Studio, sobald Bionic einmal gelaufen ist: Erst dann
   /// gibt es seine Liste, und erst Bionic arbeitet mit Werkzeugen und Skills.
+  /// Bionic gibt es nur unter Windows; auf dem Mac wird es nicht angeboten,
+  /// denn die Brücke ist eine .exe.
   @override
-  bool get gefunden => Directory(p.join(heim.path, 'apps', 'bionic')).existsSync();
+  bool get gefunden => Platform.isWindows && Directory(p.join(heim.path, 'apps', 'bionic')).existsSync();
 
   @override
   bool get bedienbar => true;
@@ -649,7 +806,9 @@ class LmStudio extends KiWerkzeug {
   }
 
   @override
-  Verbindung verbindung(int port, String schluessel) {
+  Verbindung verbindung(int port, String schluessel, {String name = mcpName}) {
+    // Die Brücke kennt nur den Namen moodle.
+    if (name != mcpName) return Verbindung.fehlt;
     try {
       final e = [for (final x in _lesen()['servers'] as List) if (_unser(x)) x as Map];
       if (e.isEmpty) return Verbindung.fehlt;
@@ -663,7 +822,10 @@ class LmStudio extends KiWerkzeug {
   /// remove` und `add` es bei Claude Code tun. Die id eines vorhandenen
   /// bleibt, damit Bionic, was es daran hängt, nicht verliert.
   @override
-  Future<String?> eintragen(int port, String schluessel) async {
+  Future<String?> eintragen(int port, String schluessel, {String name = mcpName}) async {
+    if (name != mcpName) {
+      return 'Die Brücke für Bionic kennt nur den Servernamen moodle; weitere Profile sind offen.';
+    }
     if (!File(bruecke).existsSync()) return '$brueckeExe fehlt neben moocp.exe: moocp neu installieren.';
     try {
       final d = _lesen();
@@ -694,7 +856,8 @@ class LmStudio extends KiWerkzeug {
   }
 
   @override
-  Future<String?> austragen() async {
+  Future<String?> austragen({String name = mcpName}) async {
+    if (name != mcpName) return null;
     try {
       final d = _lesen();
       final server = d['servers'] as List;
@@ -917,32 +1080,55 @@ class Entfernt {
   int get code => (eintragBleibt.isEmpty ? 0 : 1) | (dateienBleiben.isEmpty ? 0 : 2);
 }
 
-/// Entfernt, was die App in den KI-Werkzeugen eingerichtet hat: den Eintrag
-/// „moodle" und die Skills [skills], in jedem Werkzeug. Danach wird
-/// nachgesehen, statt dem Ergebnis zu glauben.
+/// Entfernt, was die App in den KI-Werkzeugen eingerichtet hat: die
+/// Einträge [mcpNamen] (je Instanzprofil einer, E31) und die Skills
+/// [skills], in jedem Werkzeug. Danach wird nachgesehen, statt dem Ergebnis
+/// zu glauben.
 Future<Entfernt> einrichtungEntfernen({
   required Map<String, String> umgebung,
   required List<String> skills,
+  List<String> mcpNamen = const [mcpName],
   List<KiWerkzeug>? werkzeuge,
 }) async {
   final geblieben = <String>[];
   final eintraege = <String>[];
   for (final w in werkzeuge ?? alleWerkzeuge(umgebung)) {
-    await w.austragen();
+    for (final eintrag in mcpNamen) {
+      await w.austragen(name: eintrag);
+      if (await _eintragDa(w, eintrag)) {
+        eintraege.add(mcpNamen.length > 1 ? '${w.id} ($eintrag)' : w.id);
+      }
+    }
     for (final name in skills) {
       geblieben.addAll(skillEntfernen(Directory(p.join(w.skillOrdner.path, name))).map((f) => '${w.id}: $name/$f'));
     }
-    if (await _eintragDa(w)) eintraege.add(w.id);
   }
   return Entfernt(eintragBleibt: eintraege, dateienBleiben: geblieben);
 }
 
-/// Ob der Eintrag „moodle" (noch) steht, gleich mit welcher Adresse. Einen
+/// Entfernt den Eintrag eines gelöschten Profils in jedem Werkzeug und liest
+/// danach nach. Was stehen bleibt, kommt als Zeile „Werkzeug (Name)" zurück,
+/// damit die Lehrkraft es von Hand entfernen kann.
+Future<List<String>> profilEintragEntfernen({
+  required Map<String, String> umgebung,
+  required String name,
+  List<KiWerkzeug>? werkzeuge,
+}) async {
+  final geblieben = <String>[];
+  for (final w in werkzeuge ?? alleWerkzeuge(umgebung)) {
+    if (!await _eintragDa(w, name)) continue;
+    await w.austragen(name: name);
+    if (await _eintragDa(w, name)) geblieben.add('${w.name} ($name)');
+  }
+  return geblieben;
+}
+
+/// Ob der Eintrag [name] (noch) steht, gleich mit welcher Adresse. Einen
 /// halb geschriebenen Stand liest es kurz danach noch einmal; bleibt er
 /// unlesbar, zählt der Eintrag als vorhanden.
-Future<bool> _eintragDa(KiWerkzeug w) async {
+Future<bool> _eintragDa(KiWerkzeug w, [String name = mcpName]) async {
   for (var i = 0; i < 3; i++) {
-    final v = w.verbindung(0, '');
+    final v = w.verbindung(0, '', name: name);
     if (v != Verbindung.unlesbar) return v != Verbindung.fehlt;
     await Future<void>.delayed(const Duration(milliseconds: 500));
   }
@@ -958,11 +1144,16 @@ Future<bool> _eintragDa(KiWerkzeug w) async {
 /// Platzhalter „python.exe" aus dem Microsoft Store endet ohne Python mit
 /// einem Fehlercode und zählt deshalb richtig als „fehlt".
 Future<bool> pythonVorhanden() async {
-  try {
-    return await _ausfuehren('python', ['--version']) == 0;
-  } catch (_) {
-    return false;
+  // Auf dem Mac heißt Python oft nur python3; der Skill ruft im Text `python`
+  // auf, das ist dort eine offene Lücke.
+  for (final name in Platform.isWindows ? const ['python'] : const ['python3', 'python']) {
+    try {
+      if (await _ausfuehren(name, ['--version']) == 0) return true;
+    } catch (_) {
+      // Den nächsten Namen probieren.
+    }
   }
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -1067,6 +1258,7 @@ Future<Einrichtungsstand> einrichtungPruefen({
   required Map<String, String> umgebung,
   required int port,
   required String schluessel,
+  String name = mcpName,
   required List<SkillPaket> skills,
   Set<String> abgewaehlt = const {},
   Set<String> gewaehlt = const {},
@@ -1086,7 +1278,7 @@ Future<Einrichtungsstand> einrichtungPruefen({
         Werkzeugstand(
           werkzeug: w,
           gewaehlt: gewaehlteWerkzeuge.contains(w.id),
-          verbindung: w.verbindung(port, schluessel),
+          verbindung: w.verbindung(port, schluessel, name: name),
           skills: gewaehlteWerkzeuge.contains(w.id) ? gewollt : const [],
           stand: {for (final s in skills) s.name: skillVergleichen(s, Directory(p.join(w.skillOrdner.path, s.name)))},
           entfernen: {

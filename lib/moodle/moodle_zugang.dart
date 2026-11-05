@@ -28,11 +28,15 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
 
 import '../protokoll.dart';
+import '../testschalter.dart';
 import 'browserliste.dart';
+import 'sicherung_regeln.dart';
+import 'wiederherstellung_regeln.dart';
 import 'sperrliste.dart';
 
 class MoodleFehler implements Exception {
@@ -42,10 +46,27 @@ class MoodleFehler implements Exception {
   String toString() => meldung;
 }
 
+/// Eine Sicherung ist größer als die Grenze ([archivGrenzeStandard]); sie wird nicht
+/// heruntergeladen, und was schon geladen war, verschwindet wieder.
+class DownloadZuGross extends MoodleFehler {
+  DownloadZuGross(int maxBytes)
+      : super('Die Sicherung ist größer als die erlaubten ${maxBytes ~/ (1024 * 1024)} MB; nicht heruntergeladen. '
+            'Eine kleinere Auswahl sichern.');
+}
+
 /// Moodle war nicht zu erreichen: keine Verbindung, Abbruch, TLS-Fehler oder
 /// keine Antwort innerhalb der Zeitgrenze.
 class MoodleNichtErreichbar extends MoodleFehler {
   MoodleNichtErreichbar(super.meldung);
+}
+
+/// Moodle hat die Zugangsdaten ausdrücklich abgelehnt: Das zählte bei Moodle
+/// als Fehlversuch. Nur dann sind gespeicherte Zugangsdaten nachweislich
+/// falsch und werden verworfen (E7); jede andere MoodleFehler-Art sagt nichts
+/// über das Passwort -- auch eine abgebrochene Verbindung nach dem Senden, bei
+/// der niemand weiß, ob es angekommen ist.
+class MoodleAnmeldungAbgelehnt extends MoodleFehler {
+  MoodleAnmeldungAbgelehnt(super.meldung);
 }
 
 /// Die Sitzung lief während eines Schreibvorgangs ab. Neu angemeldet ist
@@ -54,31 +75,26 @@ class SitzungAbgelaufen extends MoodleFehler {
   SitzungAbgelaufen() : super('Sitzung während des Schreibens abgelaufen.');
 }
 
-/// Ein Schutzdienst vor der Instanz (Cloudflare) hat die Anfrage angehalten
-/// und verlangt eine Prüfung, die nur ein Mensch im Browser besteht. Die App
-/// besteht sie nie und bekommt deshalb nie das Cookie, das sie für die
-/// nächsten Anfragen aufhöbe -- jeder Versuch wird wieder angehalten. Die
-/// Prüfung zu lösen oder ihr Cookie aus dem Browser zu übernehmen, wäre eine
-/// Umgehung (E22). Ausgelöst wird sie meist von Code im Text, etwa onclick=
-/// in einem Code-Beispiel; dieselbe Seite im Browser zeigt die Prüfung auch.
+/// Ein Schutzdienst vor der Instanz hat die Anfrage gleich abgewiesen, statt
+/// Moodle antworten zu lassen. Die Sperre trifft den Inhalt (HTML-Code als Text
+/// in einem Code-Beispiel), nicht die Anmeldung: Derselbe Inhalt wird auch im
+/// Browser der Lehrkraft abgewiesen. Nichts gespeichert; die App sagt es klar
+/// und übergibt es an die Lehrkraft.
 ///
-/// [sperre]: Statt einer Prüfung hat der Schutzdienst die Anfrage gleich
-/// abgewiesen. Ausgelöst vom Inhalt: Dasselbe Formular mit Code als Text
-/// (`&lt;p id="…"&gt;` in einem Code-Beispiel) weist er auch aus dem
-/// Browser der Lehrkraft ab (gemessen). Übergeben wird trotzdem -- ob eine
-/// Regel nur die App trifft, sieht die App nicht --, und die Meldung sagt,
-/// dass sonst nur ein anderer Inhalt hilft. Sich als Browser auszugeben,
-/// wäre eine Umgehung wie bei der Prüfung.
+/// [sperre]: Statt einer Prüfung hat der Schutzdienst die Anfrage abgewiesen.
+/// Sich als Browser auszugeben, wäre eine Umgehung wie bei der Prüfung (E22).
 class SchutzPruefung extends MoodleFehler {
   SchutzPruefung({this.sperre = false})
-      : super(sperre
+    : super(
+        sperre
             ? 'Der Schutzdienst vor Moodle hat das Formular abgewiesen. Nichts gespeichert. Ein neuer Versuch '
-                'hilft nicht. Ausgelöst wird das vom Inhalt, meist von HTML- oder JavaScript-Code als Text in einem '
-                'Code-Beispiel, etwa einem Tag mit Attribut; oft weist er dasselbe auch aus dem Browser ab. Dann '
-                'hilft nur, das Beispiel anders zu schreiben, oder der Betreiber der Instanz lässt es zu.'
+                  'hilft nicht. Ausgelöst wird das vom Inhalt, meist von HTML- oder JavaScript-Code als Text in einem '
+                  'Code-Beispiel, etwa einem Tag mit Attribut; oft weist er dasselbe auch aus dem Browser ab. Dann '
+                  'hilft nur, das Beispiel anders zu schreiben, oder der Betreiber der Instanz lässt es zu.'
             : 'Der Schutzdienst vor Moodle hat das Formular angehalten: Er verlangt eine Prüfung, die nur '
-                'ein Mensch im Browser bestehen kann. Nichts gespeichert. Ein neuer Versuch hilft nicht. Meist '
-                'löst Code im Text das aus, etwa ein Ereignis-Attribut wie onclick= in einem Code-Beispiel.');
+                  'ein Mensch im Browser bestehen kann. Nichts gespeichert. Ein neuer Versuch hilft nicht. Meist '
+                  'löst Code im Text das aus, etwa ein Ereignis-Attribut wie onclick= in einem Code-Beispiel.',
+      );
   final bool sperre;
 }
 
@@ -92,9 +108,18 @@ enum Schutz { pruefung, sperre }
 /// Cloudflare von Moodle durchreicht, auch ein 403 von Moodle selbst (ein
 /// Recht fehlt) -- deshalb gilt ein 403 nur dann als Sperre, wenn die Seite
 /// keine von Moodle ist: Jede Moodle-Seite setzt `M.cfg`.
-Schutz? schutzErkennen(int status, {String? server, String? mitigated, required String text}) {
+Schutz? schutzErkennen(
+  int status, {
+  String? server,
+  String? mitigated,
+  required String text,
+}) {
   if (mitigated == 'challenge') return Schutz.pruefung;
-  if (status == 403 && server?.toLowerCase() == 'cloudflare' && !text.contains('M.cfg')) return Schutz.sperre;
+  if (status == 403 &&
+      server?.toLowerCase() == 'cloudflare' &&
+      !text.contains('M.cfg')) {
+    return Schutz.sperre;
+  }
   return null;
 }
 
@@ -102,7 +127,14 @@ typedef Felder = List<MapEntry<String, String>>;
 
 /// Eine Antwort von Moodle.
 class Antwort {
-  Antwort(this.status, this.adresse, this.bytes, this.inhaltstyp, {this.ort, this.schutz});
+  Antwort(
+    this.status,
+    this.adresse,
+    this.bytes,
+    this.inhaltstyp, {
+    this.ort,
+    this.schutz,
+  });
   final int status;
   final Uri adresse;
   final Uint8List bytes;
@@ -129,12 +161,24 @@ class Anhang {
 
 /// Eine Regel der Positivliste.
 class Erlaubt {
-  const Erlaubt(this.methode, this.pfad, this.zweck, {this.parameter, this.formular, this.inhalt});
+  const Erlaubt(
+    this.methode,
+    this.pfad,
+    this.zweck, {
+    this.parameter,
+    this.formular,
+    this.inhalt,
+    this.anhang,
+  });
   final String methode;
   final String pfad;
   final String zweck;
   final bool Function(Map<String, String> q)? parameter;
   final bool Function(Felder f)? formular;
+
+  /// Prüft die hochgeladene Datei. Eine Regel mit diesem Prüfer passt nur auf
+  /// Anfragen mit Datei.
+  final bool Function(Anhang a)? anhang;
 
   /// Prüft einen JSON-Rumpf (Moodle-AJAX-Dienste), mit den Parametern der Adresse.
   final bool Function(Map<String, String> q, String rumpf)? inhalt;
@@ -163,7 +207,9 @@ bool druckaufbereitungErkannt(String html) => html.contains('ab-print-root');
 String? themeStylesheetIn(dom.Document doc) {
   for (final l in doc.querySelectorAll('link[rel="stylesheet"]')) {
     final u = Uri.tryParse(l.attributes['href'] ?? '');
-    if (u != null && u.path.startsWith('/theme/styles.php/')) return u.hasQuery ? '${u.path}?${u.query}' : u.path;
+    if (u != null && u.path.startsWith('/theme/styles.php/')) {
+      return u.hasQuery ? '${u.path}?${u.query}' : u.path;
+    }
   }
   return null;
 }
@@ -185,27 +231,56 @@ class MoodleZugang {
 
   final Protokoll protokoll;
 
-  static bool _zahl(String? s) => s != null && RegExp(r'^\d+$').hasMatch(s);
+  static bool _zahl(String? s) => istZahl(s);
+
+  /// Nur die Form eines Werts für die Fehlersuche (nie der Wert): Zahl, Hex32, Text
+  /// aus Buchstaben und Unterstrichen, sonst gemischt, jeweils mit Länge.
+  static String _wertform(String v) {
+    final art = v.isEmpty
+        ? 'leer'
+        : RegExp(r'^\d+$').hasMatch(v)
+        ? 'Zahl'
+        : RegExp(r'^[0-9a-f]{32}$').hasMatch(v)
+        ? 'Hex32'
+        : RegExp(r'^[A-Za-z_]+$').hasMatch(v)
+        ? 'Text'
+        : 'gemischt';
+    return '$art(${v.length})';
+  }
   static bool _gesetzt(String? s) => s != null && s.isNotEmpty;
 
   /// Das Formular trägt die Marke seiner Klasse (`_qf__<klasse>`). Die Klassen
   /// wandern zwischen Moodle-Versionen den Namensraum (question_export_form
   /// wurde qbank_exportquestions\form\export_form), deshalb ein Muster.
-  static bool _marke(Felder f, RegExp muster) => f.any((e) => muster.hasMatch(e.key));
+  static bool _marke(Felder f, RegExp muster) =>
+      f.any((e) => muster.hasMatch(e.key));
 
   /// Dienste, die etwas ändern -- fürs Protokoll.
   static const Set<String> schreibendeDienste = {
-    'core_courseformat_update_course', 'mod_quiz_add_random_questions', 'core_form_dynamic_form', //
-    'mod_board_delete_column', 'mod_board_move_column', 'mod_board_lock_column', 'mod_board_delete_note',
-    'mod_kanban_add_column', 'mod_kanban_delete_column', 'mod_kanban_move_column', 'mod_kanban_add_card',
+    'core_courseformat_update_course',
+    'mod_quiz_add_random_questions',
+    'core_form_dynamic_form', //
+    'mod_board_delete_column',
+    'mod_board_move_column',
+    'mod_board_lock_column',
+    'mod_board_delete_note',
+    'mod_kanban_add_column',
+    'mod_kanban_delete_column',
+    'mod_kanban_move_column',
+    'mod_kanban_add_card',
     'mod_kanban_delete_card', 'mod_kanban_move_card',
   };
+
+  /// Das versteckte Feld `id` eines Moodle-Formulars: leer oder 0 heißt, das
+  /// Objekt wird neu angelegt; jede andere Nummer ändert ein bestehendes.
+  static bool _neuesObjekt(String? id) => id != null && (id.isEmpty || id == '0');
 
   static bool _nurSchluessel(Map<String, String> q, Set<String> erlaubt) =>
       q.keys.every(erlaubt.contains);
 
   /// Fragennummern, durch Komma getrennt, wie delete.php sie nimmt.
-  static bool _fragenListe(String? s) => s != null && RegExp(r'^\d+(,\d+)*$').hasMatch(s);
+  static bool _fragenListe(String? s) =>
+      s != null && RegExp(r'^\d+(,\d+)*$').hasMatch(s);
 
   /// Die Rückfrage von delete.php: die Auswahl als `q<id>=1`, `deleteselected=1`.
   /// Dazu returnurl, genau die Fragenübersicht der Sammlung: Ohne sie bricht
@@ -216,19 +291,39 @@ class MoodleZugang {
   static bool _loeschRueckfrage(Map<String, String> q) {
     final auswahl = RegExp(r'^q\d+$');
     return q.keys.every(
-            (k) => const {'cmid', 'deleteselected', 'deleteall', 'returnurl'}.contains(k) || auswahl.hasMatch(k)) &&
+          (k) =>
+              const {
+                'cmid',
+                'deleteselected',
+                'deleteall',
+                'returnurl',
+              }.contains(k) ||
+              auswahl.hasMatch(k),
+        ) &&
         _zahl(q['cmid']) &&
         q['returnurl'] == '/question/edit.php?cmid=${q['cmid']}' &&
         q['deleteselected'] == '1' &&
         const {'0', '1'}.contains(q['deleteall'] ?? '1') &&
         q.keys.any(auswahl.hasMatch) &&
-        q.entries.where((e) => auswahl.hasMatch(e.key)).every((e) => e.value == '1');
+        q.entries
+            .where((e) => auswahl.hasMatch(e.key))
+            .every((e) => e.value == '1');
   }
 
   /// Die Bestätigung von delete.php: nur diese Felder, confirm ist der
   /// md5-Wert der Auswahl, den Moodle selbst in die Rückfrage schreibt.
   static bool _loeschBestaetigung(Map<String, String> w) =>
-      w.keys.every(const {'cmid', 'courseid', 'deleteselected', 'deleteall', 'confirm', 'sesskey', 'returnurl'}.contains) &&
+      w.keys.every(
+        const {
+          'cmid',
+          'courseid',
+          'deleteselected',
+          'deleteall',
+          'confirm',
+          'sesskey',
+          'returnurl',
+        }.contains,
+      ) &&
       _fragenListe(w['deleteselected']) &&
       RegExp(r'^[0-9a-f]{32}$').hasMatch(w['confirm'] ?? '') &&
       _gesetzt(w['sesskey']) &&
@@ -241,15 +336,54 @@ class MoodleZugang {
   /// Die Übersicht „Unterstützte Aktivitäten und Fragetypen" in README.md
   /// (Teil 2) im selben Zug nachziehen.
   static const Set<String> schreibbareModule = {
-    'page', 'label', 'assign', 'folder', 'subsection', 'book', 'quiz', 'qbank', //
+    'page',
+    'label',
+    'assign',
+    'folder',
+    'subsection',
+    'book',
+    'quiz',
+    'qbank', //
     'checklist', 'wiki', 'board', 'kanban', 'url', 'resource',
   };
 
+  /// Aktivitätstypen, bei denen `aendern` ausschließlich Gruppenmodus und
+  /// Gruppierung ändert -- keine Texte, Dateien oder anderen Einstellungen,
+  /// kein Anlegen. Ein Typ kommt erst hinein, wenn sein Formular so im
+  /// Testkurs gemessen ist (E33); `choicegroup` steht ungemessen darin, abgesichert
+  /// durch den Vergleich aller übrigen Felder beim Zurücklesen. Die Positivliste und die Prüfungen in
+  /// formular_schreiben.dart richten sich nach dieser einen Stelle.
+  static const Set<String> nurGruppenModule = {'collabora', 'choicegroup'};
+
+  /// Die Felder, die bei [nurGruppenModule] geändert werden dürfen.
+  static const List<String> gruppenFelder = ['groupmode', 'groupingid'];
+
+  /// Module, die das allgemeine Werkzeug anlegen kann. Lernlandkarten
+  /// verwenden ihr eigenes, separat geprüftes Änderungswerkzeug.
+  static const Set<String> anlegbareModule = {
+    ...schreibbareModule,
+    'learningmap',
+  };
+
   /// Aktionen der Kursstruktur (core_courseformat_update_course), die die
-  /// Werkzeuge benutzen. Andere -- etwa cm_stealth -- sind nicht gemessen.
+  /// Werkzeuge benutzen. Andere sind nicht gemessen. `cm_stealth` ist die Aktion,
+  /// mit der Moodle eine Aktivität „verfügbar, aber nicht auf der Kursseite" macht
+  /// (visible 1, visibleoncoursepage 0); nur `sichtbarkeit_setzen` braucht sie, um den
+  /// Zustand zu erhalten (kurs_aendern.dart). UNGEMESSEN: der Name der Aktion und ob die
+  /// Instanz ihn erlaubt (die Verwaltung kann „verfügbar ohne Link" ausschalten).
   static const Set<String> kursAktionen = {
-    'section_add', 'section_hide', 'section_show', 'section_move_after', 'section_delete', //
-    'section_duplicate', 'cm_hide', 'cm_show', 'cm_move', 'cm_delete', 'cm_duplicate',
+    'section_add',
+    'section_hide',
+    'section_show',
+    'section_move_after',
+    'section_delete', //
+    'section_duplicate',
+    'cm_hide',
+    'cm_show',
+    'cm_stealth',
+    'cm_move',
+    'cm_delete',
+    'cm_duplicate',
   };
 
   /// Die eigene Nutzer-ID, mitgelesen aus M.cfg. Dienste, die eine userid
@@ -266,38 +400,75 @@ class MoodleZugang {
   /// Original der Sinn der Freigabe.
   final Set<int> selbstAngelegt = {};
 
+  /// Die Aktivitäten, die `sichtbarkeit_setzen` verborgen hat, während sie „verfügbar
+  /// ohne Link" waren. Verbergen hebt den Zustand in Moodle auf, und auch das
+  /// Sichtbarmachen bringt ihn nicht zurück; beim nächsten Sichtbarmachen stellt die App ihn
+  /// deshalb wieder her. Nur im Speicher und je Sitzung, wie [selbstAngelegt]: Ein
+  /// Neustart oder eine neue Anmeldung vergisst ihn, dann macht die App sichtbar, ohne den
+  /// Zustand zu kennen, und sagt das.
+  final Set<int> ohneLinkVorherVerborgen = {};
+
   /// Moodle-AJAX-Dienste, die aufgerufen werden dürfen, mit einer Prüfung
   /// ihrer Argumente. Keiner liefert Daten anderer Personen.
   Map<String, bool Function(Map a)> get dienste => {
-        // Kursstruktur: Abschnitte und Aktivitäten mit Name, Typ, Sichtbarkeit.
-        'core_courseformat_get_state': (a) => _nur(a, {'courseid'}),
-        // Kursstruktur ändern, nur mit den gemessenen Aktionen.
-        'core_courseformat_update_course': (a) =>
-            _nur(a, {'action', 'courseid', 'ids', 'targetsectionid', 'targetcmid'}) &&
-            kursAktionen.contains(a['action']) &&
-            a['ids'] is List,
-        // Die eigenen Kurse (wie im Block „Meine Kurse") -- Name und Nummer.
-        'core_course_get_enrolled_courses_by_timeline_classification': (a) =>
-            _nur(a, {'classification', 'limit', 'offset', 'sort'}),
-        // Die eigenen zuletzt besuchten Kurse, nur mit der eigenen userid.
-        'core_course_get_recent_courses': (a) =>
-            _nur(a, {'userid', 'limit', 'offset', 'sort'}) && _eigeneId != null && a['userid'] == _eigeneId,
-        // Zufallsfragen in einen Test.
-        'mod_quiz_add_random_questions': (a) => _nur(a, {'cmid', 'addonpage', 'randomcount', 'filtercondition'}),
-        // Board: lesen (Notizen anderer gibt die App nicht heraus), Spalten
-        // löschen, verschieben, sperren, eigene Notizen löschen.
-        'mod_board_get_board': (a) => _nur(a, {'id', 'ownerid', 'groupid'}) && a['ownerid'] == 0,
-        'mod_board_delete_column': (a) => _nur(a, {'id'}),
-        'mod_board_move_column': (a) => _nur(a, {'id', 'sortorder'}),
-        'mod_board_lock_column': (a) => _nur(a, {'id', 'status'}),
-        'mod_board_delete_note': (a) => _nur(a, {'id'}),
-        // Kanban: das gemeinsame Kursboard.
-        'mod_kanban_get_kanban_content_init': (a) => _nur(a, {'cmid', 'boardid', 'timestamp'}),
-        for (final k in const ['add_column', 'delete_column', 'move_column', 'add_card', 'delete_card', 'move_card'])
-          'mod_kanban_$k': (a) => _nur(a, {'cmid', 'boardid', 'data'}),
-        // Dynamische Formulare, nur die gemessenen Klassen.
-        'core_form_dynamic_form': (a) => _nur(a, {'form', 'formdata'}) && dynamischeFormulare.contains(a['form']),
-      };
+    // Kursstruktur: Abschnitte und Aktivitäten mit Name, Typ, Sichtbarkeit.
+    'core_courseformat_get_state': (a) => _nur(a, {'courseid'}),
+    // Kursstruktur ändern, nur mit den gemessenen Aktionen.
+    'core_courseformat_update_course': (a) =>
+        _nur(a, {
+          'action',
+          'courseid',
+          'ids',
+          'targetsectionid',
+          'targetcmid',
+        }) &&
+        kursAktionen.contains(a['action']) &&
+        a['ids'] is List,
+    // Die eigenen Kurse (wie im Block „Meine Kurse") -- Name und Nummer.
+    'core_course_get_enrolled_courses_by_timeline_classification': (a) =>
+        _nur(a, {'classification', 'limit', 'offset', 'sort'}),
+    // Die eigenen zuletzt besuchten Kurse, nur mit der eigenen userid.
+    'core_course_get_recent_courses': (a) =>
+        _nur(a, {'userid', 'limit', 'offset', 'sort'}) &&
+        _eigeneId != null &&
+        a['userid'] == _eigeneId,
+    // Zufallsfragen in einen Test.
+    'mod_quiz_add_random_questions': (a) =>
+        _nur(a, {'cmid', 'addonpage', 'randomcount', 'filtercondition'}),
+    // Board: lesen (Notizen anderer gibt die App nicht heraus), Spalten
+    // löschen, verschieben, sperren, eigene Notizen löschen.
+    'mod_board_get_board': (a) =>
+        _nur(a, {'id', 'ownerid', 'groupid'}) && a['ownerid'] == 0,
+    'mod_board_delete_column': (a) => _nur(a, {'id'}),
+    'mod_board_move_column': (a) => _nur(a, {'id', 'sortorder'}),
+    'mod_board_lock_column': (a) => _nur(a, {'id', 'status'}),
+    'mod_board_delete_note': (a) => _nur(a, {'id'}),
+    // Kanban: das gemeinsame Kursboard.
+    'mod_kanban_get_kanban_content_init': (a) =>
+        _nur(a, {'cmid', 'boardid', 'timestamp'}),
+    for (final k in const [
+      'add_column',
+      'delete_column',
+      'move_column',
+      'add_card',
+      'delete_card',
+      'move_card',
+    ])
+      'mod_kanban_$k': (a) => _nur(a, {'cmid', 'boardid', 'data'}),
+    // Dynamische Formulare, nur die gemessenen Klassen.
+    'core_form_dynamic_form': (a) =>
+        _nur(a, {'form', 'formdata'}) &&
+        dynamischeFormulare.contains(a['form']),
+    // Sicherung: Fortschritt lesen.
+    // Operation „restore" ist UNGEMESSEN; ohne Schlüssel gilt die Sicherung.
+    'core_backup_get_async_backup_progress': (a) =>
+        _nur(a, {'backupids', 'contextid', 'operation'}) &&
+        a['backupids'] is List &&
+        a['contextid'] is num &&
+        (a['operation'] == null ||
+            a['operation'] == 'backup' ||
+            a['operation'] == 'restore'),
+  };
 
   /// Formularklassen für core_form_dynamic_form.
   static const Set<String> dynamischeFormulare = {
@@ -306,7 +477,8 @@ class MoodleZugang {
     r'mod_kanban\form\edit_column_form',
   };
 
-  static bool _nur(Map a, Set<String> schluessel) => a.keys.every(schluessel.contains);
+  static bool _nur(Map a, Set<String> schluessel) =>
+      a.keys.every(schluessel.contains);
 
   bool _dienstAufruf(Map<String, String> q, String rumpf) {
     final name = q['info'];
@@ -316,7 +488,10 @@ class MoodleZugang {
       final l = jsonDecode(rumpf);
       if (l is! List || l.length != 1) return false;
       final a = l.single;
-      return a is Map && a['methodname'] == name && a['args'] is Map && pruefen(a['args'] as Map);
+      return a is Map &&
+          a['methodname'] == name &&
+          a['args'] is Map &&
+          pruefen(a['args'] as Map);
     } catch (_) {
       return false;
     }
@@ -326,254 +501,912 @@ class MoodleZugang {
   /// Umleitungsziel. Eine neue Funktion braucht hier einen Eintrag, und das
   /// soll auffallen.
   List<Erlaubt> get positivliste => [
-        // ---- Anmelden
-        Erlaubt('GET', r'^/login/index\.php$', 'Anmeldeseite',
-            parameter: (q) => _nurSchluessel(q, {'testsession'})),
-        Erlaubt('POST', r'^/login/index\.php$', 'Anmeldeformular',
-            parameter: (q) => q.isEmpty),
-        // ---- Lesen
-        Erlaubt('GET', r'^/course/modedit\.php$', 'Bearbeitungsformular lesen',
-            parameter: (q) => q.length == 1 && _zahl(q['update'])),
-        Erlaubt('GET', r'^/course/editsection\.php$', 'Abschnittsformular lesen',
-            parameter: (q) => _nurSchluessel(q, {'id', 'sr'}) && _zahl(q['id'])),
-        // Nur lesen: Mit Formularwerten würde dieselbe Adresse Filter umschalten.
-        Erlaubt('GET', r'^/filter/manage\.php$', 'Filtereinstellungen eines Kurses (kurs_filter)',
-            parameter: (q) => q.length == 1 && _zahl(q['contextid'])),
-        // Fragen und Tests: nie die Fragenübersicht (question/edit.php) -- sie
-        // zeigt „Erstellt von" mit Klarnamen.
-        Erlaubt('GET', r'^/question/banks\.php$', 'Fragensammlungen eines Kurses',
-            parameter: (q) => q.length == 1 && _zahl(q['courseid'])),
-        Erlaubt('GET', r'^/question/bank/importquestions/import\.php$', 'Kategorien, Importformular',
-            parameter: (q) => q.length == 1 && _zahl(q['cmid'])),
-        Erlaubt('GET', r'^/question/bank/exportquestions/export\.php$', 'Exportformular',
-            parameter: (q) => q.length == 1 && _zahl(q['cmid'])),
-        Erlaubt('GET', r'^/question/bank/exporttoxml/exportone\.php$', 'eine Frage als XML',
-            parameter: (q) => q.length == 3 && _zahl(q['id']) && _zahl(q['cmid']) && _gesetzt(q['sesskey'])),
-        Erlaubt('GET', r'^/question/bank/editquestion/question\.php$', 'Bearbeitungsformular einer Frage',
-            parameter: (q) =>
-                _nurSchluessel(q, {'cmid', 'id', 'qtype', 'category', 'courseid', 'returnurl'}) && _zahl(q['cmid'])),
-        Erlaubt('GET', r'^/mod/quiz/edit\.php$', 'Zusammenstellung eines Tests',
-            parameter: (q) => q.length == 1 && _zahl(q['cmid'])),
-        Erlaubt('GET', r'^/question/type/stack/questiontestrun\.php$', 'STACK: Fragetests und Varianten',
-            parameter: (q) => _nurSchluessel(q, {'questionid', 'cmid', 'seed'}) && _zahl(q['questionid'])),
-        // Nur über eine Frage: Ohne questionid öffnet STACK den Notizblock nur
-        // Administratoren (stack.dart, stackCas).
-        Erlaubt('GET', r'^/question/type/stack/adminui/caschat\.php$', 'STACK: CAS-Notizblock',
-            parameter: (q) => q.length == 2 && _zahl(q['questionid']) && _zahl(q['cmid'])),
-        Erlaubt('GET', r'^/mod/checklist/edit\.php$', 'Fortschrittsliste: die Einträge',
-            parameter: (q) => q.length == 1 && _zahl(q['id'])),
-        Erlaubt('GET', r'^/mod/wiki/view\.php$', 'Wiki: Startseite oder eine Seite',
-            parameter: (q) => q.length == 1 && (_zahl(q['id']) || _zahl(q['pageid']))),
-        Erlaubt('GET', r'^/mod/wiki/map\.php$', 'Wiki: Seitenliste (option 5; 1 und 6 zeigen Namen)',
-            parameter: (q) => q.length == 2 && _zahl(q['pageid']) && q['option'] == '5'),
-        Erlaubt('GET', r'^/mod/board/view\.php$', 'Board: die Board-ID', parameter: (q) => q.length == 1 && _zahl(q['id'])),
-        Erlaubt('GET', r'^/mod/kanban/view\.php$', 'Kanban: die Board-ID', parameter: (q) => q.length == 1 && _zahl(q['id'])),
-        Erlaubt('GET', r'^/grade/grading/manage\.php$', 'Bewertungsmethode einer Aufgabe (Definition, keine Bewertung)',
-            parameter: (q) =>
-                _nurSchluessel(q, {'contextid', 'component', 'area'}) && _zahl(q['contextid']) && q['component'] == 'mod_assign'),
-        Erlaubt('GET', r'^/grade/grading/form/(rubric|guide)/edit\.php$', 'Bewertungsschema: Definitionsformular',
-            parameter: (q) => q.length == 1 && _zahl(q['areaid'])),
-        Erlaubt('GET', r'^/mod/book/tool/print/index\.php$', 'Buch: alle Kapitel mit chapterid',
-            parameter: (q) => q.length == 1 && _zahl(q['id'])),
-        Erlaubt('GET', r'^/mod/book/edit\.php$', 'Buchkapitel: Formular',
-            parameter: (q) =>
-                _nurSchluessel(q, {'cmid', 'id', 'pagenum', 'subchapter'}) &&
-                _zahl(q['cmid']) &&
-                (_zahl(q['id']) || _zahl(q['pagenum']))),
-        Erlaubt('GET', r'^/draftfile\.php/\d+/user/draft/\d+/.+', 'Datei im Entwurfsbereich'),
-        Erlaubt('GET', r'^/pluginfile\.php/\d+/.+', 'Datei im Kurs'),
-        Erlaubt('POST', r'^/lib/ajax/service\.php$', 'Moodle-Dienst (nur lesend, siehe dienste)',
-            parameter: (q) =>
-                _nurSchluessel(q, {'sesskey', 'info'}) &&
-                (q['sesskey'] ?? '').isNotEmpty &&
-                dienste.containsKey(q['info']),
-            inhalt: _dienstAufruf),
-        // ---- Schreiben
-        Erlaubt('GET', r'^/course/modedit\.php$', 'Formular „Aktivität anlegen"',
-            parameter: (q) =>
-                _nurSchluessel(q, {'add', 'type', 'course', 'section', 'return', 'sr'}) &&
-                schreibbareModule.contains(q['add']) &&
-                _zahl(q['course']) &&
-                _zahl(q['section'])),
-        Erlaubt('POST', r'^/course/modedit\.php$', 'Aktivität speichern',
-            parameter: (q) => q.isEmpty,
-            formular: (f) {
-              final modul = wertIn(f, 'modulename');
-              return _zahl(wertIn(f, 'course')) &&
-                  schreibbareModule.contains(modul) &&
-                  wertIn(f, '_qf__mod_${modul}_mod_form') != null;
-            }),
-        Erlaubt('POST', r'^/course/editsection\.php$', 'Abschnitt speichern',
-            parameter: (q) => q.isEmpty,
-            formular: (f) => _zahl(wertIn(f, 'id')) && f.any((e) => e.key.startsWith('_qf__'))),
-        Erlaubt('POST', r'^/question/bank/exportquestions/export\.php$', 'Fragen exportieren',
-            parameter: (q) => _nurSchluessel(q, {'cmid'}),
-            formular: (f) => _marke(f, RegExp(r'^_qf__.*export.*form$')) && wertIn(f, 'format') == 'xml'),
-        Erlaubt('POST', r'^/question/bank/importquestions/import\.php$', 'Fragen importieren (Moodle-XML)',
-            parameter: (q) => _nurSchluessel(q, {'cmid'}),
-            formular: (f) => _marke(f, RegExp(r'^_qf__.*import.*form$')) && wertIn(f, 'format') == 'xml'),
-        // Speichern erzeugt eine neue Version -- nie mit makecopy, das legte
-        // eine zweite Frage an.
-        Erlaubt('POST', r'^/question/bank/editquestion/question\.php$', 'Frage speichern (neue Version)',
-            parameter: (q) => _nurSchluessel(q, {'cmid', 'id', 'courseid'}),
-            formular: (f) =>
-                _zahl(wertIn(f, 'id')) &&
-                f.any((e) => RegExp(r'^_qf__qtype_[a-z]+_edit_form$').hasMatch(e.key)) &&
-                (wertIn(f, 'makecopy') ?? '0') == '0'),
-        // Fragen löschen (fragen.dart, fragenLoeschen). Ohne confirm zeigt
-        // delete.php nur die Rückfrage und ändert nichts; bestätigt wird mit
-        // deren Formular, so wie Moodle es ausgibt -- je nach Moodle als
-        // Formular oder als Link, darum beide Wege, mit denselben Feldern.
-        // Die Auswahl nimmt die Rückfrage wie das Formular der Sammlung als
-        // q<id>=1 (gemessen 30.09.2026, Moodle 5.1: eine Liste in
-        // deleteselected allein wählt nichts aus, Moodle leitet nur zurück).
-        Erlaubt('GET', r'^/question/bank/deletequestion/delete\.php$', 'Fragen löschen: Rückfrage oder Bestätigung',
-            parameter: (q) => _loeschRueckfrage(q) || _loeschBestaetigung(q)),
-        Erlaubt('POST', r'^/question/bank/deletequestion/delete\.php$', 'Fragen löschen: Bestätigung',
-            parameter: (q) => q.isEmpty,
-            formular: (f) => _loeschBestaetigung({for (final e in f) e.key: e.value})),
-        Erlaubt('GET', r'^/mod/quiz/edit\.php$', 'Frage in einen Test einfügen',
-            parameter: (q) =>
-                q.length == 4 &&
-                _zahl(q['cmid']) &&
-                _zahl(q['addquestion']) &&
-                _zahl(q['addonpage']) &&
-                _gesetzt(q['sesskey'])),
-        Erlaubt('POST', r'^/mod/quiz/edit\.php$', 'Test: Seiten neu aufteilen oder Beste Bewertung',
-            parameter: (q) => q.isEmpty,
-            formular: (f) {
-              final k = f.map((e) => e.key).toSet();
-              return _zahl(wertIn(f, 'cmid')) &&
-                  _gesetzt(wertIn(f, 'sesskey')) &&
-                  (k.length == 4 && k.containsAll({'questionsperpage', 'repaginate'}) ||
-                      k.length == 4 && k.containsAll({'maxgrade', 'savechanges'}));
-            }),
-        Erlaubt('POST', r'^/mod/quiz/edit_rest\.php$', 'Test: Punkte, Reihenfolge, Platz entfernen, Fragen mischen',
-            parameter: (q) => q.isEmpty,
-            formular: (f) {
-              final k = f.map((e) => e.key).toSet();
-              final klasse = wertIn(f, 'class'), feld = wertIn(f, 'field'), aktion = wertIn(f, 'action');
-              return k.every(const {
-                    'class', 'field', 'action', 'id', 'maxmark', 'previousid', 'page', 'newshuffle', //
-                    'sesskey', 'courseid', 'quizid',
-                  }.contains) &&
-                  _zahl(wertIn(f, 'id')) &&
-                  _zahl(wertIn(f, 'quizid')) &&
-                  _gesetzt(wertIn(f, 'sesskey')) &&
-                  ((klasse == 'resource' &&
-                          !k.contains('newshuffle') &&
-                          ((aktion == null && (feld == 'updatemaxmark' || feld == 'move')) ||
-                              (aktion == 'DELETE' && feld == null))) ||
-                      (klasse == 'section' &&
-                          aktion == null &&
-                          feld == 'updateshufflequestions' &&
-                          const {'0', '1'}.contains(wertIn(f, 'newshuffle'))));
-            }),
-        // Das Formular der Testseite: mehrere zufällige oder genau eine
-        // Variante, je nach Knopf (stack.dart, stackVarianten).
-        Erlaubt('GET', r'^/question/type/stack/deploy\.php$', 'STACK: Varianten einsetzen',
-            parameter: (q) =>
-                _zahl(q['questionid']) &&
-                _zahl(q['cmid']) &&
-                _gesetzt(q['sesskey']) &&
-                ((q.length == 5 && _zahl(q['deploy']) && q['deploysinglebtn'] == '1') ||
-                    (q.length == 6 &&
-                        _zahl(q['deploymany']) &&
-                        q['deploymanybtn'] == '1' &&
-                        q['deployhalt'] == 'on'))),
-        // Der Notizblock rechnet nur. Mit questionid hat sein Formular auch
-        // „Speichern" (action = savechat), das Variablen und Feedback ohne neue
-        // Version in die Frage schreibt -- darum genau ein action, und das ist go.
-        Erlaubt('POST', r'^/question/type/stack/adminui/caschat\.php$', 'STACK: Ausdruck ausrechnen',
-            parameter: (q) => q.length == 2 && _zahl(q['questionid']) && _zahl(q['cmid']),
-            formular: (f) =>
-                f.every((e) => const {'cas', 'maximavars', 'simp', 'action'}.contains(e.key)) &&
-                f.where((e) => e.key == 'action').map((e) => e.value).join('|') == 'go'),
-        Erlaubt('POST', r'^/mod/checklist/edit\.php$', 'Fortschrittsliste: Eintrag anlegen oder ändern',
-            parameter: (q) => q.isEmpty,
-            formular: (f) {
-              final k = f.map((e) => e.key).toSet();
-              return _zahl(wertIn(f, 'id')) &&
-                  _gesetzt(wertIn(f, 'sesskey')) &&
-                  (k.containsAll({'action', 'indent', 'displaytext', 'linkurl', 'additem'}) && wertIn(f, 'action') == 'additem' ||
-                      k.containsAll({'itemid', 'displaytext', 'linkurl', 'updateitem'}) && !k.contains('action')) &&
-                  k.every(const {'id', 'sesskey', 'action', 'indent', 'displaytext', 'linkurl', 'additem', 'itemid', 'updateitem'}.contains);
-            }),
-        Erlaubt('GET', r'^/mod/checklist/edit\.php$', 'Fortschrittsliste: Eintrag löschen, verschieben, einrücken, Art',
-            parameter: (q) =>
-                q.length == 4 &&
-                _zahl(q['id']) &&
-                _zahl(q['itemid']) &&
-                _gesetzt(q['sesskey']) &&
-                const {'deleteitem', 'moveitemup', 'moveitemdown', 'indentitem', 'unindentitem', 'makerequired', 'makeoptional', 'makeheading'}
-                    .contains(q['action'])),
-        Erlaubt('GET', r'^/mod/wiki/create\.php$', 'Wiki: Formular für eine neue Seite',
-            parameter: (q) =>
-                (q.length == 3 && _zahl(q['swid']) && _gesetzt(q['title']) && q['action'] == 'new') ||
-                // Ohne erste Seite leitet view.php hierher um -- nur das gemeinsame Wiki (uid 0).
-                (q.length == 4 && _zahl(q['wid']) && (q['group'] == '' || _zahl(q['group'])) && q['uid'] == '0' && q.containsKey('title'))),
-        Erlaubt('POST', r'^/mod/wiki/(create|view)\.php$', 'Wiki: neue Seite anlegen',
-            parameter: (q) => _nurSchluessel(q, {'action', 'wid', 'swid', 'group', 'uid', 'title', 'id', 'pageid'}) && (q['uid'] ?? '0') == '0',
-            formular: (f) => _gesetzt(wertIn(f, 'pagetitle')) && _marke(f, RegExp(r'^_qf__mod_wiki_create_form$'))),
-        Erlaubt('GET', r'^/mod/wiki/edit\.php$', 'Wiki: Bearbeitungsformular (nur zum Speichern)',
-            parameter: (q) => q.length == 1 && _zahl(q['pageid'])),
-        Erlaubt('POST', r'^/mod/wiki/edit\.php$', 'Wiki: Seite speichern',
-            parameter: (q) => _nurSchluessel(q, {'pageid', 'section', 'contentformat'}),
-            formular: (f) => wertIn(f, 'newcontent_editor[text]') != null && _gesetzt(wertIn(f, 'editoption'))),
-        Erlaubt('GET', r'^/mod/wiki/admin\.php$', 'Wiki: Seite löschen',
-            parameter: (q) =>
-                q.length == 5 &&
-                _zahl(q['pageid']) &&
-                _zahl(q['delete']) &&
-                q['option'] == '1' &&
-                q['listall'] == '1' &&
-                _gesetzt(q['sesskey'])),
-        Erlaubt('POST', r'^/mod/board/column_(create|update)_ajax\.php$', 'Board: Spalte anlegen oder umbenennen',
-            parameter: (q) => q.length == 1 && (_zahl(q['boardid']) || _zahl(q['id']))),
-        Erlaubt('POST', r'^/mod/board/note_(create|update)_ajax\.php$', 'Board: eigene Notiz anlegen oder ändern',
-            parameter: (q) =>
-                (q.length == 1 && _zahl(q['id'])) ||
-                (q.length == 3 && _zahl(q['columnid']) && q['ownerid'] == '0' && _zahl(q['groupid']))),
-        Erlaubt('POST', r'^/grade/grading/form/(rubric|guide)/edit\.php$', 'Bewertungsschema speichern (Definition)',
-            parameter: (q) => _nurSchluessel(q, {'areaid'}),
-            formular: (f) => _marke(f, RegExp(r'^_qf__gradingform_(rubric|guide)_')) && _zahl(wertIn(f, 'areaid'))),
-        Erlaubt('POST', r'^/mod/book/edit\.php$', 'Buchkapitel speichern',
-            parameter: (q) => q.isEmpty,
-            formular: (f) => _zahl(wertIn(f, 'cmid')) && wertIn(f, '_qf__book_chapter_edit_form') != null),
-        Erlaubt('GET', r'^/mod/book/delete\.php$', 'Buchkapitel löschen',
-            parameter: (q) =>
-                q.length == 4 && _zahl(q['id']) && _zahl(q['chapterid']) && q['confirm'] == '1' && _gesetzt(q['sesskey'])),
-        Erlaubt('GET', r'^/mod/book/move\.php$', 'Buchkapitel einen Schritt verschieben',
-            parameter: (q) =>
-                q.length == 4 &&
-                _zahl(q['id']) &&
-                _zahl(q['chapterid']) &&
-                (q['up'] == '0' || q['up'] == '1') &&
-                _gesetzt(q['sesskey'])),
-        Erlaubt('POST', r'^/repository/repository_ajax\.php$', 'Datei in den Entwurfsbereich',
-            parameter: (q) => q.length == 1 && q['action'] == 'upload'),
-        Erlaubt('POST', r'^/repository/draftfiles_ajax\.php$', 'Unterordner eines Dateibereichs lesen',
-            parameter: (q) => q.length == 1 && q['action'] == 'list',
-            formular: (f) =>
-                f.length == 4 &&
-                _zahl(wertIn(f, 'itemid')) &&
-                (wertIn(f, 'filepath') ?? '').startsWith('/') &&
-                wertIn(f, 'client_id') != null &&
-                (wertIn(f, 'sesskey') ?? '').isNotEmpty),
-        Erlaubt('POST', r'^/repository/draftfiles_ajax\.php$', 'Datei im Entwurfsbereich ersetzen',
-            parameter: (q) => q.length == 1 && q['action'] == 'delete',
-            formular: (f) =>
-                _zahl(wertIn(f, 'itemid')) &&
-                (wertIn(f, 'filename') ?? '').isNotEmpty &&
-                (wertIn(f, 'sesskey') ?? '').isNotEmpty),
-      ];
+    // ---- Anmelden
+    Erlaubt(
+      'GET',
+      r'^/login/index\.php$',
+      'Anmeldeseite',
+      parameter: (q) => _nurSchluessel(q, {'testsession'}),
+    ),
+    Erlaubt(
+      'POST',
+      r'^/login/index\.php$',
+      'Anmeldeformular',
+      parameter: (q) => q.isEmpty,
+    ),
+    // ---- Lesen
+    Erlaubt(
+      'GET',
+      r'^/course/modedit\.php$',
+      'Bearbeitungsformular lesen',
+      parameter: (q) => q.length == 1 && _zahl(q['update']),
+    ),
+    Erlaubt(
+      'GET',
+      r'^/course/editsection\.php$',
+      'Abschnittsformular lesen',
+      parameter: (q) => _nurSchluessel(q, {'id', 'sr'}) && _zahl(q['id']),
+    ),
+    // Nur lesen: Mit Formularwerten würde dieselbe Adresse Filter umschalten.
+    Erlaubt(
+      'GET',
+      r'^/filter/manage\.php$',
+      'Filtereinstellungen eines Kurses (kurs_filter)',
+      parameter: (q) => q.length == 1 && _zahl(q['contextid']),
+    ),
+    // Fragen und Tests: nie die Fragenübersicht (question/edit.php) -- sie
+    // zeigt „Erstellt von" mit Klarnamen.
+    Erlaubt(
+      'GET',
+      r'^/question/banks\.php$',
+      'Fragensammlungen eines Kurses',
+      parameter: (q) => q.length == 1 && _zahl(q['courseid']),
+    ),
+    Erlaubt(
+      'GET',
+      r'^/question/bank/importquestions/import\.php$',
+      'Kategorien, Importformular',
+      parameter: (q) => q.length == 1 && _zahl(q['cmid']),
+    ),
+    Erlaubt(
+      'GET',
+      r'^/question/bank/exportquestions/export\.php$',
+      'Exportformular',
+      parameter: (q) => q.length == 1 && _zahl(q['cmid']),
+    ),
+    Erlaubt(
+      'GET',
+      r'^/question/bank/exporttoxml/exportone\.php$',
+      'eine Frage als XML',
+      parameter: (q) =>
+          q.length == 3 &&
+          _zahl(q['id']) &&
+          _zahl(q['cmid']) &&
+          _gesetzt(q['sesskey']),
+    ),
+    Erlaubt(
+      'GET',
+      r'^/question/bank/editquestion/question\.php$',
+      'Bearbeitungsformular einer Frage',
+      parameter: (q) =>
+          _nurSchluessel(q, {
+            'cmid',
+            'id',
+            'qtype',
+            'category',
+            'courseid',
+            'returnurl',
+          }) &&
+          _zahl(q['cmid']),
+    ),
+    Erlaubt(
+      'GET',
+      r'^/mod/quiz/edit\.php$',
+      'Zusammenstellung eines Tests',
+      parameter: (q) => q.length == 1 && _zahl(q['cmid']),
+    ),
+    Erlaubt(
+      'GET',
+      r'^/question/type/stack/questiontestrun\.php$',
+      'STACK: Fragetests und Varianten',
+      parameter: (q) =>
+          _nurSchluessel(q, {'questionid', 'cmid', 'seed'}) &&
+          _zahl(q['questionid']),
+    ),
+    // Nur über eine Frage: Ohne questionid öffnet STACK den Notizblock nur
+    // Administratoren (stack.dart, stackCas).
+    Erlaubt(
+      'GET',
+      r'^/question/type/stack/adminui/caschat\.php$',
+      'STACK: CAS-Notizblock',
+      parameter: (q) =>
+          q.length == 2 && _zahl(q['questionid']) && _zahl(q['cmid']),
+    ),
+    Erlaubt(
+      'GET',
+      r'^/mod/checklist/edit\.php$',
+      'Fortschrittsliste: die Einträge',
+      parameter: (q) => q.length == 1 && _zahl(q['id']),
+    ),
+    Erlaubt(
+      'GET',
+      r'^/mod/wiki/view\.php$',
+      'Wiki: Startseite oder eine Seite',
+      parameter: (q) => q.length == 1 && (_zahl(q['id']) || _zahl(q['pageid'])),
+    ),
+    Erlaubt(
+      'GET',
+      r'^/mod/learningmap/view\.php$',
+      'Lernlandkarte ansehen',
+      parameter: (q) => q.length == 1 && _zahl(q['id']),
+    ),
+    Erlaubt(
+      'GET',
+      r'^/mod/wiki/map\.php$',
+      'Wiki: Seitenliste (option 5; 1 und 6 zeigen Namen)',
+      parameter: (q) =>
+          q.length == 2 && _zahl(q['pageid']) && q['option'] == '5',
+    ),
+    Erlaubt(
+      'GET',
+      r'^/mod/board/view\.php$',
+      'Board: die Board-ID',
+      parameter: (q) => q.length == 1 && _zahl(q['id']),
+    ),
+    Erlaubt(
+      'GET',
+      r'^/mod/kanban/view\.php$',
+      'Kanban: die Board-ID',
+      parameter: (q) => q.length == 1 && _zahl(q['id']),
+    ),
+    Erlaubt(
+      'GET',
+      r'^/grade/grading/manage\.php$',
+      'Bewertungsmethode einer Aufgabe (Definition, keine Bewertung)',
+      parameter: (q) =>
+          _nurSchluessel(q, {'contextid', 'component', 'area'}) &&
+          _zahl(q['contextid']) &&
+          q['component'] == 'mod_assign',
+    ),
+    Erlaubt(
+      'GET',
+      r'^/grade/grading/form/(rubric|guide)/edit\.php$',
+      'Bewertungsschema: Definitionsformular',
+      parameter: (q) => q.length == 1 && _zahl(q['areaid']),
+    ),
+    Erlaubt(
+      'GET',
+      r'^/mod/book/tool/print/index\.php$',
+      'Buch: alle Kapitel mit chapterid',
+      parameter: (q) => q.length == 1 && _zahl(q['id']),
+    ),
+    Erlaubt(
+      'GET',
+      r'^/mod/book/edit\.php$',
+      'Buchkapitel: Formular',
+      parameter: (q) =>
+          _nurSchluessel(q, {'cmid', 'id', 'pagenum', 'subchapter'}) &&
+          _zahl(q['cmid']) &&
+          (_zahl(q['id']) || _zahl(q['pagenum'])),
+    ),
+    // Sicherung einer Aktivität (sicherung.dart). Nur die gemessenen Schritte
+    // der Assistenten; Nutzerdaten bleiben aus (sicherung_regeln.dart).
+    Erlaubt(
+      'GET',
+      r'^/backup/backup\.php$',
+      'Sicherung: Einstiegsseite einer Aktivität',
+      parameter: (q) =>
+          _nurSchluessel(q, {'id', 'cm'}) &&
+          _zahl(q['id']) &&
+          (q['cm'] == null || _zahl(q['cm'])),
+    ),
+    Erlaubt(
+      'GET',
+      r'^/backup/restorefile\.php$',
+      'Sicherung: Seite Wiederherstellen (Downloadlink suchen)',
+      parameter: (q) =>
+          _nurSchluessel(q, {'contextid'}) && _zahl(q['contextid']),
+    ),
+    Erlaubt(
+      'GET',
+      r'^/pluginfile\.php/\d+/user/backup/(?:\d+/)?[^/?#]+\.mbz$',
+      'Sicherungsdatei',
+      parameter: (q) => q.length == 1 && q['forcedownload'] == '1',
+    ),
+    Erlaubt(
+      'GET',
+      r'^/draftfile\.php/\d+/user/draft/\d+/.+',
+      'Datei im Entwurfsbereich',
+    ),
+    Erlaubt('GET', r'^/pluginfile\.php/\d+/.+', 'Datei im Kurs'),
+    Erlaubt(
+      'POST',
+      r'^/lib/ajax/service\.php$',
+      'Moodle-Dienst (nur lesend, siehe dienste)',
+      parameter: (q) =>
+          _nurSchluessel(q, {'sesskey', 'info'}) &&
+          (q['sesskey'] ?? '').isNotEmpty &&
+          dienste.containsKey(q['info']),
+      inhalt: _dienstAufruf,
+    ),
+    // ---- Schreiben
+    Erlaubt(
+      'GET',
+      r'^/course/modedit\.php$',
+      'Formular „Aktivität anlegen"',
+      parameter: (q) =>
+          _nurSchluessel(q, {
+            'add',
+            'type',
+            'course',
+            'section',
+            'return',
+            'sr',
+          }) &&
+          anlegbareModule.contains(q['add']) &&
+          _zahl(q['course']) &&
+          _zahl(q['section']),
+    ),
+    Erlaubt(
+      'POST',
+      r'^/course/modedit\.php$',
+      'Aktivität speichern',
+      parameter: (q) => q.isEmpty,
+      formular: (f) {
+        final modul = wertIn(f, 'modulename');
+        return _zahl(wertIn(f, 'course')) &&
+            (schreibbareModule.contains(modul) &&
+                    wertIn(f, '_qf__mod_${modul}_mod_form') != null ||
+                nurGruppenModule.contains(modul) &&
+                    wertIn(f, '_qf__mod_${modul}_mod_form') != null &&
+                    _zahl(wertIn(f, 'update')) &&
+                    const {'0', '1', '2'}.contains(wertIn(f, 'groupmode')) &&
+                    _zahl(wertIn(f, 'groupingid')) ||
+                modul == 'learningmap' &&
+                    wertIn(f, '_qf__mod_learningmap_mod_form') != null &&
+                    wertIn(f, 'placestore') != null &&
+                    (wertIn(f, 'update') == null
+                        ? _zahl(wertIn(f, 'section'))
+                        : _zahl(wertIn(f, 'update'))));
+      },
+    ),
+    // Sicherung: die Schritte 1, 2 und 4 des Assistenten, nur ohne
+    // Nutzerdaten. Schritt 4 startet die Sicherung (sicherung.dart).
+    Erlaubt(
+      'POST',
+      r'^/backup/backup\.php$',
+      'Sicherung: Schritte 1, 2 und 4 (ohne Nutzerdaten)',
+      parameter: (q) => q.isEmpty,
+      formular: (f) {
+        final schritt = wertIn(f, 'stage');
+        return const {'1', '2', '4'}.contains(schritt) &&
+            (_marke(
+              f,
+              RegExp(r'^_qf__backup_(initial|schema|confirmation)_form$'),
+            )) &&
+            _gesetzt(wertIn(f, 'sesskey')) &&
+            // Anders als bei der Wiederherstellung reicht „fehlt = aus" hier nicht:
+            // setting_root_users muss ausdrücklich da sein und 0 sein.
+            nutzerdatenAusdruecklichAus(f) &&
+            ohneNutzerdaten(f);
+      },
+    ),
+    Erlaubt(
+      'POST',
+      r'^/course/editsection\.php$',
+      'Abschnitt speichern',
+      parameter: (q) => q.isEmpty,
+      formular: (f) =>
+          _zahl(wertIn(f, 'id')) && f.any((e) => e.key.startsWith('_qf__')),
+    ),
+    // Gruppierungen (E33): lesen nur Namen; die Seiten index, members und
+    // overview zeigen Mitglieder und bleiben gesperrt. Geschrieben wird nur
+    // Neues (id 0) und das Zuordnen von Gruppen -- nie Entfernen, Umbenennen
+    // oder Löschen.
+    Erlaubt(
+      'GET',
+      r'^/group/groupings\.php$',
+      'Gruppierungen eines Kurses (nur Namen)',
+      parameter: (q) => q.length == 1 && _zahl(q['id']),
+    ),
+    Erlaubt(
+      'GET',
+      r'^/group/grouping\.php$',
+      'Gruppierung: Formular lesen',
+      parameter: (q) => q.length == 1 && (_zahl(q['id']) || _zahl(q['courseid'])),
+    ),
+    Erlaubt(
+      'GET',
+      r'^/group/group\.php$',
+      'Neue Gruppe: Formular lesen',
+      parameter: (q) => q.length == 1 && _zahl(q['courseid']),
+    ),
+    Erlaubt(
+      'GET',
+      r'^/group/assign\.php$',
+      'Gruppen einer Gruppierung (nur Namen)',
+      parameter: (q) => q.length == 1 && _zahl(q['id']),
+    ),
+    Erlaubt(
+      'POST',
+      r'^/group/grouping\.php$',
+      'Neue Gruppierung speichern',
+      parameter: (q) => _nurSchluessel(q, {'courseid', 'id'}),
+      formular: (f) =>
+          wertIn(f, '_qf__grouping_form') != null &&
+          _neuesObjekt(wertIn(f, 'id')) &&
+          _zahl(wertIn(f, 'courseid')),
+    ),
+    Erlaubt(
+      'POST',
+      r'^/group/group\.php$',
+      'Neue Gruppe speichern',
+      parameter: (q) => _nurSchluessel(q, {'courseid', 'id'}),
+      formular: (f) =>
+          wertIn(f, '_qf__group_form') != null &&
+          _neuesObjekt(wertIn(f, 'id')) &&
+          _zahl(wertIn(f, 'courseid')),
+    ),
+    Erlaubt(
+      'POST',
+      r'^/group/assign\.php$',
+      'Gruppen einer Gruppierung zuordnen (nur Hinzufügen)',
+      parameter: (q) => q.length == 1 && _zahl(q['id']),
+      formular: (f) =>
+          _gesetzt(wertIn(f, 'sesskey')) &&
+          wertIn(f, 'add') != null &&
+          wertIn(f, 'remove') == null &&
+          // Die Werte der Auswahl stammen aus der Seite und sind keine reinen Zahlen
+          // (gemessen: vier Zeichen, gemischt); hier nur eine kurze Kennung.
+          f.where((e) => e.key == 'addselect[]').every((e) => RegExp(r'^[\w.-]{1,40}$').hasMatch(e.value)) &&
+          f.every((e) => e.key != 'removeselect[]'),
+    ),
+    Erlaubt(
+      'POST',
+      r'^/question/bank/exportquestions/export\.php$',
+      'Fragen exportieren',
+      parameter: (q) => _nurSchluessel(q, {'cmid'}),
+      formular: (f) =>
+          _marke(f, RegExp(r'^_qf__.*export.*form$')) &&
+          wertIn(f, 'format') == 'xml',
+    ),
+    Erlaubt(
+      'POST',
+      r'^/question/bank/importquestions/import\.php$',
+      'Fragen importieren (Moodle-XML)',
+      parameter: (q) => _nurSchluessel(q, {'cmid'}),
+      formular: (f) =>
+          _marke(f, RegExp(r'^_qf__.*import.*form$')) &&
+          wertIn(f, 'format') == 'xml',
+    ),
+    // Speichern erzeugt eine neue Version -- nie mit makecopy, das legte
+    // eine zweite Frage an.
+    Erlaubt(
+      'POST',
+      r'^/question/bank/editquestion/question\.php$',
+      'Frage speichern (neue Version)',
+      parameter: (q) => _nurSchluessel(q, {'cmid', 'id', 'courseid'}),
+      formular: (f) =>
+          _zahl(wertIn(f, 'id')) &&
+          f.any(
+            (e) => RegExp(r'^_qf__qtype_[a-z]+_edit_form$').hasMatch(e.key),
+          ) &&
+          (wertIn(f, 'makecopy') ?? '0') == '0',
+    ),
+    // Fragen löschen (fragen.dart, fragenLoeschen). Ohne confirm zeigt
+    // delete.php nur die Rückfrage und ändert nichts; bestätigt wird mit
+    // deren Formular, so wie Moodle es ausgibt -- je nach Moodle als
+    // Formular oder als Link, darum beide Wege, mit denselben Feldern.
+    // Die Auswahl nimmt die Rückfrage wie das Formular der Sammlung als
+    // q<id>=1 (gemessen 30.09.2026, Moodle 5.1: eine Liste in
+    // deleteselected allein wählt nichts aus, Moodle leitet nur zurück).
+    Erlaubt(
+      'GET',
+      r'^/question/bank/deletequestion/delete\.php$',
+      'Fragen löschen: Rückfrage oder Bestätigung',
+      parameter: (q) => _loeschRueckfrage(q) || _loeschBestaetigung(q),
+    ),
+    Erlaubt(
+      'POST',
+      r'^/question/bank/deletequestion/delete\.php$',
+      'Fragen löschen: Bestätigung',
+      parameter: (q) => q.isEmpty,
+      formular: (f) => _loeschBestaetigung({for (final e in f) e.key: e.value}),
+    ),
+    Erlaubt(
+      'GET',
+      r'^/mod/quiz/edit\.php$',
+      'Frage in einen Test einfügen',
+      parameter: (q) =>
+          q.length == 4 &&
+          _zahl(q['cmid']) &&
+          _zahl(q['addquestion']) &&
+          _zahl(q['addonpage']) &&
+          _gesetzt(q['sesskey']),
+    ),
+    Erlaubt(
+      'POST',
+      r'^/mod/quiz/edit\.php$',
+      'Test: Seiten neu aufteilen oder Beste Bewertung',
+      parameter: (q) => q.isEmpty,
+      formular: (f) {
+        final k = f.map((e) => e.key).toSet();
+        return _zahl(wertIn(f, 'cmid')) &&
+            _gesetzt(wertIn(f, 'sesskey')) &&
+            (k.length == 4 &&
+                    k.containsAll({'questionsperpage', 'repaginate'}) ||
+                k.length == 4 && k.containsAll({'maxgrade', 'savechanges'}));
+      },
+    ),
+    Erlaubt(
+      'POST',
+      r'^/mod/quiz/edit_rest\.php$',
+      'Test: Punkte, Reihenfolge, Platz entfernen, Fragen mischen',
+      parameter: (q) => q.isEmpty,
+      formular: (f) {
+        final k = f.map((e) => e.key).toSet();
+        final klasse = wertIn(f, 'class'),
+            feld = wertIn(f, 'field'),
+            aktion = wertIn(f, 'action');
+        return k.every(
+              const {
+                'class',
+                'field',
+                'action',
+                'id',
+                'maxmark',
+                'previousid',
+                'page',
+                'newshuffle', //
+                'sesskey', 'courseid', 'quizid',
+              }.contains,
+            ) &&
+            _zahl(wertIn(f, 'id')) &&
+            _zahl(wertIn(f, 'quizid')) &&
+            _gesetzt(wertIn(f, 'sesskey')) &&
+            ((klasse == 'resource' &&
+                    !k.contains('newshuffle') &&
+                    ((aktion == null &&
+                            (feld == 'updatemaxmark' || feld == 'move')) ||
+                        (aktion == 'DELETE' && feld == null))) ||
+                (klasse == 'section' &&
+                    aktion == null &&
+                    feld == 'updateshufflequestions' &&
+                    const {'0', '1'}.contains(wertIn(f, 'newshuffle'))));
+      },
+    ),
+    // Das Formular der Testseite: mehrere zufällige oder genau eine
+    // Variante, je nach Knopf (stack.dart, stackVarianten).
+    Erlaubt(
+      'GET',
+      r'^/question/type/stack/deploy\.php$',
+      'STACK: Varianten einsetzen',
+      parameter: (q) =>
+          _zahl(q['questionid']) &&
+          _zahl(q['cmid']) &&
+          _gesetzt(q['sesskey']) &&
+          ((q.length == 5 &&
+                  _zahl(q['deploy']) &&
+                  q['deploysinglebtn'] == '1') ||
+              (q.length == 6 &&
+                  _zahl(q['deploymany']) &&
+                  q['deploymanybtn'] == '1' &&
+                  q['deployhalt'] == 'on')),
+    ),
+    // Der Notizblock rechnet nur. Mit questionid hat sein Formular auch
+    // „Speichern" (action = savechat), das Variablen und Feedback ohne neue
+    // Version in die Frage schreibt -- darum genau ein action, und das ist go.
+    Erlaubt(
+      'POST',
+      r'^/question/type/stack/adminui/caschat\.php$',
+      'STACK: Ausdruck ausrechnen',
+      parameter: (q) =>
+          q.length == 2 && _zahl(q['questionid']) && _zahl(q['cmid']),
+      formular: (f) =>
+          f.every(
+            (e) =>
+                const {'cas', 'maximavars', 'simp', 'action'}.contains(e.key),
+          ) &&
+          f.where((e) => e.key == 'action').map((e) => e.value).join('|') ==
+              'go',
+    ),
+    Erlaubt(
+      'POST',
+      r'^/mod/checklist/edit\.php$',
+      'Fortschrittsliste: Eintrag anlegen oder ändern',
+      parameter: (q) => q.isEmpty,
+      formular: (f) {
+        final k = f.map((e) => e.key).toSet();
+        return _zahl(wertIn(f, 'id')) &&
+            _gesetzt(wertIn(f, 'sesskey')) &&
+            (k.containsAll({
+                      'action',
+                      'indent',
+                      'displaytext',
+                      'linkurl',
+                      'additem',
+                    }) &&
+                    wertIn(f, 'action') == 'additem' ||
+                k.containsAll({
+                      'itemid',
+                      'displaytext',
+                      'linkurl',
+                      'updateitem',
+                    }) &&
+                    !k.contains('action')) &&
+            k.every(
+              const {
+                'id',
+                'sesskey',
+                'action',
+                'indent',
+                'displaytext',
+                'linkurl',
+                'additem',
+                'itemid',
+                'updateitem',
+              }.contains,
+            );
+      },
+    ),
+    Erlaubt(
+      'GET',
+      r'^/mod/checklist/edit\.php$',
+      'Fortschrittsliste: Eintrag löschen, verschieben, einrücken, Art',
+      parameter: (q) =>
+          q.length == 4 &&
+          _zahl(q['id']) &&
+          _zahl(q['itemid']) &&
+          _gesetzt(q['sesskey']) &&
+          const {
+            'deleteitem',
+            'moveitemup',
+            'moveitemdown',
+            'indentitem',
+            'unindentitem',
+            'makerequired',
+            'makeoptional',
+            'makeheading',
+          }.contains(q['action']),
+    ),
+    Erlaubt(
+      'GET',
+      r'^/mod/wiki/create\.php$',
+      'Wiki: Formular für eine neue Seite',
+      parameter: (q) =>
+          (q.length == 3 &&
+              _zahl(q['swid']) &&
+              _gesetzt(q['title']) &&
+              q['action'] == 'new') ||
+          // Ohne erste Seite leitet view.php hierher um -- nur das gemeinsame Wiki (uid 0).
+          (q.length == 4 &&
+              _zahl(q['wid']) &&
+              (q['group'] == '' || _zahl(q['group'])) &&
+              q['uid'] == '0' &&
+              q.containsKey('title')),
+    ),
+    Erlaubt(
+      'POST',
+      r'^/mod/wiki/(create|view)\.php$',
+      'Wiki: neue Seite anlegen',
+      parameter: (q) =>
+          _nurSchluessel(q, {
+            'action',
+            'wid',
+            'swid',
+            'group',
+            'uid',
+            'title',
+            'id',
+            'pageid',
+          }) &&
+          (q['uid'] ?? '0') == '0',
+      formular: (f) =>
+          _gesetzt(wertIn(f, 'pagetitle')) &&
+          _marke(f, RegExp(r'^_qf__mod_wiki_create_form$')),
+    ),
+    Erlaubt(
+      'GET',
+      r'^/mod/wiki/edit\.php$',
+      'Wiki: Bearbeitungsformular (nur zum Speichern)',
+      parameter: (q) => q.length == 1 && _zahl(q['pageid']),
+    ),
+    Erlaubt(
+      'POST',
+      r'^/mod/wiki/edit\.php$',
+      'Wiki: Seite speichern',
+      parameter: (q) =>
+          _nurSchluessel(q, {'pageid', 'section', 'contentformat'}),
+      formular: (f) =>
+          wertIn(f, 'newcontent_editor[text]') != null &&
+          _gesetzt(wertIn(f, 'editoption')),
+    ),
+    Erlaubt(
+      'GET',
+      r'^/mod/wiki/admin\.php$',
+      'Wiki: Seite löschen',
+      parameter: (q) =>
+          q.length == 5 &&
+          _zahl(q['pageid']) &&
+          _zahl(q['delete']) &&
+          q['option'] == '1' &&
+          q['listall'] == '1' &&
+          _gesetzt(q['sesskey']),
+    ),
+    Erlaubt(
+      'POST',
+      r'^/mod/board/column_(create|update)_ajax\.php$',
+      'Board: Spalte anlegen oder umbenennen',
+      parameter: (q) =>
+          q.length == 1 && (_zahl(q['boardid']) || _zahl(q['id'])),
+    ),
+    Erlaubt(
+      'POST',
+      r'^/mod/board/note_(create|update)_ajax\.php$',
+      'Board: eigene Notiz anlegen oder ändern',
+      parameter: (q) =>
+          (q.length == 1 && _zahl(q['id'])) ||
+          (q.length == 3 &&
+              _zahl(q['columnid']) &&
+              q['ownerid'] == '0' &&
+              _zahl(q['groupid'])),
+    ),
+    Erlaubt(
+      'POST',
+      r'^/grade/grading/form/(rubric|guide)/edit\.php$',
+      'Bewertungsschema speichern (Definition)',
+      parameter: (q) => _nurSchluessel(q, {'areaid'}),
+      formular: (f) =>
+          _marke(f, RegExp(r'^_qf__gradingform_(rubric|guide)_')) &&
+          _zahl(wertIn(f, 'areaid')),
+    ),
+    Erlaubt(
+      'POST',
+      r'^/mod/book/edit\.php$',
+      'Buchkapitel speichern',
+      parameter: (q) => q.isEmpty,
+      formular: (f) =>
+          _zahl(wertIn(f, 'cmid')) &&
+          wertIn(f, '_qf__book_chapter_edit_form') != null,
+    ),
+    Erlaubt(
+      'GET',
+      r'^/mod/book/delete\.php$',
+      'Buchkapitel löschen',
+      parameter: (q) =>
+          q.length == 4 &&
+          _zahl(q['id']) &&
+          _zahl(q['chapterid']) &&
+          q['confirm'] == '1' &&
+          _gesetzt(q['sesskey']),
+    ),
+    Erlaubt(
+      'GET',
+      r'^/mod/book/move\.php$',
+      'Buchkapitel einen Schritt verschieben',
+      parameter: (q) =>
+          q.length == 4 &&
+          _zahl(q['id']) &&
+          _zahl(q['chapterid']) &&
+          (q['up'] == '0' || q['up'] == '1') &&
+          _gesetzt(q['sesskey']),
+    ),
+    // Upload einer Datei in den Entwurfsbereich. Eine .mbz-Datei geht nur über
+    // die Regel darunter. Die Regel kann nicht sehen, wohin hochgeladen wird; dass
+    // eine .mbz nur aus der Wiederherstellung kommt (und nach archivPruefen in
+    // wiederherstellen()), erzwingt `MoodleZugang.hochladen` mit seinem Parameter
+    // `sicherung`: Der allgemeine Upload (Bilder und Dateien einer Aktivität) weist
+    // jede .mbz ab, bevor etwas gesendet wird.
+    Erlaubt(
+      'POST',
+      r'^/repository/repository_ajax\.php$',
+      'Datei in den Entwurfsbereich',
+      parameter: (q) => q.length == 1 && q['action'] == 'upload',
+      anhang: (a) => !a.dateiname.toLowerCase().endsWith('.mbz'),
+    ),
+    Erlaubt(
+      'POST',
+      r'^/repository/repository_ajax\.php$',
+      'Sicherungsdatei (.mbz) in den Entwurfsbereich',
+      parameter: (q) => q.length == 1 && q['action'] == 'upload',
+      formular: (f) =>
+          _zahl(wertIn(f, 'itemid')) && _gesetzt(wertIn(f, 'sesskey')),
+      // UNGEMESSEN: der MIME-Typ, den Moodle für .mbz erwartet.
+      anhang: (a) =>
+          a.feld == 'repo_upload_file' &&
+          RegExp(r'^[A-Za-z0-9_.-]{1,120}\.mbz$').hasMatch(a.dateiname) &&
+          (a.mime == 'application/octet-stream' ||
+              a.mime == 'application/vnd.moodle.backup'),
+    ),
+    // Wiederherstellen (wiederherstellung.dart): die gemessenen Schritte.
+    Erlaubt(
+      'GET',
+      r'^/course/view\.php$',
+      'Kurs ansehen (Gegenlesen, Kontext; UNGEMESSEN)',
+      parameter: (q) => _nurSchluessel(q, {'id'}) && _zahl(q['id']),
+    ),
+    // Nur diese Felder: Marke, Sitzung, Draft-Itemid und ggf. der Absendeknopf und die Kurs-ID.
+    // Jedes andere Feld lehnt die Regel ab (UNGEMESSEN: Feldnamen).
+    Erlaubt(
+      'POST',
+      r'^/backup/restorefile\.php$',
+      'Wiederherstellen: Datei hochladen (Formular)',
+      parameter: (q) =>
+          _nurSchluessel(q, {'contextid'}) &&
+          (q['contextid'] == null || _zahl(q['contextid'])),
+      formular: (f) =>
+          f.every(
+            (e) => const {
+              'contextid',
+              'sesskey',
+              '_qf__course_restore_form',
+              'backupfile',
+              'submitbutton',
+            }.contains(e.key),
+          ) &&
+          _marke(f, RegExp(r'^_qf__course_restore_form$')) &&
+          _gesetzt(wertIn(f, 'sesskey')) &&
+          _zahl(wertIn(f, 'backupfile')) &&
+          (wertIn(f, 'contextid') == null || _zahl(wertIn(f, 'contextid'))),
+    ),
+    Erlaubt(
+      'GET',
+      r'^/backup/restore\.php$',
+      'Wiederherstellen: Seite des Assistenten',
+      parameter: (q) =>
+          _nurSchluessel(q, {'contextid', 'filename'}) &&
+          _zahl(q['contextid']) &&
+          RegExp(r'^[A-Za-z0-9_.-]{1,200}$').hasMatch(q['filename'] ?? ''),
+    ),
+    // Weiterleitung nach dem Hochladen (UNGEMESSEN): Moodle nennt die Datei über ihren Dateiablagen-Hash.
+    Erlaubt(
+      'GET',
+      r'^/backup/restore\.php$',
+      'Wiederherstellen: Weiterleitung nach dem Hochladen (UNGEMESSEN)',
+      parameter: (q) =>
+          _nurSchluessel(q, {
+            'contextid',
+            'pathnamehash',
+            'component',
+            'filearea',
+          }) &&
+          _zahl(q['contextid']) &&
+          RegExp(r'^[a-f0-9]{40}$').hasMatch(q['pathnamehash'] ?? '') &&
+          RegExp(r'^[a-z_]{1,50}$').hasMatch(q['component'] ?? 'backup') &&
+          RegExp(r'^[a-z_]{1,50}$').hasMatch(q['filearea'] ?? 'draft'),
+    ),
+    // Sicherungsdetails (gemessen auf der Testinstanz): das Weiter-Formular trägt nur diese Felder und stage=2.
+    Erlaubt(
+      'POST',
+      r'^/backup/restore\.php$',
+      'Wiederherstellen: Sicherungsdetails bestätigen',
+      parameter: (q) => _nurSchluessel(q, {'contextid', 'filename'}),
+      formular: (f) =>
+          f.every(
+            (e) => const {
+              'contextid',
+              'filepath',
+              'filename',
+              'stage',
+              'sesskey',
+            }.contains(e.key),
+          ) &&
+          wertIn(f, 'stage') == '2' &&
+          _gesetzt(wertIn(f, 'sesskey')),
+    ),
+    // Zielwahl je Zielweg (E9): jeder Weg hat eine eigene, enge Schlüsselmenge.
+    // Der Wert target ist der gemessene Moodle-Wert des Weges; ein anderer wird abgelehnt.
+    // Kein _qf__-Feld auf dieser Seite (gemessen). Die Felder search (Kurssuche) und
+    // catsearch (Kategoriesuche) gehören je nur zu den Wegen, die sie brauchen.
+    for (final ziel in Zielweg.values)
+      Erlaubt(
+        'POST',
+        r'^/backup/restore\.php$',
+        'Wiederherstellen: Ziel „${ziel.nennung}" (Formular mit stage=2 oder 4)',
+        parameter: (q) => _nurSchluessel(q, {'contextid', 'filename'}),
+        formular: (f) {
+          final erlaubt = {
+            'contextid',
+            'filepath',
+            'filename',
+            'stage',
+            'sesskey',
+            'target',
+            'targetid',
+            if (ziel == Zielweg.neuerKurs) 'catsearch',
+            if (ziel == Zielweg.anderKursVerschmelzen ||
+                ziel == Zielweg.anderKursErsetzen)
+              'search',
+          };
+          return const {'2', '4'}.contains(wertIn(f, 'stage')) &&
+              wertIn(f, 'target') == '${ziel.moodle}' &&
+              _zahl(wertIn(f, 'targetid')) &&
+              _gesetzt(wertIn(f, 'sesskey')) &&
+              f.every((e) => erlaubt.contains(e.key));
+        },
+      ),
+    // Kursformular (nur für die Kategorie eines neuen Kurses): ohne Angabe oder mit category.
+    Erlaubt(
+      'GET',
+      r'^/course/edit\.php$',
+      'Kursformular lesen (Kategorie des neuen Kurses)',
+      parameter: (q) =>
+          _nurSchluessel(q, {'category'}) &&
+          (q['category'] == null || _zahl(q['category'])),
+    ),
+    // Kursverwaltung der Kategorie (Kontext der Kategorie; UNGEMESSEN).
+    Erlaubt(
+      'GET',
+      r'^/course/management\.php$',
+      'Kategorie ansehen (Kontext; UNGEMESSEN)',
+      parameter: (q) =>
+          _nurSchluessel(q, {'categoryid'}) && _zahl(q['categoryid']),
+    ),
+    // Einstellungen, Schema und Prüfung: ohne Nutzerdaten, mit dem Schalter „restore".
+    for (final (schritt, form) in const [
+      ('4', 'settings'),
+      ('8', 'schema'),
+      ('16', 'review'),
+    ])
+      Erlaubt(
+        'POST',
+        r'^/backup/restore\.php$',
+        'Wiederherstellen: Schritt $schritt ($form)',
+        parameter: (q) => _nurSchluessel(q, {'contextid', 'filename'}),
+        formular: (f) =>
+            wertIn(f, 'stage') == schritt &&
+            _marke(f, RegExp('^_qf__restore_${form}_form\$')) &&
+            wertIn(f, 'restore') != null &&
+            _gesetzt(wertIn(f, 'sesskey')) &&
+            ohneNutzerdaten(f),
+      ),
+    // Rollenzuordnung nach dem Prüfen (gemessen auf einer Produktivinstanz): Moodle hält
+    // an und wartet auf „Weiter". Nur die Felder dieser Seite; Moodle kann
+    // technische Zuordnungskennungen statt reiner Rollennummern verwenden.
+    // Die Werte bleiben auf kurze Kennungen begrenzt, Nutzerdaten ausgeschlossen.
+    Erlaubt(
+      'POST',
+      r'^/backup/restore\.php$',
+      'Wiederherstellen: Rollenzuordnung bestätigen',
+      parameter: (q) => _nurSchluessel(q, {'contextid', 'filename'}),
+      formular: (f) =>
+          _zahl(wertIn(f, 'stage')) &&
+          RegExp(r'^[A-Za-z0-9_.-]{1,40}$').hasMatch(wertIn(f, 'substage') ?? '') &&
+          RegExp(r'^[0-9a-f]{32}$').hasMatch(wertIn(f, 'restore') ?? '') &&
+          _gesetzt(wertIn(f, 'sesskey')) &&
+          f.any((e) => e.key.startsWith('mapping')) &&
+          f.every(
+            (e) => switch (e.key) {
+              'stage' || 'contextid' => _zahl(e.value),
+              'substage' || 'restore' || 'sesskey' => true,
+              'context' || 'q' || 'pageurl' => true,
+              final k when RegExp(r'^mapping\d+$').hasMatch(k) =>
+                RegExp(r'^[A-Za-z0-9_.-]{1,60}$').hasMatch(e.value),
+              _ => false,
+            },
+          ) &&
+          ohneNutzerdaten(f),
+    ),
+    Erlaubt(
+      'POST',
+      r'^/repository/draftfiles_ajax\.php$',
+      'Unterordner eines Dateibereichs lesen',
+      parameter: (q) => q.length == 1 && q['action'] == 'list',
+      formular: (f) =>
+          f.length == 4 &&
+          _zahl(wertIn(f, 'itemid')) &&
+          (wertIn(f, 'filepath') ?? '').startsWith('/') &&
+          wertIn(f, 'client_id') != null &&
+          (wertIn(f, 'sesskey') ?? '').isNotEmpty,
+    ),
+    Erlaubt(
+      'POST',
+      r'^/repository/draftfiles_ajax\.php$',
+      'Datei im Entwurfsbereich ersetzen',
+      parameter: (q) => q.length == 1 && q['action'] == 'delete',
+      formular: (f) =>
+          _zahl(wertIn(f, 'itemid')) &&
+          (wertIn(f, 'filename') ?? '').isNotEmpty &&
+          (wertIn(f, 'sesskey') ?? '').isNotEmpty,
+    ),
+  ];
 
   /// Prüft eine Anfrage gegen die Positivliste, ohne sie zu senden.
-  bool erlaubt(String methode, Uri uri, [Felder? formular, String? rumpf]) {
+  bool erlaubt(
+    String methode,
+    Uri uri, [
+    Felder? formular,
+    String? rumpf,
+    Anhang? anhang,
+  ]) {
     for (final e in positivliste) {
       if (e.methode != methode || !RegExp(e.pfad).hasMatch(uri.path)) continue;
       if (e.parameter != null && !e.parameter!(uri.queryParameters)) continue;
-      if (e.formular != null && (formular == null || !e.formular!(formular))) continue;
+      if (e.formular != null && (formular == null || !e.formular!(formular))) {
+        continue;
+      }
+      if ((e.anhang == null) != (anhang == null)) continue;
+      if (e.anhang != null && !e.anhang!(anhang!)) continue;
       if ((e.inhalt == null) != (rumpf == null)) continue;
       if (e.inhalt != null && !e.inhalt!(uri.queryParameters, rumpf!)) continue;
       return true;
@@ -587,6 +1420,38 @@ class MoodleZugang {
   final Map<String, String> _cookies = {};
   bool _angemeldet = false;
   Completer<void>? _anmeldungLaeuft;
+
+  /// Nur gesetzt von [fuerTest]: Die Instanz ist eine lokale Testadresse mit
+  /// http. Sonst gilt überall https.
+  bool _testInstanz = false;
+
+  /// Ein Zugang gegen eine lokale Testinstanz (Test-Doppel auf 127.0.0.1), mit
+  /// derselben Anmeldung wie [anmelden], aber ohne die https-Pflicht. Der
+  /// einzige Weg, http zu erlauben; die Positivliste lässt http nur für genau
+  /// diese Adresse und diesen Port zu ([_schemeErlaubt]).
+  ///
+  /// Ohne den Bauschalter des Testbetriebs (testschalter.dart) wirft die Methode,
+  /// bevor etwas geschieht -- im Release-Bau ohnehin, im Debug-Bau der
+  /// Lehrkraft auch.
+  @visibleForTesting
+  static Future<MoodleZugang> fuerTest(
+    Protokoll protokoll,
+    Uri basis, {
+    required String benutzer,
+    required String passwort,
+  }) async {
+    if (!testbetriebAktiv) throw StateError('Testzugang nur im Testbau verfügbar.');
+    if (basis.scheme != 'http' || basis.host != '127.0.0.1') {
+      throw ArgumentError('Testzugang nur über http://127.0.0.1.');
+    }
+    final z = MoodleZugang(protokoll);
+    z._testInstanz = true;
+    z._basis = basis;
+    z._benutzer = benutzer;
+    z._passwort = passwort;
+    await z._anmelden();
+    return z;
+  }
 
   /// Der sesskey der Sitzung, mitgelesen aus jeder HTML-Antwort (M.cfg).
   String? _sesskey;
@@ -609,7 +1474,11 @@ class MoodleZugang {
   // Anmelden und Abmelden
   // ---------------------------------------------------------------------
 
-  Future<void> anmelden(String adresse, String benutzer, String passwort) async {
+  Future<void> anmelden(
+    String adresse,
+    String benutzer,
+    String passwort,
+  ) async {
     final b = Uri.parse(adresse.trim());
     if (b.scheme != 'https' || b.host.isEmpty) {
       throw MoodleFehler('Die Moodle-Adresse muss mit https:// beginnen.');
@@ -619,7 +1488,11 @@ class MoodleZugang {
     if (benutzer.trim().isEmpty || passwort.isEmpty) {
       throw MoodleFehler('Benutzername und Passwort eingeben.');
     }
-    _basis = Uri(scheme: b.scheme, host: b.host, port: b.hasPort ? b.port : null);
+    _basis = Uri(
+      scheme: b.scheme,
+      host: b.host,
+      port: b.hasPort ? b.port : null,
+    );
     _benutzer = benutzer.trim();
     _passwort = passwort;
     try {
@@ -636,12 +1509,15 @@ class MoodleZugang {
     _sesskey = null;
     _eigeneId = null;
     selbstAngelegt.clear();
+    ohneLinkVorherVerborgen.clear();
     _benutzer = null;
     _passwort = null;
     _angemeldet = false;
     _druckaufbereitung = false;
     _themeStylesheet = null;
-    if (!stillschweigend) protokoll.eintrag(Art.anmeldung, 'Abgemeldet, Zugangsdaten verworfen');
+    if (!stillschweigend) {
+      protokoll.eintrag(Art.anmeldung, 'Abgemeldet, Zugangsdaten verworfen');
+    }
   }
 
   /// Nur zum Testen der Neuanmeldung: vergisst die Sitzung, behält aber die
@@ -649,7 +1525,10 @@ class MoodleZugang {
   void sitzungVerwerfen() {
     _cookies.clear();
     _sesskey = null;
-    protokoll.eintrag(Art.anmeldung, 'Sitzung verworfen (Test) -- nächste Anfrage meldet neu an');
+    protokoll.eintrag(
+      Art.anmeldung,
+      'Sitzung verworfen (Test) -- nächste Anfrage meldet neu an',
+    );
   }
 
   Future<void> _anmelden() async {
@@ -666,11 +1545,12 @@ class MoodleZugang {
       seite = await _roh('GET', _adresse('/login/index.php'));
     } on SchutzPruefung {
       // Das Passwort ist noch nicht gesendet: kein Fehlversuch (_neuAnmelden).
-      throw MoodleNichtErreichbar('Der Schutzdienst vor Moodle lässt die App gerade nicht zur Anmeldeseite. '
-          'Später noch einmal versuchen.');
+      throw MoodleNichtErreichbar(_schutzBeiAnmeldung);
     }
     final doc = html_parser.parse(seite.text);
-    final token = doc.querySelector('input[name="logintoken"]')?.attributes['value'];
+    final token = doc
+        .querySelector('input[name="logintoken"]')
+        ?.attributes['value'];
     if (token == null) {
       throw MoodleFehler('Auf der Anmeldeseite fehlt das Anmeldeformular.');
     }
@@ -691,6 +1571,11 @@ class MoodleZugang {
     Antwort r;
     try {
       r = await _roh('POST', _adresse('/login/index.php'), formular: formular);
+    } on SchutzPruefung {
+      // Antwortet der Schutzdienst, kam die Anfrage nie bei Moodle an: Das
+      // Passwort wurde dort nicht geprüft, also auch nicht abgelehnt -- kein
+      // Fehlversuch, die Zugangsdaten bleiben (_neuAnmelden).
+      throw MoodleNichtErreichbar(_schutzBeiAnmeldung);
     } on MoodleNichtErreichbar catch (e) {
       // Ob das Passwort angekommen und abgelehnt worden ist, weiß hier niemand:
       // zählt wie ein Fehlversuch, nicht wie „nicht erreichbar" (_neuAnmelden).
@@ -701,31 +1586,55 @@ class MoodleZugang {
         ziel.path != '/login/index.php' ||
         !ziel.queryParameters.containsKey('testsession')) {
       protokoll.eintrag(Art.anmeldung, 'Anmeldung fehlgeschlagen');
-      throw MoodleFehler('Anmeldung fehlgeschlagen. Benutzername oder Passwort prüfen.');
+      throw MoodleAnmeldungAbgelehnt(
+        'Anmeldung fehlgeschlagen. Benutzername oder Passwort prüfen.',
+      );
     }
 
     // 3. testsession bestätigt, dass das Cookie ankommt; danach leitet Moodle
     //    auf die Startseite um. Der wird NICHT gefolgt -- das Dashboard
     //    enthält Daten, die hier niemand braucht.
-    r = await _roh('GET', ziel);
+    try {
+      r = await _roh('GET', ziel);
+    } on SchutzPruefung {
+      // Das Passwort ist hier schon angenommen (Moodle hat auf testsession
+      // umgeleitet); der Schutzdienst hält nur den letzten Schritt an. Das ist
+      // kein Fehlversuch und kein falsches Passwort: nicht erreichbar, die
+      // Zugangsdaten bleiben (_neuAnmelden). Die Meldung sagt es anders als
+      // bei den ersten beiden Schritten, wo das Passwort noch nicht geprüft ist.
+      throw MoodleNichtErreichbar(_schutzBeimLetztenSchritt);
+    }
     final weiter = _umleitung(r);
     if (weiter == null || weiter.path == '/login/index.php') {
-      protokoll.eintrag(Art.anmeldung, 'Anmeldung fehlgeschlagen (Sitzung nicht bestätigt)');
-      throw MoodleFehler('Anmeldung fehlgeschlagen: Moodle hat die Sitzung nicht bestätigt.');
+      protokoll.eintrag(
+        Art.anmeldung,
+        'Anmeldung fehlgeschlagen (Sitzung nicht bestätigt)',
+      );
+      throw MoodleFehler(
+        'Anmeldung fehlgeschlagen: Moodle hat die Sitzung nicht bestätigt.',
+      );
     }
     _angemeldet = true;
     protokoll.eintrag(Art.anmeldung, 'Angemeldet bei ${_basis!.host}');
     if (druck != _druckaufbereitung || !_druckGemeldet) {
       protokoll.eintrag(
-          Art.info,
-          druck
-              ? 'Druckaufbereitung „Aufgabenblatt-Druck" erkannt'
-              : 'Keine Druckaufbereitung „Aufgabenblatt-Druck" auf dieser Instanz');
+        Art.info,
+        druck ? 'Druckaufbereitung „Aufgabenblatt-Druck" erkannt' : 'Keine Druckaufbereitung „Aufgabenblatt-Druck" auf dieser Instanz',
+      );
       _druckGemeldet = true;
     }
     _druckaufbereitung = druck;
     _themeStylesheet = stylesheet;
   }
+
+  static const _schutzBeiAnmeldung =
+      'Der Schutzdienst vor Moodle lässt die App gerade nicht zur Anmeldung. '
+      'Das Passwort ist nicht geprüft worden. Später noch einmal versuchen.';
+
+  static const _schutzBeimLetztenSchritt =
+      'Der Schutzdienst vor Moodle hat den letzten Schritt der Anmeldung angehalten. '
+      'Das Passwort ist angenommen worden, die Anmeldung aber nicht abgeschlossen. '
+      'Später noch einmal versuchen.';
 
   /// Nur einmal je Stand ins Protokoll, nicht bei jeder Neuanmeldung.
   bool _druckGemeldet = false;
@@ -746,15 +1655,24 @@ class MoodleZugang {
       // die App gilt weiter als angemeldet, und die nächste Anfrage meldet
       // neu an.
       _angemeldet = true;
-      protokoll.eintrag(Art.anmeldung, 'Neuanmeldung: Moodle nicht erreichbar -- die nächste Anfrage versucht es wieder');
+      protokoll.eintrag(
+        Art.anmeldung,
+        'Neuanmeldung: Moodle nicht erreichbar -- die nächste Anfrage versucht es wieder',
+      );
       c.completeError(e);
     } catch (e) {
       // Keine zweite Chance: Zugangsdaten verwerfen, damit kein Konto
       // durch wiederholte Fehlversuche gesperrt wird.
       abmelden(stillschweigend: true);
-      protokoll.eintrag(Art.anmeldung, 'Neuanmeldung fehlgeschlagen -- Zugangsdaten verworfen');
-      c.completeError(MoodleFehler(
-          'Sitzung abgelaufen und Neuanmeldung fehlgeschlagen. Bitte in der App neu anmelden.'));
+      protokoll.eintrag(
+        Art.anmeldung,
+        'Neuanmeldung fehlgeschlagen -- Zugangsdaten verworfen',
+      );
+      c.completeError(
+        MoodleFehler(
+          'Sitzung abgelaufen und Neuanmeldung fehlgeschlagen. Bitte in der App neu anmelden.',
+        ),
+      );
     } finally {
       _anmeldungLaeuft = null;
     }
@@ -775,13 +1693,17 @@ class MoodleZugang {
   /// Anmeldeseite, wird einmal neu angemeldet und wiederholt.
   Future<Antwort> lesen(String pfadMitQuery) async {
     _pruefeAngemeldet();
-    final uri = pfadMitQuery.startsWith('http') ? Uri.parse(pfadMitQuery) : _adresse(pfadMitQuery);
+    final uri = pfadMitQuery.startsWith('http')
+        ? Uri.parse(pfadMitQuery)
+        : _adresse(pfadMitQuery);
     var r = await _mitUmleitungen(uri);
     if (_istAnmeldeseite(r.adresse)) {
       await _neuAnmelden();
       r = await _mitUmleitungen(uri);
       if (_istAnmeldeseite(r.adresse)) {
-        throw MoodleFehler('Nach der Neuanmeldung landet die Anfrage wieder auf der Anmeldeseite.');
+        throw MoodleFehler(
+          'Nach der Neuanmeldung landet die Anfrage wieder auf der Anmeldeseite.',
+        );
       }
     }
     return r;
@@ -821,25 +1743,38 @@ class MoodleZugang {
     for (var versuch = 0; versuch < 2; versuch++) {
       final key = await sesskey();
       final rumpf = jsonEncode([
-        {'index': 0, 'methodname': name, 'args': args}
+        {'index': 0, 'methodname': name, 'args': args},
       ]);
-      final r = await _roh('POST', _adresse('/lib/ajax/service.php?sesskey=$key&info=$name'),
-          rumpf: rumpf);
+      final r = await _roh(
+        'POST',
+        _adresse('/lib/ajax/service.php?sesskey=$key&info=$name'),
+        rumpf: rumpf,
+      );
       Object? j;
       try {
         j = jsonDecode(r.text);
       } catch (_) {
         throw MoodleFehler('$name: keine JSON-Antwort (HTTP ${r.status}).');
       }
-      final fehler = j is List && j.isNotEmpty && j.first is Map && (j.first as Map)['error'] == true
+      final fehler =
+          j is List &&
+              j.isNotEmpty &&
+              j.first is Map &&
+              (j.first as Map)['error'] == true
           ? (j.first as Map)['exception'] as Map?
           : j is Map && j['error'] != null
-              ? j
-              : null;
-      if (fehler == null && j is List && j.isNotEmpty) return (j.first as Map)['data'];
+          ? j
+          : null;
+      if (fehler == null && j is List && j.isNotEmpty) {
+        return (j.first as Map)['data'];
+      }
       final code = '${fehler?['errorcode'] ?? ''}';
       if (versuch == 0 &&
-          const {'servicerequireslogin', 'requireloginerror', 'invalidsesskey'}.contains(code)) {
+          const {
+            'servicerequireslogin',
+            'requireloginerror',
+            'invalidsesskey',
+          }.contains(code)) {
         _sesskey = null;
         await _neuAnmelden();
         continue;
@@ -875,12 +1810,124 @@ class MoodleZugang {
     return r;
   }
 
-  /// Lädt eine Datei hoch (multipart/form-data).
-  Future<Antwort> hochladen(String pfadMitQuery, Felder felder, Anhang datei) async {
+  /// Lädt eine Datei hoch (multipart/form-data). Eine Sicherungsdatei (.mbz) darf
+  /// nur die Wiederherstellung hochladen ([sicherung]: true), und dann muss es auch
+  /// eine sein: Sonst hinge der allgemeine Upload eine Sicherung an eine Aktivität,
+  /// an der Prüfung des Archivs vorbei. Die Positivliste sieht das Ziel nicht.
+  Future<Antwort> hochladen(
+    String pfadMitQuery,
+    Felder felder,
+    Anhang datei, {
+    bool sicherung = false,
+  }) async {
+    final istSicherung = datei.dateiname.toLowerCase().endsWith('.mbz');
+    if (istSicherung != sicherung) {
+      throw MoodleFehler(istSicherung
+          ? 'Eine Sicherungsdatei (.mbz) lädt nur die Wiederherstellung hoch, nach der Prüfung des Archivs; '
+              'an eine Aktivität gehört sie nicht. Nichts gesendet.'
+          : 'Als Sicherung hochgeladen wird nur eine .mbz-Datei. Nichts gesendet.');
+    }
     _pruefeAngemeldet();
-    final r = await _roh('POST', _adresse(pfadMitQuery), formular: felder, anhang: datei);
+    final r = await _roh(
+      'POST',
+      _adresse(pfadMitQuery),
+      formular: felder,
+      anhang: datei,
+    );
     await _pruefeSitzungNachSchreiben(r);
     return r;
+  }
+
+  /// Lädt eine Sicherungsdatei (Pfad mit `?forcedownload=1`) als Stream nach
+  /// [ziel]. Geschrieben wird zuerst nach `<ziel>.teil`; erst wenn die Größe
+  /// mit der angekündigten übereinstimmt, wird umbenannt. Bei jedem Fehler
+  /// verschwindet der Teil. Eine vorhandene Datei wird nie überschrieben.
+  /// Gibt die Zahl der Bytes zurück. Mehr als [maxBytes] lädt sie nicht: Die angekündigte
+  /// Größe wird vorher geprüft, und beim Laden zählt jedes Stück mit, damit eine
+  /// Datei, die mehr liefert als angekündigt, den Speicherplatz nicht füllt
+  /// ([DownloadZuGross]).
+  Future<int> herunterladen(String pfadMitQuery, File ziel, {int maxBytes = archivGrenzeStandard}) async {
+    _pruefeAngemeldet();
+    final uri = _adresse(pfadMitQuery);
+    _pruefePositivliste('GET', uri, null, null);
+    if (await ziel.exists()) {
+      throw MoodleFehler('Zieldatei existiert schon; nichts überschrieben.');
+    }
+    final teil = File('${ziel.path}.teil');
+    final client = HttpClient()
+      ..userAgent = 'moocp (lokal)'
+      ..connectionTimeout = verbindungsgrenze;
+    IOSink? senke;
+    var fertig = false;
+    try {
+      final req = await client.getUrl(uri);
+      req.followRedirects = false;
+      _cookies.forEach((k, v) => req.cookies.add(Cookie(k, v)));
+      final res = await req.close().timeout(antwortgrenze);
+      protokoll.eintrag(
+        Art.moodle,
+        'GET ${uri.path}${_querySicher(uri)} → ${res.statusCode}',
+      );
+      if (res.statusCode != 200) {
+        throw MoodleFehler('Download abgelehnt (HTTP ${res.statusCode}).');
+      }
+      if (res.headers.contentType?.mimeType == 'text/html') {
+        throw MoodleFehler(
+          'Download liefert eine Seite statt einer Datei (Anmeldung abgelaufen?).',
+        );
+      }
+      final erwartet = res.contentLength;
+      if (erwartet < 0) {
+        // Ohne angekündigte Größe gibt es keine Prüfung; dann wird nichts übernommen.
+        throw MoodleFehler(
+          'Moodle nennt die Größe der Datei nicht; nicht übernommen.',
+        );
+      }
+      if (erwartet > maxBytes) throw DownloadZuGross(maxBytes);
+      senke = teil.openWrite();
+      var gelesen = 0;
+      await for (final d in res.timeout(antwortgrenze)) {
+        gelesen += d.length;
+        if (gelesen > maxBytes) throw DownloadZuGross(maxBytes);
+        senke.add(d);
+      }
+      final s = senke;
+      senke = null;
+      await s.close();
+      if (gelesen != erwartet) {
+        throw MoodleFehler(
+          'Die Datei ist unvollständig ($gelesen von $erwartet Bytes).',
+        );
+      }
+      await teil.rename(ziel.path);
+      fertig = true;
+      return gelesen;
+    } on SocketException catch (e) {
+      protokoll.eintrag(Art.fehler, 'GET ${uri.path}: nicht erreichbar');
+      throw MoodleNichtErreichbar('Moodle nicht erreichbar: ${e.message}');
+    } on TimeoutException {
+      protokoll.eintrag(
+        Art.fehler,
+        'GET ${uri.path}: keine Antwort innerhalb der Zeitgrenze',
+      );
+      throw MoodleNichtErreichbar(
+        'Moodle antwortet nicht (${uri.path}). Später noch einmal versuchen.',
+      );
+    } on IOException catch (e) {
+      protokoll.eintrag(
+        Art.fehler,
+        'GET ${uri.path}: Verbindung abgebrochen (${e.runtimeType})',
+      );
+      throw MoodleNichtErreichbar(
+        'Verbindung zu Moodle abgebrochen (${e.runtimeType}). Später noch einmal versuchen.',
+      );
+    } finally {
+      client.close(force: true);
+      try {
+        await senke?.close();
+      } catch (_) {}
+      if (!fertig && await teil.exists()) await teil.delete();
+    }
   }
 
   Future<void> _pruefeSitzungNachSchreiben(Antwort r) async {
@@ -903,7 +1950,9 @@ class MoodleZugang {
       final ziel = _umleitung(r);
       if (ziel == null) return r;
       // Umleitung auf die Anmeldeseite: nicht folgen, Aufrufer entscheidet.
-      if (_istAnmeldeseite(ziel)) return Antwort(r.status, ziel, Uint8List(0), null);
+      if (_istAnmeldeseite(ziel)) {
+        return Antwort(r.status, ziel, Uint8List(0), null);
+      }
       uri = ziel;
     }
     throw MoodleFehler('Zu viele Umleitungen ab ${start.path}');
@@ -924,30 +1973,54 @@ class MoodleZugang {
   // Eine einzelne Anfrage -- hier sitzt die Positivliste
   // ---------------------------------------------------------------------
 
-  void _pruefePositivliste(String methode, Uri uri, Felder? formular, String? rumpf) {
-    if (_basis == null || uri.host != _basis!.host || uri.scheme != 'https') {
-      throw MoodleFehler('Gesperrt: fremder Rechner oder kein https (${uri.host}).');
+  /// https ist Pflicht. Ausnahme nur die Testinstanz ([fuerTest]) auf ihrer
+  /// eigenen Adresse und ihrem eigenen Port.
+  bool _schemeErlaubt(Uri uri) =>
+      uri.scheme == 'https' ||
+      (_testInstanz &&
+          _basis!.scheme == 'http' &&
+          uri.scheme == 'http' &&
+          uri.port == _basis!.port);
+
+  void _pruefePositivliste(
+    String methode,
+    Uri uri,
+    Felder? formular,
+    String? rumpf, [
+    Anhang? anhang,
+  ]) {
+    if (_basis == null || uri.host != _basis!.host || !_schemeErlaubt(uri)) {
+      throw MoodleFehler(
+        'Gesperrt: fremder Rechner oder kein https (${uri.host}).',
+      );
     }
     final regel = sperrregel(uri);
     if (regel != null) {
       // Parameterwerte gehören nicht ins Protokoll: studentid=45 wäre genau
       // das Datum, um das es geht.
-      protokoll.eintrag(Art.gesperrt, 'Datenschutz-Sperre: $methode ${adresseOhneWerte(uri)} (Regel $regel)');
+      protokoll.eintrag(
+        Art.gesperrt,
+        'Datenschutz-Sperre: $methode ${adresseOhneWerte(uri)} (Regel $regel)',
+      );
       throw MoodleFehler(
-          'Gesperrt (Datenschutz): ${uri.path} zeigt personenbezogene Daten -- Bewertungen, '
-          'Abgaben, Versuche, Profile oder Protokolle. Die App liest sie grundsätzlich nicht. '
-          'Dem Nutzer sagen, dass dieser Teil der Aufgabe offen bleibt, oder -- falls die '
-          'Adresse harmlos ist -- dass die Sperre zu weit ist (Regel $regel).');
+        'Gesperrt (Datenschutz): ${uri.path} zeigt personenbezogene Daten -- Bewertungen, '
+        'Abgaben, Versuche, Profile oder Protokolle. Die App liest sie grundsätzlich nicht. '
+        'Dem Nutzer sagen, dass dieser Teil der Aufgabe offen bleibt, oder -- falls die '
+        'Adresse harmlos ist -- dass die Sperre zu weit ist (Regel $regel).',
+      );
     }
-    if (erlaubt(methode, uri, formular, rumpf)) return;
+    if (erlaubt(methode, uri, formular, rumpf, anhang)) return;
     // Zur Fehlersuche die NAMEN der Parameter und Felder, nie ihre Werte.
     protokoll.eintrag(
-        Art.gesperrt,
-        'Gesperrt: $methode ${adresseOhneWerte(uri)}'
-        '${formular == null ? '' : ' (Felder: ${formular.map((e) => e.key).toSet().join(', ')})'}');
+      Art.gesperrt,
+      'Gesperrt: $methode ${adresseOhneWerte(uri)}'
+      '${formular == null ? '' : ' (Felder: ${formular.map((e) => e.key).toSet().join(', ')})'}'
+      '${formular == null || !const {'/backup/restore.php', '/group/assign.php'}.contains(uri.path) ? '' : ' (Wertformen: ${formular.map((e) => '${e.key}=${_wertform(e.value)}').join(', ')})'}',
+    );
     throw MoodleFehler(
-        'Gesperrt: $methode ${uri.path} steht nicht auf der Positivliste dieses Servers '
-        '(oder die Werte passen nicht zu dem, was dort erlaubt ist).');
+      'Gesperrt: $methode ${uri.path} steht nicht auf der Positivliste dieses Servers '
+      '(oder die Werte passen nicht zu dem, was dort erlaubt ist).',
+    );
   }
 
   /// Eine Anfrage des Browsers für ein Bildschirmfoto (bildschirmfoto.dart):
@@ -955,23 +2028,43 @@ class MoodleZugang {
   /// gegen die Positivliste, gestellt mit der Sitzung der App -- das Cookie
   /// verlässt die App nicht. Umleitungen gehen an den Browser zurück; er
   /// folgt ihnen mit einer neuen Anfrage, die wieder hier geprüft wird.
-  Future<Antwort> fuerBrowser(String methode, Uri uri,
-      {required Set<String> seiten, String? rumpf, bool dokument = false}) {
+  Future<Antwort> fuerBrowser(
+    String methode,
+    Uri uri, {
+    required Set<String> seiten,
+    String? rumpf,
+    bool dokument = false,
+  }) {
     _pruefeAngemeldet();
-    final (weg, grund) =
-        browserPruefen(methode, uri, basis: _basis!, seiten: seiten, dokument: dokument, rumpf: rumpf);
+    final (weg, grund) = browserPruefen(
+      methode,
+      uri,
+      basis: _basis!,
+      seiten: seiten,
+      dokument: dokument,
+      rumpf: rumpf,
+    );
     if (weg != BrowserWeg.ueberApp) {
-      protokoll.eintrag(Art.gesperrt, 'Browser gesperrt: $methode ${adresseOhneWerte(uri)} ($grund)');
+      protokoll.eintrag(
+        Art.gesperrt,
+        'Browser gesperrt: $methode ${adresseOhneWerte(uri)} ($grund)',
+      );
       throw MoodleFehler('Gesperrt: $methode ${uri.path} ($grund).');
     }
     return _roh(methode, uri, rumpf: rumpf, browser: true);
   }
 
-  Future<Antwort> _roh(String methode, Uri uri,
-      {Felder? formular, Anhang? anhang, String? rumpf, bool browser = false}) async {
+  Future<Antwort> _roh(
+    String methode,
+    Uri uri, {
+    Felder? formular,
+    Anhang? anhang,
+    String? rumpf,
+    bool browser = false,
+  }) async {
     // Anfragen des Browsers sind in fuerBrowser geprüft, gegen ihre eigene
     // Liste; die Sperrliste gilt dort zuerst wie hier.
-    if (!browser) _pruefePositivliste(methode, uri, formular, rumpf);
+    if (!browser) _pruefePositivliste(methode, uri, formular, rumpf, anhang);
     final client = HttpClient()
       ..userAgent = 'moocp (lokal)'
       ..connectionTimeout = verbindungsgrenze;
@@ -980,8 +2073,13 @@ class MoodleZugang {
       req.followRedirects = false;
       _cookies.forEach((k, v) => req.cookies.add(Cookie(k, v)));
       if (anhang != null) {
-        final grenze = 'moocp${Random.secure().nextInt(1 << 32).toRadixString(16)}';
-        req.headers.contentType = ContentType('multipart', 'form-data', parameters: {'boundary': grenze});
+        final grenze =
+            'moocp${Random.secure().nextInt(1 << 32).toRadixString(16)}';
+        req.headers.contentType = ContentType(
+          'multipart',
+          'form-data',
+          parameters: {'boundary': grenze},
+        );
         final b = BytesBuilder();
         void zeile(String s) => b.add(utf8.encode('$s\r\n'));
         for (final e in formular ?? const <MapEntry<String, String>>[]) {
@@ -991,8 +2089,10 @@ class MoodleZugang {
           zeile(e.value);
         }
         zeile('--$grenze');
-        zeile('Content-Disposition: form-data; name="${anhang.feld}"; '
-            'filename="${anhang.dateiname.replaceAll('"', '')}"');
+        zeile(
+          'Content-Disposition: form-data; name="${anhang.feld}"; '
+          'filename="${anhang.dateiname.replaceAll('"', '')}"',
+        );
         zeile('Content-Type: ${anhang.mime}');
         zeile('');
         b.add(anhang.bytes);
@@ -1003,15 +2103,27 @@ class MoodleZugang {
         req.add(body);
       } else if (rumpf != null) {
         final body = utf8.encode(rumpf);
-        req.headers.contentType = ContentType('application', 'json', charset: 'utf-8');
+        req.headers.contentType = ContentType(
+          'application',
+          'json',
+          charset: 'utf-8',
+        );
         req.contentLength = body.length;
         req.add(body);
       } else if (formular != null) {
-        final body = utf8.encode(formular
-            .map((e) => '${Uri.encodeQueryComponent(e.key)}=${Uri.encodeQueryComponent(e.value)}')
-            .join('&'));
-        req.headers.contentType =
-            ContentType('application', 'x-www-form-urlencoded', charset: 'utf-8');
+        final body = utf8.encode(
+          formular
+              .map(
+                (e) =>
+                    '${Uri.encodeQueryComponent(e.key)}=${Uri.encodeQueryComponent(e.value)}',
+              )
+              .join('&'),
+        );
+        req.headers.contentType = ContentType(
+          'application',
+          'x-www-form-urlencoded',
+          charset: 'utf-8',
+        );
         req.contentLength = body.length;
         req.add(body);
       }
@@ -1027,56 +2139,78 @@ class MoodleZugang {
           .fold<BytesBuilder>(BytesBuilder(copy: false), (b, d) => b..add(d))
           .timeout(antwortgrenze);
       final roh = bytes.takeBytes();
-      final schutz = schutzErkennen(res.statusCode,
-          server: res.headers.value(HttpHeaders.serverHeader),
-          mitigated: res.headers.value('cf-mitigated'),
-          text: utf8.decode(roh, allowMalformed: true));
-      final a = Antwort(res.statusCode, uri, roh, res.headers.contentType?.mimeType,
-          ort: res.headers.value(HttpHeaders.locationHeader), schutz: schutz);
+      final schutz = schutzErkennen(
+        res.statusCode,
+        server: res.headers.value(HttpHeaders.serverHeader),
+        mitigated: res.headers.value('cf-mitigated'),
+        text: utf8.decode(roh, allowMalformed: true),
+      );
+      // Ray-ID nur aus dem Kopf, keine Werte aus Anfrage oder Antwort.
+      final ray = res.headers.value('cf-ray');
+      final a = Antwort(
+        res.statusCode,
+        uri,
+        roh,
+        res.headers.contentType?.mimeType,
+        ort: res.headers.value(HttpHeaders.locationHeader),
+        schutz: schutz,
+      );
       if (a.inhaltstyp == 'text/html' && _angemeldet) {
         final s = RegExp(r'"sesskey":"(\w+)"').firstMatch(a.text)?.group(1);
         if (s != null) _sesskey = s;
-        final id = int.tryParse(RegExp(r'"userId":(\d+)').firstMatch(a.text)?.group(1) ?? '');
+        final id = int.tryParse(
+          RegExp(r'"userId":(\d+)').firstMatch(a.text)?.group(1) ?? '',
+        );
         if (id != null && id > 1) _eigeneId = id;
       }
       // Ins Protokoll: Methode, Pfad, Status. Keine Formularwerte, keine
       // Cookies, keine Parameterwerte der Anmeldung.
       // Lesende Dienstaufrufe (JSON-Rumpf) sind zwar POST, schreiben aber
       // nichts; ein GET mit sesskey dagegen ist eine Aktion.
-      // Bei einem Schutzdienst die Ray-ID: Mit ihr findet der Betreiber den
-      // Vorgang in seinen Protokollen, etwa für eine Ausnahme (TODO.md); sie
-      // trägt nichts aus der Anfrage.
       final dienst = uri.queryParameters['info'];
       final schreibt = rumpf != null
           ? schreibendeDienste.contains(dienst)
           : methode != 'GET' || uri.queryParameters.containsKey('sesskey');
-      final ray = res.headers.value('cf-ray');
-      protokoll.eintrag(schreibt ? Art.schreiben : Art.moodle,
-          '${browser ? 'Browser: ' : ''}$methode ${uri.path}${_querySicher(uri)}'
-          '${anhang != null ? " (${anhang.dateiname})" : ""}'
-          ' → ${res.statusCode}'
-          '${switch (schutz) {
-            Schutz.pruefung => ' (Schutzdienst: Prüfung verlangt',
-            Schutz.sperre => ' (Schutzdienst: abgewiesen',
-            null => '',
-          }}${schutz == null ? '' : '${ray == null ? '' : ', Ray-ID $ray'})'}');
+      protokoll.eintrag(
+        schreibt ? Art.schreiben : Art.moodle,
+        '${browser ? 'Browser: ' : ''}$methode ${uri.path}${_querySicher(uri)}'
+        '${anhang != null ? " (${anhang.dateiname})" : ""}'
+        ' → ${res.statusCode}'
+        '${switch (schutz) {
+          Schutz.pruefung => ' (Schutzdienst: Prüfung verlangt',
+          Schutz.sperre => ' (Schutzdienst: abgewiesen',
+          null => '',
+        }}${schutz == null ? '' : '${ray == null ? '' : ', Ray-ID $ray'})'}',
+      );
       // Die Seite des Schutzdienstes ist keine Antwort von Moodle; als solche
       // gelesen, sähe sie wie ein fehlendes Recht oder eine leere Seite aus.
       // Der Browser für Bildschirmfotos bekommt sie wie jede Antwort.
-      if (schutz != null && !browser) throw SchutzPruefung(sperre: schutz == Schutz.sperre);
+      if (schutz != null && !browser) {
+        throw SchutzPruefung(sperre: schutz == Schutz.sperre);
+      }
       return a;
     } on SocketException catch (e) {
       protokoll.eintrag(Art.fehler, '$methode ${uri.path}: nicht erreichbar');
       throw MoodleNichtErreichbar('Moodle nicht erreichbar: ${e.message}');
     } on TimeoutException {
-      protokoll.eintrag(Art.fehler, '$methode ${uri.path}: keine Antwort innerhalb der Zeitgrenze');
-      throw MoodleNichtErreichbar('Moodle antwortet nicht (${uri.path}, Zeitgrenze '
-          '${antwortgrenze.inSeconds} s). Später noch einmal versuchen.');
+      protokoll.eintrag(
+        Art.fehler,
+        '$methode ${uri.path}: keine Antwort innerhalb der Zeitgrenze',
+      );
+      throw MoodleNichtErreichbar(
+        'Moodle antwortet nicht (${uri.path}, Zeitgrenze '
+        '${antwortgrenze.inSeconds} s). Später noch einmal versuchen.',
+      );
     } on IOException catch (e) {
       // Abbruch mitten in der Antwort (HttpException) oder TLS-Fehler
       // (HandshakeException): nur der Typ, der Text kann Adressen enthalten.
-      protokoll.eintrag(Art.fehler, '$methode ${uri.path}: Verbindung abgebrochen (${e.runtimeType})');
-      throw MoodleNichtErreichbar('Verbindung zu Moodle abgebrochen (${e.runtimeType}). Später noch einmal versuchen.');
+      protokoll.eintrag(
+        Art.fehler,
+        '$methode ${uri.path}: Verbindung abgebrochen (${e.runtimeType})',
+      );
+      throw MoodleNichtErreichbar(
+        'Verbindung zu Moodle abgebrochen (${e.runtimeType}). Später noch einmal versuchen.',
+      );
     } finally {
       client.close(force: true);
     }

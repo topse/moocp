@@ -93,6 +93,12 @@ class KursAktivitaet {
   /// Bei einem Unterabschnitt (modul „subsection") die id seines Abschnitts.
   int? unterabschnittId;
 
+  /// Ob Moodle für diese Aktivität „verfügbar, aber nicht auf der Kursseite" anbietet
+  /// (`allowstealth` im Kursstatus); null, wenn der Status es nicht nennt. Ist es auf der
+  /// Website abgeschaltet, nimmt Moodle cm_stealth trotzdem an und macht die Aktivität
+  /// ganz sichtbar (gemessen) -- darum prüft sichtbarkeit_setzen das vorher.
+  bool? ohneLinkMoeglich;
+
   bool get sichtbar => sichtbarkeit != Sichtbarkeit.verborgen;
 }
 
@@ -214,7 +220,8 @@ KursStruktur kursAuswerten(int kurs, Map zustand) {
     final plugin = '${c['plugin'] ?? ''}';
     final modul = '${c['module'] ?? (plugin.startsWith('mod_') ? plugin.substring(4) : c['modname']) ?? '?'}';
     cms[id] = KursAktivitaet(id, modul, _klartext(c['name']), sb, _ganz(c['indent']) ?? 0,
-        _ganz(c['sectionid']) ?? 0);
+        _ganz(c['sectionid']) ?? 0)
+      ..ohneLinkMoeglich = c.containsKey('allowstealth') ? _wahr(c['allowstealth']) : null;
     final d = _ganz(c['delegatesectionid']);
     if (d != null && d > 0) delegiert[id] = d;
   }

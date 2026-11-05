@@ -208,6 +208,20 @@ def weitere(ordner, eintraege):
 
 
 INTRO = {'introeditor.html': '<p>Für die Reflexion.</p>\n'}
+KARTE_ORTE = [{'id': 'p1', 'x': 120, 'y': 280, 'titel': 'Grundlagen'},
+              {'id': 'p2', 'x': 500, 'y': 180, 'titel': 'Aufteilung'},
+              {'id': 'p3', 'x': 880, 'y': 280, 'titel': 'Umsetzung'}]
+KARTE_WEGE = [{'von': 'p1', 'nach': 'p2'}, {'von': 'p2', 'nach': 'p3'}]
+KARTE_BILD = ('<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="560" viewBox="0 0 1000 560">'
+              '<rect width="1000" height="560" fill="#eef2f7"/></svg>')
+KARTE_ZIELE = {'p1': 'Infoblatt 1: VLAN-Grundlagen', 'p2': 'Unsere VLAN-Aufteilung',
+               'p3': 'Arbeitsblatt 2: Umsetzung und Prüfung'}
+
+
+def karte_json(orte=None, wege=None):
+    return json.dumps({'orte': orte or KARTE_ORTE, 'wege': KARTE_WEGE if wege is None else wege}, ensure_ascii=False)
+
+
 ALLE_WEITEREN = [
     ('kanban-plan', 'kanban', 'Unser Arbeitsplan', dict(INTRO, **{'kanban.json':
         '{"spalten": ["Zu erledigen", "Erledigt"], "karten": [{"spalte": "Zu erledigen", "titel": "Ports"}]}'}), {}),
@@ -225,6 +239,9 @@ ALLE_WEITEREN = [
     ('material', 'folder', 'Vorlagen für die Konfiguration', {'bereiche/files/plan.ods': 'x'}, {}),
     ('vorlage', 'resource', 'Netzplan zum Weiterarbeiten', {'bereiche/files/netz.pkt': 'x'}, {}),
     ('hersteller', 'url', 'Herstellerdokumentation', {}, {'einstellungen': {'externalurl': 'https://example.org/vlan'}}),
+    ('lernweg', 'learningmap', 'Lernweg zur VLAN-Segmentierung',
+     {'lernlandkarte.json': karte_json(), 'bereiche/backgroundfile/hintergrund.svg': KARTE_BILD},
+     {'ziele': KARTE_ZIELE}),
 ]
 
 
@@ -499,6 +516,26 @@ FAELLE = [
     ('Verzeichnis leer', lambda o: (eine_weitere(4)(o), os.remove(os.path.join(o, 'material', 'bereiche', 'files', 'plan.ods'))),
      r'Verzeichnis ohne Dateien'),
     ('Datei: zwei Dateien', eine_weitere(5, dateien={'bereiche/files/zweite.pkt': 'y'}), r'genau eine Datei .*gefunden: 2'),
+    ('Lernlandkarte: Ort ohne Ziel', eine_weitere(7, extra={'ziele': dict(list(KARTE_ZIELE.items())[:2])}),
+     r'p3 hat kein Ziel'),
+    ('Lernlandkarte: Ziel gibt es nicht', eine_weitere(7, extra={'ziele': dict(KARTE_ZIELE, p3='Arbeitsblatt 9: Gibt es nicht')}),
+     r'„Arbeitsblatt 9: Gibt es nicht" für p3 ist keine andere Aktivität'),
+    ('Lernlandkarte: Ziel ist die Karte selbst',
+     eine_weitere(7, extra={'ziele': dict(KARTE_ZIELE, p3='Lernweg zur VLAN-Segmentierung')}),
+     r'für p3 ist keine andere Aktivität'),
+    ('Lernlandkarte: Ziel eines unbekannten Orts', eine_weitere(7, extra={'ziele': dict(KARTE_ZIELE, p7='Unsere VLAN-Aufteilung')}),
+     r'nennt „p7", einen Ort, den lernlandkarte.json nicht hat'),
+    ('Lernlandkarte: Weg rückwärts', eine_weitere(7, dateien={'lernlandkarte.json': karte_json(
+        wege=[{'von': 'p2', 'nach': 'p1'}])}), r'Weg 1 \(p2 nach p1\)'),
+    ('Lernlandkarte: Kennung mit Lücke', eine_weitere(7, dateien={'lernlandkarte.json': karte_json(
+        orte=[KARTE_ORTE[0], dict(KARTE_ORTE[1], id='p3')], wege=[])}), r'Ort 2 muss "p2" heißen'),
+    ('Lernlandkarte: Ziel in der Datei', eine_weitere(7, dateien={'lernlandkarte.json': karte_json(
+        orte=[dict(KARTE_ORTE[0], linkedActivity=5)] + KARTE_ORTE[1:])}), r'Ort 1 darf nur id, x, y und titel enthalten'),
+    ('Lernlandkarte: Ort außerhalb', eine_weitere(7, dateien={'lernlandkarte.json': karte_json(
+        orte=[dict(KARTE_ORTE[0], x=1200)] + KARTE_ORTE[1:])}), r'p1 braucht x von 0 bis 1000'),
+    ('Lernlandkarte ohne Hintergrundbild', lambda o: (eine_weitere(7)(o), os.remove(
+        os.path.join(o, 'lernweg', 'bereiche', 'backgroundfile', 'hintergrund.svg'))), r'Lernlandkarte ohne Hintergrundbild'),
+    ('Lernlandkarte ohne Ziele', eine_weitere(7, extra={'ziele': 'p1'}), r'Lernlandkarte ohne Ziele'),
     ('Link ohne https', eine_weitere(6, extra={'einstellungen': {'externalurl': 'http://example.org'}}),
      r'Link ohne Adresse'),
     ('Skript im Text', lambda o: ersetze(o, AB1, '<p>Erkläre in je einem Satz',
@@ -553,7 +590,7 @@ GUTE = [
     ('Datei zum Herunterladen', mit_download, r'OK --'),
     ('Unterabschnitt', lambda o: dazu(o, {'typ': 'subsection', 'name': 'Durchführen'}, nach='ab-01-auftrag-hilfe-loesung'),
      r'OK --'),
-    ('alle weiteren Aktivitäten', lambda o: weitere(o, ALLE_WEITEREN), r'OK -- 19 Aktivitäten, 19 davon'),
+    ('alle weiteren Aktivitäten', lambda o: weitere(o, ALLE_WEITEREN), r'OK -- 20 Aktivitäten, 20 davon'),
 ]
 
 # ---- Der Stand in Moodle ---------------------------------------------------

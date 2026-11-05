@@ -4,8 +4,8 @@
 // angefragt wurde und was bei der Anmeldung passiert ist. Nicht hinein
 // kommen Passwörter, Formularwerte, Cookies oder Inhalte.
 //
-// Jeder Eintrag geht zusätzlich in eine Datei (%APPDATA%\moocp\
-// protokoll.log), damit sich ein Vorfall auch nach einem Neustart der App
+// Jeder Eintrag geht zusätzlich in eine Datei (protokoll.log im
+// Einstellungsordner, unter Windows %APPDATA%\moocp\), damit sich ein Vorfall auch nach einem Neustart der App
 // nachvollziehen lässt. Über 1 MB wird die Datei einmal umbenannt (.1).
 // Und an den Logger „protokoll" (log.dart), also auf die Konsole.
 
@@ -80,4 +80,42 @@ class Protokoll extends ChangeNotifier {
     _eintraege.clear();
     notifyListeners();
   }
+
+  /// Ob die Sichten aus [fuer] den Profilnamen voranstellen. Die App stellt es
+  /// aus, solange es nur ein Profil gibt: Wer eine Instanz hat, soll von
+  /// Profilen nichts sehen, und ein Name vor jeder Zeile hülfe ihm nicht, eine
+  /// Zeile zuzuordnen.
+  bool profilnamenZeigen = true;
+
+  /// Eine Sicht auf dieses Protokoll für ein Instanzprofil: Jeder
+  /// Eintrag bekommt den Profilnamen voran, damit man ihn Moodle zuordnen kann
+  /// ([profilnamenZeigen]).
+  /// Die Einträge landen im selben Protokoll und in derselben Datei.
+  Protokoll fuer(String profil) => _ProfilProtokoll(this, profil);
+}
+
+/// Die Sicht aus [Protokoll.fuer]. Sie hat keinen eigenen Speicher; Zuhörer
+/// hängen am Protokoll selbst.
+class _ProfilProtokoll extends Protokoll {
+  _ProfilProtokoll(this._wurzel, this._profil);
+
+  final Protokoll _wurzel;
+  final String _profil;
+
+  @override
+  void eintrag(Art art, String text) =>
+      _wurzel.eintrag(art, profilnamenZeigen ? '[$_profil] $text' : text);
+
+  // Eine Sicht von einer Sicht liest dieselbe Einstellung wie die Wurzel.
+  @override
+  bool get profilnamenZeigen => _wurzel.profilnamenZeigen;
+
+  @override
+  set profilnamenZeigen(bool an) => _wurzel.profilnamenZeigen = an;
+
+  @override
+  List<Eintrag> get eintraege => _wurzel.eintraege;
+
+  @override
+  void leeren() => _wurzel.leeren();
 }

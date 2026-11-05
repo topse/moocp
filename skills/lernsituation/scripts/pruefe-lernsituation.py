@@ -930,7 +930,7 @@ MANIFEST = 'lernsituation.json'
 # (references/vorlagen.md, „Weitere Aktivitäten im Entwurf"); in Moodle wird
 # genau diese Nennung ein Link (links_setzen). Was im Ordner liegt, prüft
 # weitere_aktivitaet.
-WEITERE = {'board', 'kanban', 'checklist', 'wiki', 'quiz', 'folder', 'resource', 'url'}
+WEITERE = {'board', 'kanban', 'checklist', 'wiki', 'quiz', 'folder', 'resource', 'url', 'learningmap'}
 ZITIERT = re.compile(r'[„“"»]([^„“”"«»\n]+?)[“”"«]')
 # Der Name einer Aktivität, die ein Blatt ist: Kennung, dann Doppelpunkt.
 ROLLE = re.compile(r'(Lösung\s+zur?\s+)?(?:(Hilfe|Vertiefung)\s+zu\s+)?(Arbeitsblatt|Infoblatt)\s+(\d+)\s*(?::|$)')
@@ -1624,6 +1624,87 @@ def lies_entwurf(ordner):
             befund(wo, '%s ist kein gültiges JSON: %s' % (datei, x))
             return None
 
+    def karte_pruefen(d, e, wo):
+        """Eine Lernlandkarte (learningmap): lernlandkarte.json, Hintergrundbild
+        und die Ziele ihrer Orte (references/vorlagen.md, „Weitere Aktivitäten
+        im Entwurf"). Die Regeln der Datei sind die der App
+        (lib/moodle/lernlandkarte_entwurf.dart): Sie weist alles andere beim
+        Anlegen ab, und dann stünde der Entwurf schon halb im Kurs. Die Ziele
+        stehen im Eintrag ("ziele": {"p1": "<Name einer Aktivität>"}), nicht in
+        der Datei, denn dort weist die App sie ab; gesetzt werden sie erst
+        nach dem Anlegen aller Aktivitäten."""
+        def zahl(x, bis):
+            return isinstance(x, (int, float)) and not isinstance(x, bool) and 0 <= x <= bis
+
+        j = json_in(d, 'lernlandkarte.json', wo)
+        ids = []
+        if isinstance(j, dict):
+            if set(j) - {'orte', 'wege'}:
+                befund(wo, 'lernlandkarte.json: erlaubt sind nur "orte" und "wege"')
+            orte, wege = j.get('orte'), j.get('wege')
+            if not isinstance(orte, list) or not 1 <= len(orte) <= 64:
+                befund(wo, 'lernlandkarte.json braucht "orte", eine Liste von 1 bis 64 Orten')
+                orte = []
+            if not isinstance(wege, list) or len(wege) > 128:
+                befund(wo, 'lernlandkarte.json braucht "wege", eine Liste von höchstens 128 Wegen (auch leer)')
+                wege = []
+            for i, o_ in enumerate(orte, 1):
+                titel_ = o_.get('titel', '') if isinstance(o_, dict) else None
+                if not isinstance(o_, dict) or set(o_) - {'id', 'x', 'y', 'titel'}:
+                    befund(wo, 'lernlandkarte.json: Ort %d darf nur id, x, y und titel enthalten -- ein Ziel steht '
+                               'im Eintrag unter "ziele"' % i)
+                elif o_.get('id') != 'p%d' % i:
+                    befund(wo, 'lernlandkarte.json: Ort %d muss "p%d" heißen -- die Kennungen laufen von p1 an '
+                               'ohne Lücke' % (i, i))
+                elif not zahl(o_.get('x'), 1000) or not zahl(o_.get('y'), 560):
+                    befund(wo, 'lernlandkarte.json: %s braucht x von 0 bis 1000 und y von 0 bis 560' % o_['id'])
+                elif not isinstance(titel_, str) or len(titel_) > 80:
+                    befund(wo, 'lernlandkarte.json: der Titel von %s ist kein Text von höchstens 80 Zeichen' % o_['id'])
+                else:
+                    ids.append(o_['id'])
+            gesehen = set()
+            for i, w in enumerate(wege, 1):
+                if not isinstance(w, dict) or set(w) - {'von', 'nach'}:
+                    befund(wo, 'lernlandkarte.json: Weg %d darf nur von und nach enthalten' % i)
+                elif w.get('von') not in ids or w.get('nach') not in ids                         or ids.index(w['von']) >= ids.index(w['nach']):
+                    befund(wo, 'lernlandkarte.json: Weg %d (%s nach %s) verbindet keine zwei Orte der Karte, und '
+                               '"von" hat die kleinere Nummer' % (i, w.get('von'), w.get('nach')))
+                elif (w['von'], w['nach']) in gesehen:
+                    befund(wo, 'lernlandkarte.json: der Weg von %s nach %s steht zweimal' % (w['von'], w['nach']))
+                else:
+                    gesehen.add((w['von'], w['nach']))
+        # Das Hintergrundbild ist ein Pflichtfeld des Formulars (Moodle speichert die Karte sonst nicht).
+        b = os.path.join(d, 'bereiche', 'backgroundfile')
+        bilder = [(w, f) for w, _, fs in (os.walk(b) if os.path.isdir(b) else []) for f in sorted(fs)]
+        if not bilder:
+            befund(wo, 'Lernlandkarte ohne Hintergrundbild -- es liegt in %s/bereiche/backgroundfile/, sonst '
+                       'speichert Moodle die Karte nicht' % rel(d))
+        for w, f in bilder:
+            with open(os.path.join(w, f), 'rb') as datei:
+                stellen = code_in_datei(f, datei.read())
+            if stellen:
+                befund(wo, '%s enthält Code (%s) -- die App lädt sie so nicht hoch (references/elemente.md)'
+                       % (rel(os.path.join(w, f)), stellen[0]))
+        # Jeder Ort braucht ein Ziel: Ohne erscheint er nicht in der Karte.
+        ziele = e.get('ziele')
+        if not isinstance(ziele, dict):
+            befund(wo, 'Lernlandkarte ohne Ziele: "ziele": {"p1": "<Name einer Aktivität dieser Lernsituation>"} im '
+                       'Eintrag -- ein Ort ohne Ziel erscheint nicht in der Karte')
+            return
+        namen_ = {norm(str(x.get('name') or '')) for x in liste if isinstance(x, dict)}
+        eigen = norm(str(e.get('name') or ''))
+        for k, v in ziele.items():
+            if ids and k not in ids:
+                befund(wo, 'ziele nennt „%s", einen Ort, den lernlandkarte.json nicht hat' % k)
+            ziel_typ = next((x.get('typ') for x in liste if isinstance(x, dict)
+                             and norm(str(x.get('name') or '')) == norm(str(v))), None)
+            if norm(str(v)) not in namen_ or norm(str(v)) == eigen or ziel_typ == 'learningmap':
+                befund(wo, 'ziele: „%s" für %s ist keine andere Aktivität dieser Lernsituation (der Name steht in '
+                           '%s)' % (norm(str(v)), k, MANIFEST))
+        for k in ids:
+            if k not in ziele:
+                befund(wo, '%s hat kein Ziel in "ziele" -- ein Ort ohne Ziel erscheint nicht in der Karte' % k)
+
     def weitere_aktivitaet(typ, d, e, wo):
         """Was eine weitere Aktivität braucht, damit die Übertragung sie
         anlegen und füllen kann (references/vorlagen.md, „Weitere Aktivitäten
@@ -1720,6 +1801,8 @@ def lies_entwurf(ordner):
                     elif idn in gesehen:
                         befund(wo, 'Sachnummer %s steht zweimal in fragen.xml' % idn)
                     gesehen.add(idn)
+        elif typ == 'learningmap':
+            karte_pruefen(d, e, wo)
         elif typ in ('folder', 'resource'):
             b = os.path.join(d, 'bereiche', 'files')
             n = sum(len(fs) for _, _, fs in os.walk(b)) if os.path.isdir(b) else 0

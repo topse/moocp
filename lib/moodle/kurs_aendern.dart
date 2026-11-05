@@ -106,43 +106,285 @@ String _inhaltText(KursStruktur k, KursAbschnitt a) {
 // ---------------------------------------------------------------------------
 // sichtbarkeit_setzen
 // ---------------------------------------------------------------------------
+//
+// Neben „sichtbar" und „verborgen" kennt Moodle für Aktivitäten „verfügbar, aber nicht
+// auf der Kursseite angezeigt" (visible 1, visibleoncoursepage 0; kurs_uebersicht zeigt es als
+// „ohne Link erreichbar"). Dieser Zustand überlebt das Umschalten nicht von selbst
+// (beobachtet; nach dem Quelltext von Moodle setzt cm_hide visibleoncoursepage zurück, und
+// cm_show setzt es auf 1). Darum merkt sich die App, welche Aktivitäten sie aus diesem Zustand
+// verbirgt, und stellt ihn beim Sichtbarmachen mit cm_stealth wieder her; die Antwort sagt
+// ausdrücklich, was herauskam, und verified vergleicht mit dem, was gewollt war.
+//
+// Entschieden:
+//   - Beim Verbergen merkt sich die App den Zustand je Aktivität (auch alles, was in einem
+//     Abschnitt liegt), nur im Speicher ([MoodleZugang.ohneLinkVorherVerborgen]).
+//   - Beim Sichtbarmachen stellt sie ihn wieder her, wenn sie ihn kennt -- die Freigabe nennt
+//     es vorher. Ohne Wissen (Neustart, von Hand verborgen) macht sie ganz sichtbar und sagt,
+//     dass sie den früheren Zustand nicht kennt. Der Parameter `ohne_link` überstimmt: true
+//     setzt den Zustand ausdrücklich (auch ohne Merker), false macht ganz sichtbar.
+//   - Eine Aktivität ohne Link auf „sichtbar" zu stellen ist nur mit `ohne_link: false`
+//     eine Änderung (cm_show); ohne den Parameter bleibt es bei „schon erreichbar", wie bisher.
+//   - Bei einem Abschnitt ist die Aktion section_show; was Moodle dabei mit dem Zustand
+//     macht, ist ungemessen. Die App liest zurück und setzt ihn für die gemerkten Aktivitäten
+//     mit cm_stealth, wo er fehlt. Dazwischen sind sie für einen Augenblick auf der Kursseite
+//     zu sehen; bei einer einzelnen Aktivität gibt es dieses Fenster nicht (cm_stealth geht
+//     direkt von verborgen aus).
+//   - Geht cm_stealth nicht (Aktion unbekannt, von der Verwaltung ausgeschaltet), bleibt die
+//     Aktivität, wie sie ist -- bei einer einzelnen Aktivität wird gar nichts geändert, bei
+//     einem Abschnitt ist sie dann ganz sichtbar --, und verified ist false mit dem Grund.
+
+String _sichtbarText(Sichtbarkeit? s) => switch (s) {
+      null => '?',
+      Sichtbarkeit.verborgen => 'verborgen',
+      Sichtbarkeit.ohneLink => 'VERFÜGBAR OHNE LINK (nicht auf der Kursseite, aber über die Adresse erreichbar)',
+      Sichtbarkeit.sichtbar || Sichtbarkeit.eingeschraenkt => 'SICHTBAR',
+    };
+
+bool _aufDerSeite(Sichtbarkeit s) => s == Sichtbarkeit.sichtbar || s == Sichtbarkeit.eingeschraenkt;
 
 Future<String> sichtbarkeitSetzen(MoodleZugang moodle, Freigaben freigaben,
-    {required int kurs, int? cmid, int? abschnittId, required String name, required bool sichtbar}) async {
-  var k = await kursLesen(moodle, kurs);
+    {required int kurs,
+    int? cmid,
+    int? abschnittId,
+    required String name,
+    required bool sichtbar,
+    bool? ohneLink}) async {
+  if (ohneLink != null && !sichtbar) {
+    throw MoodleFehler('ohne_link gehört nur zu sichtbar: true (verborgen hebt „verfügbar ohne Link" auf).');
+  }
+  final k = await kursLesen(moodle, kurs);
   final z = _ziel(k, cmid, abschnittId, name);
   // Ein Unterabschnitt wird über seinen Abschnitt geschaltet.
   final abschnitt = z.abschnitt ?? (z.cm!.unterabschnittId == null ? null : k.nachId[z.cm!.unterabschnittId]);
-  final jetzt = abschnitt?.sichtbar ?? z.cm!.sichtbar;
+  if (ohneLink != null && abschnitt != null) {
+    throw MoodleFehler('ohne_link gilt nur für eine einzelne Aktivität, nicht für einen Abschnitt oder Unterabschnitt: '
+        'Dort stellt die App den früheren Zustand der Aktivitäten selbst wieder her.');
+  }
   final was = z.cm != null ? '${typName(z.cm!.modul)} „${z.cm!.name}"' : 'Abschnitt „${abschnitt!.titel}"';
-  if (jetzt == sichtbar) return '$was ist schon ${sichtbar ? "sichtbar" : "verborgen"} -- nichts geändert.';
-  if (abschnitt != null && abschnitt.nummer == 0 && !abschnitt.istUnterabschnitt) {
+  if (abschnitt != null && abschnitt.nummer == 0 && !abschnitt.istUnterabschnitt && abschnitt.sichtbar != sichtbar) {
     throw MoodleFehler('Den allgemeinen Abschnitt (Nummer 0) verbirgt Moodle nicht.');
   }
+  return abschnitt != null
+      ? _abschnittSchalten(moodle, freigaben, k, kurs, z, abschnitt, was, name, sichtbar)
+      : _aktivitaetSchalten(moodle, freigaben, k, kurs, z.cm!, was, name, sichtbar, ohneLink);
+}
+
+/// Eine einzelne Aktivität: Das Ziel ist verborgen, sichtbar auf der Kursseite oder „ohne Link".
+Future<String> _aktivitaetSchalten(MoodleZugang moodle, Freigaben freigaben, KursStruktur k0, int kurs,
+    KursAktivitaet c, String was, String name, bool sichtbar, bool? ohneLink) async {
+  final jetzt = c.sichtbarkeit;
+  final gemerkt = moodle.ohneLinkVorherVerborgen.contains(c.cmid);
+  // Das Ziel. Ohne Angabe stellt die App den früheren Zustand her, wenn sie ihn kennt und die
+  // Aktivität gerade verborgen ist; ist sie schon sichtbar, bleibt „sichtbar" das Ziel.
+  final Sichtbarkeit ziel;
+  if (!sichtbar) {
+    ziel = Sichtbarkeit.verborgen;
+  } else if (ohneLink == true) {
+    ziel = Sichtbarkeit.ohneLink;
+  } else if (ohneLink == null && gemerkt && jetzt == Sichtbarkeit.verborgen) {
+    ziel = Sichtbarkeit.ohneLink;
+  } else {
+    ziel = Sichtbarkeit.sichtbar;
+  }
+  // Vor jeder Freigabe: Bietet die Instanz den Zustand nicht an, machte cm_stealth die
+  // Aktivität ganz sichtbar -- für Lernende auf der Kursseite, ohne dass es gewollt war.
+  if (ziel == Sichtbarkeit.ohneLink && c.ohneLinkMoeglich == false) {
+    throw MoodleFehler('$was: Diese Moodle-Instanz bietet „verfügbar, aber nicht auf der Kursseite angezeigt" '
+        'nicht an (Einstellung der Website). Nichts geändert. Frag die Lehrkraft, ob die Aktivität verborgen '
+        'bleiben oder ganz sichtbar werden soll.');
+  }
+  final erreicht = switch (ziel) {
+    Sichtbarkeit.verborgen => jetzt == Sichtbarkeit.verborgen,
+    Sichtbarkeit.ohneLink => jetzt == Sichtbarkeit.ohneLink,
+    _ => _aufDerSeite(jetzt) || (jetzt == Sichtbarkeit.ohneLink && ohneLink != false),
+  };
+  if (erreicht) {
+    if (ziel == Sichtbarkeit.sichtbar && jetzt == Sichtbarkeit.ohneLink) {
+      return '$was ist schon erreichbar, als „verfügbar ohne Link auf der Kursseite" -- nichts geändert. '
+          'Auf der Kursseite zeigt es ohne_link: false.';
+    }
+    final schon = switch (ziel) {
+      Sichtbarkeit.verborgen => 'verborgen',
+      Sichtbarkeit.ohneLink => 'verfügbar ohne Link auf der Kursseite',
+      _ => 'sichtbar',
+    };
+    return '$was ist schon $schon -- nichts geändert.';
+  }
+  final ja = await freigaben.anfragen(FreigabeAnfrage(
+    titel: switch (ziel) {
+      Sichtbarkeit.verborgen => 'Für Lernende verbergen?',
+      Sichtbarkeit.ohneLink => 'Verfügbar machen, ohne Link auf der Kursseite?',
+      _ => 'Für Lernende sichtbar machen?',
+    },
+    punkte: [
+      '$was in ${await kursBezeichnung(moodle, kurs)}',
+      switch (ziel) {
+        Sichtbarkeit.verborgen => 'Lernende sehen es danach nicht mehr.',
+        Sichtbarkeit.ohneLink =>
+          'Lernende sehen es danach nicht auf der Kursseite, aber jeder, der die Adresse kennt, kommt hin: '
+              'Das schützt nichts.${ohneLink == null ? ' So war es vor dem Verbergen.' : ''}',
+        _ => 'Lernende sehen es danach auf der Kursseite.',
+      },
+      if (ziel == Sichtbarkeit.verborgen && jetzt == Sichtbarkeit.ohneLink)
+        'Es ist jetzt „verfügbar ohne Link auf der Kursseite". Verbergen hebt das auf; beim nächsten Sichtbarmachen '
+            'stellt die App es wieder her, solange sie läuft.',
+      if (ziel == Sichtbarkeit.sichtbar && ohneLink == null && jetzt == Sichtbarkeit.verborgen)
+        'Ob es vorher „verfügbar ohne Link" war, weiß die App nicht (sie merkt es nur im Speicher; nach einem Neustart '
+            'oder von Hand verborgen fehlt es). Es wird ganz sichtbar; mit ohne_link: true lässt sich der Zustand setzen.',
+    ],
+    vergleich: const [],
+    knopf: switch (ziel) {
+      Sichtbarkeit.verborgen => 'Verbergen',
+      Sichtbarkeit.ohneLink => 'Ohne Link verfügbar machen',
+      _ => 'Sichtbar machen',
+    },
+  ));
+  if (!ja) return 'Nicht geändert: ${_nichtGefragt(freigaben)}';
+  await _nachFreigabe(moodle, kurs, c.cmid, null, name);
+
+  String? aktionsFehler;
+  try {
+    await kursAktion(moodle, kurs, switch (ziel) {
+      Sichtbarkeit.verborgen => 'cm_hide',
+      Sichtbarkeit.ohneLink => 'cm_stealth',
+      _ => 'cm_show',
+    }, [c.cmid]);
+  } on MoodleFehler catch (x) {
+    // Nur der Zustand ohne Link darf scheitern, ohne dass der Vorgang als Ganzes scheitert: Er
+    // hängt an einer Einstellung der Instanz, die die App nicht kennt.
+    if (ziel != Sichtbarkeit.ohneLink) rethrow;
+    aktionsFehler = x.meldung;
+  }
+  final k = await kursLesen(moodle, kurs);
+  final nachher = k.nachCmid[c.cmid]?.sichtbarkeit;
+  final ok = aktionsFehler == null &&
+      nachher != null &&
+      (ziel == Sichtbarkeit.sichtbar ? _aufDerSeite(nachher) : nachher == ziel);
+
+  // Der Merker folgt dem, was Moodle jetzt zeigt: Wer aus „ohne Link" verborgen wurde, kommt hinein; wer
+  // irgendwie sichtbar geworden ist (oder aus einem anderen Zustand verborgen wurde), geht heraus.
+  if (nachher == Sichtbarkeit.verborgen && jetzt == Sichtbarkeit.ohneLink) {
+    moodle.ohneLinkVorherVerborgen.add(c.cmid);
+  } else if (nachher != Sichtbarkeit.verborgen || jetzt != Sichtbarkeit.verborgen) {
+    moodle.ohneLinkVorherVerborgen.remove(c.cmid);
+  }
+  final hinweise = [
+    if (aktionsFehler != null)
+      'Abweichung: Moodle hat „verfügbar ohne Link" nicht gesetzt ($aktionsFehler). Vielleicht schaltet die Verwaltung '
+          'der Instanz diesen Zustand aus; die Lehrkraft stellt ihn dann in Moodle selbst ein oder lässt es.',
+    if (ok && ziel == Sichtbarkeit.verborgen && jetzt == Sichtbarkeit.ohneLink)
+      'Der Zustand „verfügbar ohne Link" ist damit aufgehoben; beim Sichtbarmachen stellt die App ihn wieder her, '
+          'solange sie läuft.',
+    if (ok && ziel == Sichtbarkeit.ohneLink && ohneLink == null)
+      'Der frühere Zustand „verfügbar ohne Link" ist wiederhergestellt.',
+  ];
+  return '$was ist jetzt ${_sichtbarText(nachher)}. verified: $ok'
+      '${hinweise.isEmpty ? '' : '\n${hinweise.join('\n')}'}';
+}
+
+/// Ein Abschnitt oder Unterabschnitt samt allem darin.
+Future<String> _abschnittSchalten(MoodleZugang moodle, Freigaben freigaben, KursStruktur k0, int kurs,
+    ({KursAktivitaet? cm, KursAbschnitt? abschnitt}) z, KursAbschnitt abschnitt, String was, String name,
+    bool sichtbar) async {
+  var k = k0;
+  if (abschnitt.sichtbar == sichtbar) return '$was ist schon ${sichtbar ? "sichtbar" : "verborgen"} -- nichts geändert.';
+  final inhalt = k.inhalt(abschnitt);
+  final ohneLinkJetzt = [for (final c in inhalt) if (c.sichtbarkeit == Sichtbarkeit.ohneLink) c];
+  // Beim Sichtbarmachen: was die App aus diesem Zustand verborgen hat.
+  final wiederherzustellen = sichtbar
+      ? [
+          for (final c in inhalt)
+            if (moodle.ohneLinkVorherVerborgen.contains(c.cmid)) c
+        ]
+      : const <KursAktivitaet>[];
+  String namen(List<KursAktivitaet> l) =>
+      l.take(8).map((c) => '„${c.name}"').join(', ') + (l.length > 8 ? ' und ${l.length - 8} weitere' : '');
   final ja = await freigaben.anfragen(FreigabeAnfrage(
     titel: sichtbar ? 'Für Lernende sichtbar machen?' : 'Für Lernende verbergen?',
     punkte: [
       '$was in ${await kursBezeichnung(moodle, kurs)}',
-      if (abschnitt != null) _inhaltText(k, abschnitt),
+      _inhaltText(k, abschnitt),
       sichtbar
-          ? 'Lernende sehen es danach auf der Kursseite${abschnitt != null ? ' (was darin verborgen angelegt wurde, bleibt verborgen)' : ''}.'
-          : 'Lernende sehen es danach nicht mehr${abschnitt != null ? ', samt allem, was darin liegt' : ''}.',
+          ? 'Lernende sehen es danach auf der Kursseite (was darin verborgen angelegt wurde, bleibt verborgen).'
+          : 'Lernende sehen es danach nicht mehr, samt allem, was darin liegt.',
+      if (!sichtbar && ohneLinkJetzt.isNotEmpty)
+        '${ohneLinkJetzt.length} Aktivität(en) darin sind „verfügbar ohne Link auf der Kursseite" (${namen(ohneLinkJetzt)}). '
+            'Verbergen hebt das auf; beim Sichtbarmachen stellt die App es wieder her, solange sie läuft.',
+      if (sichtbar && wiederherzustellen.isNotEmpty)
+        '${wiederherzustellen.length} Aktivität(en) darin waren vor dem Verbergen „verfügbar ohne Link auf der Kursseite" '
+            '(${namen(wiederherzustellen)}). Wo sie wieder erscheinen, stellt die App das wieder her; sie sind '
+            'dazwischen kurz auf der Kursseite zu sehen.',
     ],
     vergleich: const [],
     knopf: sichtbar ? 'Sichtbar machen' : 'Verbergen',
   ));
   if (!ja) return 'Nicht geändert: ${_nichtGefragt(freigaben)}';
-  k = await _nachFreigabe(moodle, kurs, cmid, abschnittId, name);
+  await _nachFreigabe(moodle, kurs, z.cm?.cmid, z.abschnitt?.id, name);
 
-  if (abschnitt != null) {
-    await kursAktion(moodle, kurs, sichtbar ? 'section_show' : 'section_hide', [abschnitt.id]);
-  } else {
-    await kursAktion(moodle, kurs, sichtbar ? 'cm_show' : 'cm_hide', [z.cm!.cmid]);
-  }
+  await kursAktion(moodle, kurs, sichtbar ? 'section_show' : 'section_hide', [abschnitt.id]);
   k = await kursLesen(moodle, kurs);
-  final nachher = abschnitt != null ? k.nachId[abschnitt.id]?.sichtbar : k.nachCmid[z.cm!.cmid]?.sichtbar;
-  return '$was ist jetzt ${nachher == null ? "?" : nachher ? "SICHTBAR" : "verborgen"}. '
-      'verified: ${nachher == sichtbar}';
+  var ok = k.nachId[abschnitt.id]?.sichtbar == sichtbar;
+  final hinweise = <String>[];
+
+  if (!sichtbar) {
+    // Der Merker nach dem Lesen: Wer aus „ohne Link" verborgen wurde, wird beim Sichtbarmachen wiederhergestellt.
+    final danach = k.nachCmid;
+    for (final c in inhalt) {
+      final n = danach[c.cmid]?.sichtbarkeit;
+      if (n == Sichtbarkeit.verborgen && c.sichtbarkeit == Sichtbarkeit.ohneLink) {
+        moodle.ohneLinkVorherVerborgen.add(c.cmid);
+      } else if (n != null && n != Sichtbarkeit.verborgen) {
+        moodle.ohneLinkVorherVerborgen.remove(c.cmid);
+      }
+    }
+    if (ohneLinkJetzt.isNotEmpty) {
+      hinweise.add('${ohneLinkJetzt.length} Aktivität(en) darin waren „verfügbar ohne Link auf der Kursseite" '
+          '(${namen(ohneLinkJetzt)}). Dieser Zustand ist mit dem Verbergen aufgehoben; beim Sichtbarmachen stellt die App '
+          'ihn wieder her, solange sie läuft.');
+    }
+  } else if (ok && wiederherzustellen.isNotEmpty) {
+    // Nur, was jetzt auf der Kursseite steht, braucht cm_stealth; was verborgen blieb (einzeln verborgen) oder
+    // schon ohne Link ist, bleibt, wie es ist.
+    var danach = k.nachCmid;
+    final fehlen = [
+      for (final c in wiederherzustellen)
+        if (danach[c.cmid] != null && _aufDerSeite(danach[c.cmid]!.sichtbarkeit)) c
+    ];
+    String? fehler;
+    if (fehlen.isNotEmpty) {
+      try {
+        await kursAktion(moodle, kurs, 'cm_stealth', [for (final c in fehlen) c.cmid]);
+      } on MoodleFehler catch (x) {
+        fehler = x.meldung;
+      }
+      k = await kursLesen(moodle, kurs);
+      danach = k.nachCmid;
+    }
+    final bleibenSichtbar = [
+      for (final c in fehlen)
+        if (danach[c.cmid]?.sichtbarkeit != Sichtbarkeit.ohneLink) c
+    ];
+    final wieder = [
+      for (final c in wiederherzustellen)
+        if (danach[c.cmid]?.sichtbarkeit == Sichtbarkeit.ohneLink) c
+    ];
+    for (final c in wiederherzustellen) {
+      final n = danach[c.cmid]?.sichtbarkeit;
+      if (n != null && n != Sichtbarkeit.verborgen) moodle.ohneLinkVorherVerborgen.remove(c.cmid);
+    }
+    if (bleibenSichtbar.isNotEmpty) {
+      ok = false;
+      hinweise.add('Abweichung: ${bleibenSichtbar.length} Aktivität(en) waren vor dem Verbergen „verfügbar ohne Link auf der '
+          'Kursseite" und stehen jetzt auf der Kursseite (${namen(bleibenSichtbar)})'
+          '${fehler == null ? '' : '; Moodle meldet: $fehler'}. Die Lehrkraft stellt den Zustand in Moodle selbst wieder her.');
+    }
+    if (wieder.isNotEmpty) {
+      hinweise.add('Wieder „verfügbar ohne Link auf der Kursseite": ${namen(wieder)}.');
+    }
+  }
+  final nachher = k.nachId[abschnitt.id]?.sichtbar;
+  return '$was ist jetzt ${nachher == null ? "?" : nachher ? "SICHTBAR" : "verborgen"}. verified: $ok'
+      '${hinweise.isEmpty ? '' : '\n${hinweise.join('\n')}'}';
 }
 
 // ---------------------------------------------------------------------------

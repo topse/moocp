@@ -15,6 +15,7 @@ import 'package:moocp/freigabe.dart';
 import 'package:moocp/main.dart';
 import 'package:moocp/moodle/zeilenvergleich.dart';
 import 'package:moocp/protokoll.dart';
+import 'package:moocp/testschalter.dart';
 
 FreigabeAnfrage anfrage({Bestaetigungen ab = Bestaetigungen.mittel, String titel = 'Änderung speichern?'}) =>
     FreigabeAnfrage(titel: titel, punkte: const [], vergleich: const [], ab: ab);
@@ -115,6 +116,101 @@ void main() {
     f.entscheiden(true);
     expect(prot.eintraege.last.text, 'Die KI wartet nicht mehr -- nicht gespeichert',
         reason: 'eine späte Freigabe erteilt nichts mehr');
+  });
+
+  group('Testbetrieb: automatisch freigegeben wird nur, was nicht „immer fragen" ist', () {
+    test('eine gewöhnliche Anfrage geht automatisch, nach der Prüfung des Testumfangs', () async {
+      final f = Freigaben(Protokoll(), stufe: Bestaetigungen.alle);
+      var geprueft = 0;
+      final ja = await f.imTest(() => f.anfragen(anfrage()), pruefen: () async {
+        geprueft++;
+        return true;
+      });
+      expect(ja, isTrue);
+      expect(geprueft, 1);
+      expect(f.testfreigaben, 1);
+      expect(f.aktuell, isNull, reason: 'es gab keinen Dialog');
+    });
+
+    for (final stufe in Bestaetigungen.values) {
+      test('„immer fragen" (ab: keine) geht an die Lehrkraft, bei Stufe ${stufe.text}', () async {
+        final f = Freigaben(Protokoll(), stufe: stufe);
+        var geprueft = 0;
+        final a = anfrage(ab: Bestaetigungen.keine, titel: 'Bitte selbst in Moodle speichern');
+        final antwort = f.imTest(() => f.anfragen(a), pruefen: () async {
+          geprueft++;
+          return true;
+        });
+        await Future<void>.delayed(Duration.zero);
+        expect(f.aktuell, same(a), reason: 'die Anfrage wartet auf den Dialog');
+        expect(geprueft, 0, reason: 'die Testautomatik wird gar nicht gefragt');
+        f.entscheiden(false);
+        expect(await antwort, isFalse);
+        expect(f.testfreigaben, 0);
+      });
+    }
+
+    test('das Bildschirmfoto ist die ausdrücklich benannte Ausnahme', () async {
+      final f = Freigaben(Protokoll(), stufe: Bestaetigungen.keine);
+      final ja = await f.imTest(
+        () => f.anfragen(FreigabeAnfrage(
+          titel: 'Bildschirmfoto an die KI geben?',
+          punkte: const [],
+          vergleich: const [],
+          ab: Bestaetigungen.keine,
+          bildschirmfoto: true,
+        )),
+        pruefen: () async => true,
+      );
+      expect(ja, isTrue);
+      expect(f.testfreigaben, 1);
+    });
+
+    test('sagt die Prüfung des Testumfangs nein, entscheidet auch hier die Lehrkraft', () async {
+      final f = Freigaben(Protokoll(), stufe: Bestaetigungen.alle);
+      final a = anfrage();
+      final antwort = f.imTest(() => f.anfragen(a), pruefen: () async => false);
+      await Future<void>.delayed(Duration.zero);
+      expect(f.aktuell, same(a));
+      f.entscheiden(true);
+      expect(await antwort, isTrue);
+      expect(f.testfreigaben, 0, reason: 'persönlich freigegeben, nicht automatisch');
+    });
+
+    test('ohne Testbetrieb gibt imTest nichts automatisch frei', () async {
+      testbetriebFuerTestsSetzen(false);
+      addTearDown(() => testbetriebFuerTestsSetzen(true));
+      final f = Freigaben(Protokoll(), stufe: Bestaetigungen.alle);
+      var geprueft = 0;
+      final a = anfrage();
+      final antwort = f.imTest(() => f.anfragen(a), pruefen: () async {
+        geprueft++;
+        return true;
+      });
+      await Future<void>.delayed(Duration.zero);
+      expect(f.aktuell, same(a));
+      expect(geprueft, 0);
+      f.entscheiden(false);
+      expect(await antwort, isFalse);
+      expect(f.testfreigaben, 0);
+    });
+  });
+
+  test('Der Zähler eines Werkzeugaufrufs zählt nur dessen eigene Auslassungen', () async {
+    final f = Freigaben(Protokoll(), stufe: Bestaetigungen.keine);
+    final eins = AufrufZaehler();
+    final zwei = AufrufZaehler();
+    final nie = Completer<void>();
+    await Future.wait([
+      Freigaben.mitAbbruch(nie.future, () => f.anfragen(anfrage()), zaehler: eins),
+      Freigaben.mitAbbruch(nie.future, () async {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+        return true;
+      }, zaehler: zwei),
+    ]);
+    expect(eins.ausgelassen, 1);
+    expect(zwei.ausgelassen, 0, reason: 'die Auslassung des anderen Aufrufs gehört ihm nicht');
+    expect(f.ausgelassen, 1);
   });
 
   test('Weitere Anfragen reihen sich ein: Zähler, Protokoll, Reihenfolge', () async {
@@ -292,7 +388,7 @@ void main() {
             child: Scaffold(
               body: FreigabeDialog(f.aktuell!, f,
                   browser: (u) async => geoeffnet.add(u),
-                  explorer: (o) async => geoeffnet.add(o),
+                  dateimanager: (o) async => geoeffnet.add(o),
                   zwischenablage: (t) async => abgelegt = t),
             ),
           ),
@@ -392,46 +488,6 @@ void main() {
     expect(await antwort, isFalse);
   });
 
-  testWidgets('Return, Leertaste und ein Klick gleich nach dem Aufgehen entscheiden nichts', (tester) async {
-    // Der Dialog kommt nach vorn, während die Lehrkraft woanders schreibt.
-    final f = Freigaben(Protokoll());
-    var entschieden = false;
-    final antwort = f.anfragen(anfrage())..then((_) => entschieden = true);
-    await tester.pumpWidget(MaterialApp(
-      home: Builder(
-        builder: (context) => Scaffold(
-          body: Center(
-            child: FilledButton(
-              onPressed: () => showDialog<bool>(context: context, builder: (_) => FreigabeDialog(f.aktuell!, f))
-                  .then((ja) => f.entscheiden(ja ?? false)),
-              child: const Text('öffnen'),
-            ),
-          ),
-        ),
-      ),
-    ));
-    await tester.tap(find.text('öffnen'));
-    await tester.pumpAndSettle();
-    final knopf = find.widgetWithText(FilledButton, 'Speichern');
-    // Gleich nach dem Aufgehen nimmt er auch keinen Klick an: Der galt wohl
-    // noch dem Fenster darunter.
-    await tester.tap(knopf, warnIfMissed: false);
-    await tester.pumpAndSettle();
-    expect(entschieden, isFalse, reason: 'Klick in der Sperrzeit');
-    await tester.pump(Sperrzeit.dauerVorgabe);
-    Focus.of(tester.element(find.descendant(of: knopf, matching: find.text('Speichern')))).requestFocus();
-    await tester.pump();
-    for (final taste in [LogicalKeyboardKey.enter, LogicalKeyboardKey.numpadEnter, LogicalKeyboardKey.space]) {
-      await tester.sendKeyEvent(taste);
-      await tester.pumpAndSettle();
-    }
-    expect(entschieden, isFalse);
-    expect(knopf, findsOneWidget, reason: 'der Dialog ist noch offen');
-    await tester.tap(knopf);
-    await tester.pumpAndSettle();
-    expect(await antwort, isTrue, reason: 'mit der Maus geht es');
-  });
-
   testWidgets('Schließt die App die offene Anfrage, ist danach nur der Dialog der nächsten offen', (tester) async {
     final f = Freigaben(Protokoll());
     final vorn = <bool>[];
@@ -475,6 +531,46 @@ void main() {
     expect(vorn, [true, true, false], reason: 'nach vorn, solange ein Dialog offen ist');
   });
 
+  testWidgets('Return, Leertaste und ein Klick gleich nach dem Aufgehen entscheiden nichts', (tester) async {
+    // Der Dialog kommt nach vorn, während die Lehrkraft woanders schreibt.
+    final f = Freigaben(Protokoll());
+    var entschieden = false;
+    final antwort = f.anfragen(anfrage())..then((_) => entschieden = true);
+    await tester.pumpWidget(MaterialApp(
+      home: Builder(
+        builder: (context) => Scaffold(
+          body: Center(
+            child: FilledButton(
+              onPressed: () => showDialog<bool>(context: context, builder: (_) => FreigabeDialog(f.aktuell!, f))
+                  .then((ja) => f.entscheiden(ja ?? false)),
+              child: const Text('öffnen'),
+            ),
+          ),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('öffnen'));
+    await tester.pumpAndSettle();
+    final knopf = find.widgetWithText(FilledButton, 'Speichern');
+    // Gleich nach dem Aufgehen nimmt er auch keinen Klick an: Der galt wohl
+    // noch dem Fenster darunter.
+    await tester.tap(knopf, warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(entschieden, isFalse, reason: 'Klick in der Sperrzeit');
+    await tester.pump(Sperrzeit.dauerVorgabe);
+    Focus.of(tester.element(find.descendant(of: knopf, matching: find.text('Speichern')))).requestFocus();
+    await tester.pump();
+    for (final taste in [LogicalKeyboardKey.enter, LogicalKeyboardKey.numpadEnter, LogicalKeyboardKey.space]) {
+      await tester.sendKeyEvent(taste);
+      await tester.pumpAndSettle();
+    }
+    expect(entschieden, isFalse);
+    expect(knopf, findsOneWidget, reason: 'der Dialog ist noch offen');
+    await tester.tap(knopf);
+    await tester.pumpAndSettle();
+    expect(await antwort, isTrue, reason: 'mit der Maus geht es');
+  });
+
   testWidgets('Das Feld zeigt die Stufe, bei „keine" in Warnfarbe', (tester) async {
     Bestaetigungen? gewaehlt;
     Future<void> zeigen(Bestaetigungen s) => tester.pumpWidget(MaterialApp(
@@ -510,10 +606,10 @@ void main() {
 
   test('Die Stufe steht in den Einstellungen und kommt unverändert zurück', () {
     for (final x in Bestaetigungen.values) {
-      final e = Einstellungen(moodleAdresse: '', port: 1, schluessel: 'x', bestaetigungen: x);
+      final e = Einstellungen(schluessel: 'x', bestaetigungen: x);
       expect(e.bestaetigungen, x);
       expect(Bestaetigungen.ausText(e.bestaetigungen.text), x);
     }
-    expect(Einstellungen(moodleAdresse: '', port: 1, schluessel: 'x').bestaetigungen, Bestaetigungen.mittel);
+    expect(Einstellungen(schluessel: 'x').bestaetigungen, Bestaetigungen.mittel);
   });
 }

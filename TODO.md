@@ -1,91 +1,84 @@
 # Features
-- Kompatiblität zu MacOS und Linux herstellen. Müssen einzelne Features wie auto update umgestaltet oder gar entfernt werden? Die Pfade für die Konfiguration und ablage der Skills - sind die gleich?
-- Plugin `packages/zwischenablage_html` für macOS (NSPasteboard, Typen `.html` und `.string`) und Linux (GTK, `text/html` und `UTF8_STRING`): erst, wenn die App dort läuft; bis dahin legt es dort nur Text ab.
-- Codex CLI absichern und testen, in einer eigenen Sitzung: Eingerichtet wird es bisher nur nach Dokumentation, gelaufen ist es mit einer echten Version nie. Zu klären: Nach „Installieren" steht der Block `[mcp_servers.moodle]` in `~/.codex/config.toml` – sieht Codex die Werkzeuge, lädt es die Skills aus `~/.codex/skills` (sonst nur aus `~/.agents/skills`, dann den Ort in `CodexCli` ändern), und ab welcher Version geht HTTP ohne den alten Schalter `experimental_use_rmcp_client` (README nennt 0.77)? Öffnet Codex die Bilder von `bildschirmfoto` (PNG im Arbeitsordner) und sieht sie? Fragt Codex vor einem Werkzeugaufruf (README, „Worauf es ankommt")? Nimmt Codex `tool_timeout_sec = 2100` an (die App trägt es ein, `clientZeitlimit`), und bleibt eine Freigabe damit länger als eine Minute offen?
-- Protokoll: „KI-Werkzeug verbunden: …" erscheint seit dem 09.10.2026 nicht mehr, obwohl seither Werkzeuge aufgerufen werden (`oninitialized` in `mcp_dienst.dart`). Damit zeigt das Protokoll nicht mehr, welcher Client geschrieben hat (E21); prüfen, ob `status` es noch weiß.
-- Aktivität "Befragung" (questionnaire) unterstützen. Diese kann zu unterrichtlichen zwecken, aber auch organisatorischen (z.B. Befragung zur Unterrichtsquqalität) verwendet werden.
-- Fragensammlung verbergen, verschieben und duplizieren: geht nicht, weil `qbank` nicht in der Kursstruktur steht. Löschen hat einen eigenen Weg über die Sammlungsliste; die drei bräuchten denselben.
-- Konventionen beim Arbeiten an Fragen: Sie reiten an `kurs_uebersicht` und `abschnitt_lesen` mit, aber der Skill `moodle-fragen` beginnt oft mit `fragensammlungen` und `fragen_lesen` — dort hängt sie bisher nur der Satz im Skilltext an. Prüfen, ob eines dieser Werkzeuge sie mitliefern sollte. Mit dem Steckbrief dringlicher: Anrede und Arbeitsweise brauchen auch Fragetexte und Tests.
-- Aktivität "Lernpfad" vollständig unterstützen inkl. didaktischer und pädagogischer Ideen, Hilfestellungen und Regeln, wie die gut einzusetzen sind, evtl. auch mit Regeln der Gamification
-- Badges vollumfänglich unterstützen, inkl. didaktischer und pädagogischer Ideen, Hilfestellungen und Regeln, wie die gut einzusetzen sind, auch unter Regeln der Gamification
-- Optimierungsphase: MCP-Server und Skill prüfen, ob wir tokenoptimiert arbeiten, z.B. ist das MCP Interface so gestaltet, dass kein balast durchgeleitet und nur nutzdaten (werden also z.B. alle nicht benötigten HTML-Tags von der Moodle Seite rausgefiltert?)
-- Inwieweit brauchen wir python zur Laufzeit? Ersetzbar durch flutter, damit wir nicht noch eine zusätzliche runtime benötigen?
-- Board und Kanban: Rückleseprobe je Aktion mit `verified` (A3); bisher
-  zeigen sie nur den Stand danach.
-- Kleine Funktionen, die fehlen: Farbe eines Eintrags der Fortschrittsliste
-  (`nextcolour`), häufig gebrauchte Kommentare der Bewertungsrichtlinie.
-- Selbstprüfung des Skills `lernsituation` ohne Python: Das Prüfskript
-  (`scripts/pruefe-lernsituation.py`) braucht Python, das auf den Rechnern
-  vieler Lehrkräfte fehlt; der Dialog „KI-Werkzeuge einrichten" weist nur darauf
-  hin. Etwa als Werkzeug der App.
-- Skill `lernsituation`: ODT-Ausgabe für den Druck (Skill `odt`); die
-  SchuCu-Tabelle müsste dabei nach „Das Design außerhalb von Moodle"
-  (`skills/lernsituation/CLAUDE.md`) entstehen, weil Umwandler HTML-Blöcke
-  meist weglassen.
-- Skill `lernsituation`: SchuCu-Tabelle auf anderen Instanzen. Die Klassen
-  der Vorlagen (`lernsituation`, `lshead`, `lssubhead`, `lsdata`,
-  `lsspacer`) haben dort kein CSS, die Tabelle erscheint ohne Farben – für
-  beide Vorlagen (Berufsschule, Berufliches Gymnasium). Entweder die Stile
-  in die Vorlagen (die SchuCu-Tabelle darf `style` tragen, A8) oder CSS für
-  das Theme mitliefern.
-- Skill `lernsituation`: weitere Fachvokabulare in Zeichnungen
-  (Schaltzeichen nach DIN EN 60617, Netzsymbole) – einzeln messen und
-  zulassen.
-- Fragen: weitere Zusatz-Fragetypen (Formulas, GeoGebra, Kprim …) nur nach
-  dem Messverfahren in `skills/moodle-fragen/CLAUDE.md`, etwa eine halbe
-  Stunde je Typ; dann in `zusatzAnlegbar` (`lib/moodle/fragen_xml.dart`) und
-  in die Tabelle im SKILL.md.
-- Fragen: `ddimageortext`, `ddmarker` sind bewusst nur lesend; wenn sie
-  gebraucht werden, eine Frage von Hand anlegen und das Koordinatenformat
-  abschauen.
-- Fragen: Struktur vorhandener Fragen ändern (weitere Antwort, weiterer
-  Knoten) ist nicht eingebaut; das Formular baut sich dafür über eigene
-  Knöpfe neu auf.
-- STACK: einen vorhandenen Fragetest ändern, löschen oder ergänzen. Er steht auf einer eigenen Seite (`questiontestedit.php`, nicht auf der Positivliste); bisher hilft nur, die Frage neu anzulegen.
+
+Offene Punkte außerhalb von Specs und Umsetzungstickets. Je Punkt höchstens drei Zeilen; Ergebnisse von Messungen stehen im Quelltext oder in der ADR ([Regeln](docs/agents/dokumentation.md), Regel 8).
+
+## Aktivitäten und Fragen
+
+- Aktivität „Befragung" (questionnaire) unterstützen, für Unterricht wie für Organisatorisches (etwa Befragung zur Unterrichtsqualität).
+- Aktivität „Lernpfad" und Badges vollständig unterstützen, samt didaktischen Hinweisen und Regeln zur Gamification.
+- Fortschrittsliste: Farbe eines Eintrags (`nextcolour`); Bewertungsrichtlinie: häufig gebrauchte Kommentare.
+- Auswahlgruppen (`choicegroup`) und Bildergalerien ändern: siehe #44. Collabora und `choicegroup` fehlen auf der Testinstanz; beim ersten echten Einsatz Gruppenmodus, Gruppierung und `verified` prüfen.
+- Fragensammlung (`qbank`) verbergen, verschieben, duplizieren: geht nicht, weil sie nicht in der Kursstruktur steht; Löschen hat einen eigenen Weg über die Sammlungsliste, die drei brauchten denselben.
+- Fragen zwischen Kategorien verschieben scheitert auf der Testinstanz (`qbank_bulkmove/bulk_move` lädt nicht); nach dem Leeren der Caches erneut prüfen.
+- Fragen: Struktur vorhandener Fragen ändern (weitere Antwort, weiterer Knoten) ist nicht eingebaut. Weitere Zusatz-Fragetypen (Formulas, GeoGebra, Kprim …) nur nach dem Messverfahren in `skills/moodle-fragen/CLAUDE.md`; `ddimageortext` und `ddmarker` bleiben bewusst nur lesend.
+- STACK: vorhandenen Fragetest ändern, löschen oder ergänzen. Er liegt auf `questiontestedit.php` (nicht auf der Positivliste); bisher hilft nur Neuanlegen.
+- Konventionen bei Fragen: `fragensammlungen` und `fragen_lesen` liefern sie nicht mit (nur der Skilltext verweist darauf); prüfen, ob eines davon sie mitliefern sollte.
+- Kurskonventionen verwalten: Vorlagen (allgemein je Schulform/Fach anonym mit den Skills, schulspezifisch in Moodle) anbieten, aus Vorlage, eigenem oder fremdem Kurs oder Datei mit Vergleich übernehmen. Offen: Kopie oder Verweis, was ist übertragbar, ob Zusatzdateien mit `aktivitaet_lesen`/`aendern` von Kurs zu Kurs kommen. Prüfstein: drei parallele Kurse je Jahrgang mit gemeinsamen Regeln.
+
+## Lernlandkarten
+
+- Verknüpfungsstatus abfragbar machen: #47. SVG-Layout und Kartenpunkte bearbeiten: #58.
+- Rücklesen meldete einmal `verified: false`, obwohl ein frisches Lesen stimmte; nicht reproduziert. Tritt es wieder auf, die Teilprüfungen in `lernlandkarte_verknuepfungen_setzen` einzeln ausgeben.
+- Vorlage zeichnet nur ein Rechteck statt des Hintergrundbilds; offen, ob sie es einbinden soll.
+- Auswahlfelder mit Zielen landen in `einstellungen.json` als Anzeigetext; gleichnamige Aktivitäten lassen sich dort nicht unterscheiden. Verweise prüft die App nur in Textfeldern (`<feld>.html`).
+- Unterrichtsverteilung: Der Fingerabdruck der Kartenkopie entfernt alle Ortsbeschriftungen (`ohneOrtsbeschriftung`); auf `_gleicheSvgMitNeubeschriftungen` einengen, mit Test für eine echte Änderung an Form oder Ort.
+- Quiz-Wiederherstellung (`get_questions_category()` mit `false`, MDL-89981) nicht geprüft.
+
+## Sicherung, Wiederherstellung, Übertragung
+
+- Freigaben ohne Zeitlimit des KI-Aufrufs: #34. Vergleich nach der Wiederherstellung und Prüflücken: #35. Anhänge reparieren: #36. Fehlerzustände und Doppelstart: #37. Ersetzende Wege und neuer Kurs: #38.
+- Ungemessene Annahmen bei Sicherung und Wiederherstellung stehen als `UNGEMESSEN` im Quelltext (`lib/moodle/sicherung*.dart`, `wiederherstellung*.dart`); sie werden nur im Testkurs gemessen, nie in einer Arbeitssitzung (A6).
+- Übertragung (`uebertragen`) auf der Instanz durchspielen: Zusammenfassung in der Freigabe, Dubletten-Hinweise im Bericht, teilweise fehlgeschlagener Lauf, Ablehnung in der App (stoppt sie die übrigen Ziele?), Erhalt der Einträge in `uebertragungen.json` bei Abbruch.
+- Übertragung: Ein Auftrag fragt einmal für alle Ziele und danach jeden Schreibschritt erneut; offen, ob das für die Stufe „mittel" zu viel ist.
+- Freigabetest „Die Stufe steht in den Einstellungen …" scheiterte einmal im Gesamtlauf (Flake); beobachten.
+- Gruppierungen: Eine ZZ-Probe-Gruppierung mit zwei Gruppen steht auf der Testinstanz und lässt sich nur in Moodle löschen. Wiederherstellung: ob die Rückmeldung je Aktivität „Gruppenmodus gesetzt, Gruppierung leer" ausweisen soll, hängt von 50 Formularlesevorgängen bei 50 Aktivitäten ab.
+- Sichtbarkeit: Setzt `sichtbarkeit_setzen` »verfügbar ohne Link« zurück, und bei welchen Umschaltungen? Messung im Testkurs, Werkzeug oder Hinweis danach anpassen: #45.
+
+## Skills
+
+- `lernsituation`: Selbstprüfung braucht Python (`scripts/pruefe-lernsituation.py`), das vielen Lehrkräften fehlt; als Werkzeug der App oder mit Flutter ersetzen. Im Skill steht `python` wörtlich, auf dem Mac oft nur `python3`.
+- `lernsituation`: ODT-Ausgabe für den Druck (Skill `odt`); die SchuCu-Tabelle müsste nach „Das Design außerhalb von Moodle" (`skills/lernsituation/CLAUDE.md`) entstehen.
+- `lernsituation`: SchuCu-Tabelle auf anderen Instanzen ohne CSS für `lernsituation`, `lshead`, `lssubhead`, `lsdata`, `lsspacer`: Stile in die Vorlagen (`style` ist dort erlaubt, A8) oder CSS fürs Theme mitliefern. Weitere Fachvokabulare für Zeichnungen (DIN EN 60617, Netzsymbole) einzeln messen.
+- Optimierungsphase: Prüfen, ob MCP-Schnittstelle und Skills tokensparend sind, ob also nur Nutzdaten ohne unnötige HTML-Tags durchgeleitet werden.
 
 ## Anonyme Aufgabenbewertung
 
-Ich möchte als Feature haben, dass Aufgaben automatisiert bewertet werden. Dazu muss die Aufgabenstellung mit eventuellen Dateianlagen aus der Aktivität an das Modell übermittelt werden, sowie das Bewertungsschema.
+Aufgabenabgaben nur anonymisiert an die KI: Teilnehmerliste pro Kurs auf Kürzel (S1, S2 …) abbilden, Namen in PDF, Office und Binärdateien (auch mit Tippfehlern) vor der Übergabe ersetzen und zurücksubstituieren, Bilder erst mit zuverlässiger Handschrifterkennung (etwa kraken) zulassen, Dateitypen einzeln freigeben. Voraussetzung: A1 wird für die Teilnehmerliste bewusst geändert, die Liste bleibt in der App.
+Derselbe Namensabgleich könnte alles prüfen, was an die KI geht (Wiki, Board, Kanban, Konventionsdateien); er ersetzt die Verdachtsmuster der Konventionen nicht. Offen: nur Namen des aktuellen Kurses oder eine deutsche Namensliste.
 
-Die Teilnehmerdaten dürfen ausschließlich anonymisisert übertragen werden - das gilt für Daten und Metadaten. Vom Ablauf stelle ich mir das so vor: Wenn ein Bewertungsvorgang für eine Aufgabe gestartet wird, also per Prompt "Bewerte Aufgabe https://...", dann muss Moocp erstmal nachfragen, welche Schüler bewertet werden sollen Dort kann man z.B. eine Gruppe (oder Gruppierung?) auswählen oder per Checkliste einzelne Teilnehmer anklicken (bitte imm Suchfelder vorsehen falls es viele Gruppen oder Teilnehmer im Kurs gibt). Dann muss noch nachgefragt werden, falls ein Teilnehmer aus der Auswahl bereits eine Bewertung hat, ob der neu bewertet werden oder wieder gestrichen werden soll.
+## Plattformen und Betrieb
 
-Aus der Auswahl wird eine anonymisierte Liste erzeugt, in dem eine zufällige Reihenfolge erzeugt wird und auf der Schnittstelle zum Modell ausschließlich mit der Nummer in der Liste gearbeitet wird - niemals mit einer Moodle ID, einem Namen oder irgendeinem anderen Identifikationsmerkmal.
-
-Wenn eine Aufgabe gelesen wird, müssen nicht nur Metadaten, sondern auch Daten anynymisiert werden:
- - In PDF und Office Dokumenten müssen wir scannen, ob ein Name eines Kursteilnehmer (nicht nur des Erstellers) vorkommen und durch Zufallsnamen wie Meyer, Müller, Peter und Hugo ersetzen (Selber name immer selbe ersetzung), damit wir notfalls rücksubstituieren können, falls das Modell in seiner Antwort einen Namen verwendet. Die Namen müssen vollständig aus den Daten entfernt werden, die ans modell geschickt werden - also Office und PDF Dateien entsprechend manipulieren
- - Bei Bildern muss Schrifterkennung auch von Handschrift durchgeführt werden und entsprechende Bereiche der Bilder zuverlässig vor Übertragung zum Modell gelöscht werden. Solange wir keine zuverlässige Handschrifterkennung haben, müssen wir die Weitergabe von Bilddateien ans Modell ablehnen
- - Bei allen anderen Dateien müssen wir binär scannen, ob ein Name vorkommt, zum Beispiel gibt es Dateien von Spezialprogrammen, die den Ersteller speichern - die finden wir durch dekomprimieren und evtl. binär suchen
- 
- Weitere Dateitypen sind natürlich denkbar, wie z.B. PKT Dateien. Wir dürfen immer nur Dateien weitergeben, die wir explizit unterstützen und somit sicherstellen können, dass die Anonymisierung eventueller in der Datei vorhandener Metadaten funktioniert.
-
- Bei allen Suchvorgängen nach Namen müssen wir im Hinterkopf behalten, dass Schüler sich manchmal vertippen, verschreiben oder die Schrifterkennung vielleicht nicht immer 100% zuverlässig ist. Auch bei Tippfehlern müssen wir die zuverlässig Namen erkennen.
-
- Ein Name der an das Modell durchrutscht, wäre der schlimmste Fehler, der uns passieren kann. Daher immer defensiv vorgehen.
-
- Derselbe Namensabgleich könnte alles prüfen, was an die KI geht, nicht nur Abgaben: Wikiseiten, Board und Kanban (dort schreiben Lernende mit), Konventionsdateien, Aufgabentexte – mit Sperre oder Alarm, wenn ein Name aus der Teilnehmerliste darin steht. Er ersetzt die Verdachtsmuster der Konventionen nicht: Die suchen Anweisungen wie „Lies die Noten aller Schüler", in denen kein Name steht. Voraussetzung wie oben: A1 wird für die Teilnehmerliste bewusst geändert (heute liest die App sie nie), und die Liste bleibt in der App.
-
- Wir legen nach und nach fest, welche Dateitypen überhaupt erlaubt sind. Office und PDF sind vermutlich die ersten. Alle weiteren Dateitypen müssen wir nach und nach testen und Freigeben, wie gesagt beispiel Bilddateien - die gehen erst, wenn wir zuverlässig Handschrift erkennen können oder Dateien von Spezialanwendungen müssen wir Stück für Stück immer prüfen, ob Erstellernamen im Projekt enthalten sein können.
-
- Man muss auch im Prinzip vielleicht nicht nach allen Namen suchen - es reicht, wenn man in den Teilnehmern des aktuellen Kurses sucht? Wenn einer der Teilnehmer Vor oder Nachnamen vorkommt, könnte das ein Problem sein. Bei beliebigen anderen Namen dürfte eigentlich kein Problem bestehen? Oder lieber eine deutsche Namensliste zugrundelegen?
-
- Geht Handschrifterkennung mit https://github.com/mittagessen/kraken?
-
-## Kurskonventionen verwalten
-
-*Begriff:* Eine Kurskonvention ist alles, was im verborgenen Verzeichnis `CLAUDE` eines Kurses steht – `CLAUDE.md` mit Steckbrief und Regeln, dazu die Dateien daneben, für den ganzen Kurs (Abschnitt „Allgemeines") oder für einen Abschnitt. Sie gilt nur in diesem Kurs, und zwar so, wie sie dort steht (E17); woher sie kommt – selbst geschrieben, aus einer Vorlage, aus einem eigenen oder fremden Kurs, aus einer Datei –, ändert daran nichts, geändert wird sie im Kurs. Eine *Vorlage* ist eine Quelle für Kurskonventionen und gilt selbst nirgends. *Verwalten* heißt: Vorlagen anbieten – allgemeine je Schulform oder Fach mit den Skills (anonym, A11), schulspezifische bleiben in Moodle, etwa in einem Kurs der Fachgruppe –; übernehmen aus Vorlage, eigenem oder fremdem Kurs oder Datei, ganz oder in Teilen, mit Vergleich zur bestehenden Fassung und den Widersprüchen im Plan; weitergeben. Übernommenes bleibt Daten (A7): Verdachtsprüfung wie bei jeder Fassung, Zusatzdateien werden nie ausgeführt, und bei einem fremden Kurs zeigt der Plan alles, was übernommen wird. *Offen:* Kopie oder Verweis – sollen Kurse nachziehen, wenn sich die Vorlage der Fachgruppe ändert, und wird dafür die Herkunft vermerkt? Was ist übertragbar, was hängt am Kurs (im Steckbrief Jahrgang, Bildungsgang, Lehrbücher; die Regeln eines Abschnitts)? Welche Werkzeuge fehlen: `kurs_hinweise` liest und `claude_schreiben` schreibt `CLAUDE.md`; ob die Zusatzdateien mit `aktivitaet_lesen` und `aendern` von Kurs zu Kurs kommen, ist zu prüfen. Begriff und Bedienung dann in die README (Benutzerhandbuch) und nach `gemeinsam/kurshinweise.md`. *Prüfstein:* drei parallele Kurse je Jahrgang mit gemeinsamen Regeln und je eigenem Anforderungsniveau.
-
-## Freigabe beim Betreiber beantragen
-
-Ein Schutzdienst vor der Instanz (Cloudflare) weist Formulare mit Programmcode als Text ab, etwa `&lt;p id="…"&gt;` in einem Code-Beispiel einer Frage – die App wie den Browser der Lehrkraft (gemessen). Der saubere Weg ist eine Ausnahme beim Betreiber: die Regel für Formulare angemeldeter Lehrkräfte lockern, oder für die App an ihrem eigenen User-Agent (`moocp (lokal)`), falls sie dort einmal strenger behandelt wird als der Browser. Einen Antrag dafür vorbereiten (was die App tut, A1–A4, warum sie sich offen zu erkennen gibt; die Ray-ID aus dem Protokoll als Beispiel) und klären, wer ihn je Instanz stellt. Die App gibt sich nie als Browser aus: Das wäre eine Umgehung der Schutzmaßnahme (E20, E22).
-
+- Windows ungemessen nach dem Umbau (#11): Browsersuche und Richtlinie in HKLM/HKCU, Claude Desktop (MSIX) und Installer finden `claude.exe`, Release-Bau und Installer, Übergabe an die Lehrkraft mit echtem Schutzdienst.
+- macOS: Browser aus einem `.app`-Bündel mit `--remote-debugging-port=0`, Richtlinienwert `0` und Prozessbereinigung nicht durchgespielt; Claude Code und Codex lesen ihre Pfade (`~/.local/bin`, `/opt/homebrew/bin`, Konfigurationsorte) womöglich anders (siehe #40, [0024](docs/adr/0024-plattformen.md)).
+- macOS: Schlüsselbund im Release-Bau ohne Datenschutzgruppe prüfen ([0026](docs/adr/0026-schluesselbund-mac.md)). Entfernen der KI-Werkzeug-Einträge fehlt (keine Deinstallation): Befehl in der App oder Hinweis ([0013](docs/adr/0013-ki-werkzeuge-einrichten.md)).
+- macOS: Ohne `HOME` lösen `ClaudeCode`, `CodexCli` und `LmStudio` ihre Ordner relativ auf (`?? ''` in `lib/einrichtung.dart`), ein Start ohne `HOME`/`APPDATA` wirft `StateError` in `einstellungen_ort.dart`; abfangen oder verweigern.
+- macOS: Der Arbeitsordner liegt im `$TMPDIR`, die Spec (#1, `docs/specs/0001-macos-sicherung-wiederherstellung.md`) nennt einen anderen Ort; klären, bevor Sicherungen dort entstehen. LM Studio mit Bionic fehlt auf dem Mac (die Brücke ist ein Windows-Programm).
+- Linux-Port: #57. Release automatisch bauen und in GitHub veröffentlichen (Windows-Installer, macOS, Linux; Changelog als Release-Text).
+- Codex CLI mit echter Version prüfen: sieht es die Werkzeuge aus `[mcp_servers.moodle]`, lädt es Skills, ab welcher Version geht HTTP ohne `experimental_use_rmcp_client` (README nennt 0.77), öffnet es die PNGs von `bildschirmfoto`, nimmt es `tool_timeout_sec = 2100` an? Dazu in `~/.codex/config.toml` den Flutter-Cache als `writable_roots` freigeben, damit `flutter analyze` unter der Sandbox läuft.
+- Protokoll: „KI-Werkzeug verbunden: …" (`oninitialized` in `mcp_dienst.dart`) erscheint seit dem 09.10.2026 nicht mehr; ohne es zeigt das Protokoll nicht, welcher Client schrieb (E21). Prüfen, ob `status` es noch weiß.
+- Schutzdienst: Antrag auf Ausnahme beim Betreiber vorbereiten (was die App tut, A1–A4, warum sie sich offen zu erkennen gibt) und klären, wer ihn je Instanz stellt ([0034](docs/adr/0034-uebergabe-und-schutzdienst.md)).
+- Instanzprofile: Die Brücke für Bionic kennt nur den Namen `moodle`; weitere Profile fehlen dort. Aufräumen der Arbeitsunterordner beim Beenden prüfen, wenn Ordner in Benutzung sind.
+- Zwischenablage mit HTML auf dem Mac: erst, wenn die App dort ausgeliefert wird ([0034](docs/adr/0034-uebergabe-und-schutzdienst.md)).
 
 # Bugs
-- Sperrliste, Dateien von Lernenden: Die Positivliste lässt jede Adresse unter `pluginfile.php` zu („Datei im Kurs"), die Sperrliste nimmt davor nur Profil, Abgaben, Testantworten, Foren, Workshop, Datenbank und Lektion heraus. Es fehlen Bereiche, in die Lernende Dateien legen können: Glossar (`mod_glossary/attachment`, `mod_glossary/entry`), Wiki (`mod_wiki/attachments`), Blog (`blog/attachment`, `blog/post`) und die Zusatzplugins Board, Kanban-Board und Journal. Die Namen der Bereiche messen, dann sperren, mit Test beider Richtungen in `test/sperrliste_test.dart`. Vorher klären, was die Lesewerkzeuge dabei verlieren: Bilder, die die Lehrkraft selbst in eine gemeinsame Wikiseite oder einen Glossareintrag gesetzt hat, liegen in denselben Bereichen.
-- `fragen_loeschen` direkt nach dem Löschen des Tests, in dem die Fragen stecken: Moodle verbirgt sie nur (`verified: false`, „steckt vermutlich in einem Test"), zehn Minuten später ließen sie sich löschen – vermutlich entfernt Moodle den Test erst im Hintergrund. Die Meldung in `lib/moodle/fragen.dart` sollte diesen Fall nennen (später noch einmal versuchen), und der Skill `moodle-fragen` beim Aufräumen eines Tests samt Fragen darauf hinweisen. Vorher messen, woran man den Fall erkennt (Test noch in der Kursstruktur mit „wird gelöscht"?).
-- Schutzdienst vor der Instanz (Cloudflare, `SchutzPruefung` in `lib/moodle/moodle_zugang.dart`): Die Übergabe an die Lehrkraft (`_uebergeben` in `lib/moodle/formular_schreiben.dart`) gilt nicht für geänderte oder ersetzte vorhandene Dateien, Dateibereiche und neue interaktive Elemente (Element-HTML-Dateien); dort meldet das Werkzeug nur, dass es nicht geht.
-- Schmales Fenster: Unter etwa 900 px Breite läuft der Kopf der Protokollspalte über („Protokoll" und „Leeren"), weil die linke Spalte fest 460 px breit ist. Die Titelzeile hält bis dahin. Entweder die linke Spalte schrumpfen lassen oder den Kopf kürzen.
-- Einstellungen mit Optionsfeldern: Die Zeilen der Abschlussverfolgung
-  lesen sich missverständlich („Keine = nein").
-- Fragen zwischen Kategorien verschieben scheitert auf der Testinstanz (das
-  Modul `qbank_bulkmove/bulk_move` lädt nicht); nach einem Leeren der Caches
-  durch die Administration erneut prüfen, dann wäre der Weg zu messen.
+
+- Bildschirmfotos: Bei schmaler Inhaltsbox werden links Textanfänge abgeschnitten (auf der zweiten Testinstanz reproduziert, der Quelltext ist vollständig). Inhaltskoordinaten und Layoutänderungen zwischen Messen und Aufnahme prüfen, ohne den Ausschnitt auf Kopf oder Navigation auszuweiten.
+- Sicherheit: Der MCP-Schlüssel steht im Klartext in `~/.claude.json` und `~/.codex/config.toml`; bewusst so (E6). Umbau auf Umgebungsvariable möglich, wenn Codex per `codex mcp add` eingerichtet wird.
+- Sperrliste: `pluginfile.php` ist zugelassen, gesperrt sind nur Profil, Abgaben, Testantworten, Foren, Workshop, Datenbank, Lektion. Es fehlen Bereiche, in die Lernende Dateien legen: Glossar (`mod_glossary/attachment`, `entry`), Wiki (`mod_wiki/attachments`), Blog sowie Board, Kanban, Journal. Namen messen, sperren, Tests in `test/sperrliste_test.dart`; vorher klären, was die Lesewerkzeuge verlieren (Bilder der Lehrkraft in Wiki oder Glossar).
+- Schmales Fenster: Unter etwa 900 px läuft der Kopf der Protokollspalte über (linke Spalte fest 460 px).
+- Formulare lesen (`formularLesen`): Bricht ein Lesen mitten ab, bleibt der Ordner halb neu geschrieben; Stagingordner mit Austausch am Ende, Flake `test/frage_lesen_ordner_test.dart` ("Directory not empty"): #39. Dateien nur im Dateimanager (`mod_resource`, `mod_folder`) sind eine Prüflücke, bis eine Leseseite auf der Positivliste steht: #35.
+- `ordnerSperre` in `aendern` hält bis zu 30 Minuten (Freigabe) andere Lesevorgänge desselben Ordners auf; nur mit einer erneuten Standprüfung unter der Sperre und einem Test dafür verkürzen.
+- Wiederherstellung: `wiederherstellung_status` setzt einen Vorgang „anstehend"/„hochgeladen" ohne laufende Sitzung auf „fehlgeschlagen" und gibt damit die Sperre frei, obwohl das Senden geschehen sein kann (#37). Die Reihenfolge Doppelstart-Prüfung vor Freigabe hat noch keinen Ende-zu-Ende-Test (braucht eine gültige .mbz-Fixture).
+- Aufräumen: Große Dateien teilen (`mcp_dienst.dart`, `moodle_zugang.dart`, `formular_schreiben.dart`, `wiederherstellung.dart`, `sicherung.dart`): #43. Der Dateiname der lokalen Testzugangsdatei trägt noch den alten Namen der Testinstanz (`docs/agents/testing.md`, `tool/mac_start.sh`, `lib/anmeldedaten.dart`); alle drei Stellen mit der Datei des Nutzers zusammen umbenennen. Quellverweise der Art „Ticket #n" und „Befund n" im Quelltext bei Änderungen durch die Begründung ersetzen.
+
+# Offen nach Merge
+
+- Wiederherstellung „Ersetzen“ live messen: nur mit einem Konto, das `moodle/restore:restorecourse` hat. Vor allem prüfen, ob Einschreibungen und Gruppen erhalten bleiben. Bis dahin „umgesetzt“, nicht „geprüft“.
+- „Verfügbar ohne Link“ live messen: Bleibt der Zustand beim Verbergen und Zeigen erhalten? Das geht nur auf einer Instanz mit `allowstealth`.
+- `uebertragen` als Ganzes live durchspielen (Sichern, Übertragen, Wiederherstellen in einem Zug). Bisher sind nur Sichern und Wiederherstellen einzeln gemessen.
+- Lernlandkarte: Zeigt das Plugin ein SVG als Hintergrundbild? Mit einem Bildschirmfoto prüfen.
+- Mac: Nichts aus PR #1 ist auf einem Mac gelaufen (Bauschalter `MOOCP_TESTBETRIEB`, Startskripte, Schlüsselbund).
+- CLAUDE.md ist rund 52 KB groß, mehr als vor der Aufteilung in ADRs. Mit dem Autor von PR #1 klären, ob sich der Index kürzen lässt, ohne Regeln zu verlieren.
+- Gruppierungen (E33) live messen: Lesen, Anlegen, Zuordnen und die Rückfrage bei fehlender Gruppierung, in einem Testkurs mit Gruppierungen. Der bisherige Testkurs hat keine.
+- Sicherungsdateien löschen: Jede Sicherung über moocp lässt eine Datei im persönlichen Sicherungsbereich in Moodle zurück, die nur die Lehrkraft von Hand löschen kann. Dafür ein Werkzeug bauen, das genau eine eigene Datei entfernt und die übrigen nachweislich stehen lässt. Der Weg führt über `backupfilesedit.php`, einen Dateimanager, der beim Speichern den ganzen Bereich neu schreibt. Nötig sind Freigabe, Namensprüfung und Rückleseprobe (A3), die Adressen kommen zusammen mit dem Werkzeug in die Positivliste (E3).
+- Claude Code finden: Auf dem Rechner, an dem der Fehler auffiel, mit dem neuen Installer prüfen, ob der Dialog Claude Code als einrichtbar zeigt, „Installieren“ die Verbindung einträgt und eine neue Sitzung im Reiter „Code“ die Werkzeuge sieht. Offen ist auch, ob es einen Knopf „claude.exe auswählen …“ als letzten Ausweg geben soll; das ist eine Produktentscheidung. Eine Store-Installation von Claude Desktop ist nicht gemessen. Unter macOS und Linux prüft die App keine Signatur (dort wäre es `codesign`).

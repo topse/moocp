@@ -3,7 +3,9 @@
 // der Text daneben dient Feldern, die nur Text nehmen.
 //
 // Nativ je Plattform über den Kanal „zwischenablage_html", derzeit nur
-// Windows. Wo der native Teil fehlt oder scheitert, bleibt es beim Text.
+// Windows (E34). Auf anderen Plattformen, etwa dem Mac, wird der Kanal gar
+// nicht erst gerufen: Es bleibt beim Text, ohne Absturz (E29). Scheitert der
+// native Teil, bleibt es ebenfalls beim Text.
 
 import 'dart:convert';
 import 'dart:io';
@@ -17,11 +19,14 @@ const _kanal = MethodChannel('zwischenablage_html');
 /// bei `false` liegt nur der Text in der Zwischenablage.
 Future<bool> alsHtmlKopieren(String html, {String? text}) async {
   text ??= html;
+  if (!Platform.isWindows) {
+    await Clipboard.setData(ClipboardData(text: text));
+    return false;
+  }
   try {
     await _kanal.invokeMethod<void>('kopieren', {
-      // Windows erwartet das Format „HTML Format" mit Kopf; macOS und Linux
-      // nehmen das Fragment selbst.
-      'html': Platform.isWindows ? cfHtml(html) : html,
+      // Windows erwartet das Format „HTML Format" mit Kopf.
+      'html': cfHtml(html),
       'text': text,
     });
     return true;

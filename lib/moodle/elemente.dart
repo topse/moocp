@@ -292,6 +292,21 @@ void skripteImTextPruefen(Map<String, String> felder,
       'Was schon in Moodle stand, darf bleiben.');
 }
 
+/// Was im Text eines Editorfelds Code am Rahmen vorbei wäre, als Zahlen und
+/// Dateinamen: Stellen mit Code ([skriptstellen]), Rahmen ohne genau die
+/// Abschottung ([ElementRahmen.abgeschottet]) und die Dateien, die abgeschottete
+/// Rahmen einbinden. Für die Prüfung eines Archivs, das beim Wiederherstellen
+/// dieselben Regeln trifft wie [skripteImTextPruefen] beim Schreiben, aber nichts
+/// aus dem Text in eine Meldung setzt (E11).
+({int code, int offeneRahmen, List<String> elemente}) codeImText(String html) {
+  final rahmen = elementRahmen(html);
+  return (
+    code: skriptstellen(html).length,
+    offeneRahmen: rahmen.where((r) => !r.abgeschottet).length,
+    elemente: [for (final r in rahmen) if (r.abgeschottet) r.datei],
+  );
+}
+
 bool _gleich(List<int> a, List<int> b) {
   if (a.length != b.length) return false;
   for (var i = 0; i < a.length; i++) {

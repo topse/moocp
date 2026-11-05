@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 0.9.32+1
+version: 0.10.0+1
 
 environment:
   sdk: ^3.13.2
@@ -53,10 +53,13 @@ dependencies:
   xml: ^7.0.1
   archive: ^4.3.0
   package_info_plus: ^10.2.1
-  # HTML in die Zwischenablage für die Übergabe an die Lehrkraft, eigenes
-  # Plugin in diesem Repository.
+  # HTML in die Zwischenablage für die Übergabe an die Lehrkraft (E34), eigenes
+  # Plugin in diesem Repository, nur für Windows.
   zwischenablage_html:
     path: packages/zwischenablage_html
+  # Signaturprüfung der claude.exe über wintrust.dll (BSD-3, Dart-Team; schon
+  # indirekt dabei). Nur unter Windows aufgerufen.
+  ffi: ^2.2.0
 
 dev_dependencies:
   flutter_test:
