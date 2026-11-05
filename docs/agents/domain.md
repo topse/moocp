@@ -16,7 +16,6 @@ Ein Kontext, keine `CONTEXT-MAP.md`.
 ├── CLAUDE.md             Regeln für die KI: Dokumentation, Anforderungen (A1–A11), Index der Entscheidungen (E1–E34), Arbeitsregeln
 ├── AGENTS.md             dünner Einstieg für Codex
 ├── GLOSSARY.md           Fachsprache
-├── TODO.md               ältere offene Punkte (neue stehen als GitHub-Issues)
 ├── installer/CLAUDE.md   Regeln für den Installer
 ├── skills/CLAUDE.md      Regeln für die Pflege der Skills
 ├── docs/adr/             Entscheidungen E1–E34 (E30 entfällt), eine Datei je Entscheidung

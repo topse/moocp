@@ -1,6 +1,6 @@
 // Offline prüfbar: die Fragen eines Quiz im Sicherungsarchiv (activities/quiz_*/quiz.xml
 // und questions.xml) und ihre Abbildung auf die Herkunftsprüfung. Alle Namen sind erfunden
-// (ZZ-Präfix). Das echte Moodle-Format ist nicht gemessen (UNGEMESSEN, TODO.md): die Tests
+// (ZZ-Präfix). Das echte Moodle-Format ist nicht gemessen (UNGEMESSEN, TODO https://github.com/topse/moocp/issues/4): die Tests
 // prüfen nur die hier festgelegte Lesart.
 import 'dart:convert';
 import 'dart:io' show gzip;

@@ -99,7 +99,7 @@ Fixture für `pruefung/pruefe-lernsituation-skript.py` – wer das Beispiel
 - **Das Design außerhalb von Moodle** steht hier und nicht im Paket, weil kein
   Ablauf des Skills ODT oder DOCX erzeugt; gedruckt wird aus Moodle. Gebraucht
   wird es für die ODT-Ausgabe und für Instanzen ohne CSS für die Klassen
-  (beides in `TODO.md`). Nachgebaut wird dieselbe Tabelle, nicht ersetzt –
+  (beides in [Issue #32](https://github.com/topse/moocp/issues/32)). Nachgebaut wird dieselbe Tabelle, nicht ersetzt –
   drei Spalten, dieselben Zeilen und Beschriftungen wie in der Vorlagedatei;
   Umwandler von HTML nach DOCX oder ODT verlieren die Klassen und damit das
   Aussehen.

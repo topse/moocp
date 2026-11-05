@@ -10,7 +10,7 @@ Gründe nach dem Kommentar in `lib/anmeldedaten.dart`: Die Datenschutz-Schlüsse
 
 ## Folgen
 
-- Ein Release-Bau für den Mac braucht eine Prüfung, ob der alte Schlüsselbund dort ebenso gilt. Das steht in [TODO.md](../../TODO.md).
+- Ein Release-Bau für den Mac braucht eine Prüfung, ob der alte Schlüsselbund dort ebenso gilt. Das steht in [Issue #9](https://github.com/topse/moocp/issues/9).
 
 ## Verworfen
 
