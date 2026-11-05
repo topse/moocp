@@ -13,8 +13,8 @@
 /// übrigen sind die Namen des Moodle-Kerns und stehen auf der Liste, damit sie
 /// nicht still eingeschaltet bleiben. Steht ein Feld da und ist nicht 0, bricht
 /// die Sicherung ab. Fehlt ein Feld, zählt es als aus: Die meisten hängen in
-/// Moodle an `users` (UNGEMESSEN), und nur `users` selbst muss da sein
-/// ([nutzerdatenPflichtFehler]).
+/// Moodle an `users` (UNGEMESSEN). Fehlt `users` selbst (Konto ohne Berechtigung),
+/// ist das erlaubt, solange keine Option eingeschaltet ist ([nutzerdatenPflichtFehler]).
 ///
 /// Was auf der Liste steht und warum:
 ///   - users, enrolments, groups, userscompletion, logs, grade_histories, badges:
@@ -80,25 +80,28 @@ String? nutzerdatenEingeschaltet(List<MapEntry<String, String>> f) {
 
 /// Sind alle Nutzerdaten-Optionen aus? Fehlende Felder zählen als aus, ein
 /// eingeschaltetes Feld nicht. Das gilt für die Wiederherstellung, wo das Archiv
-/// selbst geprüft ist und Moodle `users` oft gar nicht anbietet; die Sicherung
-/// verlangt mehr ([nutzerdatenPflichtFehler]).
+/// selbst geprüft ist und Moodle `users` oft gar nicht anbietet. Die Sicherung
+/// prüft zusätzlich [nutzerdatenPflichtFehler].
 bool ohneNutzerdaten(List<MapEntry<String, String>> f) => nutzerdatenEingeschaltet(f) == null;
 
 /// Ob die Seite einer Sicherung `setting_root_users` ausdrücklich auf 0 hat.
-/// Die Positivliste verlangt es für jedes Formular der Sicherung.
 bool nutzerdatenAusdruecklichAus(List<MapEntry<String, String>> f) => letzteWerte(f)['setting_root_users'] == '0';
 
-/// Eine Sicherung braucht `setting_root_users` ausdrücklich, und zwar 0: Fehlt
-/// das Feld, weiß die App nicht, was Moodle für `users` annimmt (bei einem
-/// geänderten Formular oder einem Konto ohne die Berechtigung, Nutzerdaten
-/// zu sichern, ist das nicht ablesbar), und „fehlt = aus" hieße, auf Moodles
-/// Vorgabe zu vertrauen. Null heißt in Ordnung, sonst der Grund für den Abbruch
-/// vor dem Sichern.
+/// Die Pflicht zu `setting_root_users` vor dem Sichern. Hat das Feld einen Wert,
+/// muss es 0 sein. Fehlt es, ist das für ein Konto ohne Berechtigung
+/// `moodle/backup:userinfo` der normale Fall: Moodle lässt die Zeile dann weg und
+/// sperrt `users` auf aus. Dann ist es in Ordnung, solange keine Nutzerdaten-Option
+/// eingeschaltet ist. Eine eingeschaltete Option bricht ab, mit ihrem Namen.
+/// Null heißt in Ordnung, sonst der Grund für den Abbruch vor dem Sichern.
 String? nutzerdatenPflichtFehler(List<MapEntry<String, String>> f) {
   final w = letzteWerte(f)['setting_root_users'];
   if (w == null) {
-    return 'Moodle bietet die Einstellung „Nutzerdaten" (setting_root_users) auf dieser Seite nicht an. '
-        'Ohne sie lässt sich nicht ausschließen, dass Nutzerdaten mitkommen.';
+    final an = nutzerdatenEingeschaltet(f);
+    if (an != null) {
+      return 'Die Einstellung „Nutzerdaten" (setting_root_users) fehlt auf dieser Seite, '
+          'und $an ist eingeschaltet.';
+    }
+    return null;
   }
   if (w != '0') return 'Die Einstellung „Nutzerdaten" (setting_root_users) ist nicht ausgeschaltet.';
   return null;
