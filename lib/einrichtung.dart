@@ -28,6 +28,7 @@ import 'dart:math';
 import 'package:archive/archive.dart';
 import 'package:path/path.dart' as p;
 
+import 'plattform/signatur_mac.dart';
 import 'plattform/signatur_windows.dart';
 
 /// Die Skills, die die App mitbringt, liegen als Pakete von skills/build.py
@@ -174,14 +175,20 @@ abstract class KiWerkzeug {
 // (_breiteSuche), auch für eine andere Verteilung, etwa ein Store-Paket mit
 // anderem Namen.
 //
-// macOS und Linux: keine Signaturprüfung (kein Authenticode; der Mac läuft
-// nur als Entwicklungsbau, E24); gesucht wird im Suchpfad, unter
-// ~/.local/bin und in den Mac-Ordnern.
+// macOS: Claude Desktop legt Claude Code unter
+// ~/Library/Application Support/Claude/claude-code/<Version>/<Prüfsumme>/
+// claude.app/Contents/MacOS/claude ab. Dort zählt nur eine Datei mit gültiger
+// Signatur von Anthropic (vonAnthropicMac, lib/plattform/signatur_mac.dart).
+// Die übrigen Orte (Suchpfad, ~/.local/bin, Homebrew) bleiben ohne Prüfung, wie
+// bisher; Linux prüft nichts.
 const _claudeDesktopPaket = 'Claude_pzs8sxrjxfjjc';
 
 /// Prüft unter Windows, ob eine gefundene claude.exe von Anthropic stammt.
 /// Austauschbar für die Tests, die mit leeren Dateien arbeiten.
 bool Function(String exe) claudeSigniert = vonAnthropic;
+
+/// Dasselbe unter macOS, aber nur für die Ablage von Claude Desktop.
+bool Function(String exe) claudeSigniertMac = vonAnthropicMac;
 
 /// Sucht die claude.exe: Claude Desktop (neue, dann alte Ablage, dann
 /// klassischer Installer), der Suchpfad, der eigenständige Installer, die
@@ -201,6 +208,15 @@ String? claudeFinden(Map<String, String> umgebung, {List<String>? bericht}) {
     return false;
   }
 
+  bool gutMac(String exe) {
+    if (!File(exe).existsSync()) return false;
+    if (claudeSigniertMac(exe)) return true;
+    verworfen.add(exe);
+    return false;
+  }
+
+  final macDesktop =
+      Platform.isMacOS && heim != null ? p.join(heim, 'Library', 'Application Support', 'Claude', 'claude-code') : null;
   final orte = [
     if (Platform.isWindows && lokal != null)
       p.join(lokal, 'Claude-Data', _claudeDesktopPaket.toLowerCase(), 'claude-code'),
@@ -210,6 +226,7 @@ String? claudeFinden(Map<String, String> umgebung, {List<String>? bericht}) {
   ];
   final kandidaten = <String? Function()>[
     for (final o in orte) () => _neuesteVersion(o, gut),
+    if (macDesktop != null) () => _neuesteVersion(macDesktop, gutMac, datei: _claudeMacProgramm),
     for (final d in _pfad(umgebung)) () => _einzeln(p.join(d, _programm('claude')), gut),
     if (heim != null) () => _einzeln(p.join(heim, '.local', 'bin', _programm('claude')), gut),
     if (!Platform.isWindows) for (final d in _macVerzeichnisse) () => _einzeln(p.join(d, 'claude'), gut),
@@ -228,7 +245,7 @@ String? claudeFinden(Map<String, String> umgebung, {List<String>? bericht}) {
   final breit = _besteVersion(_breiteSuche(wurzeln), gut);
   if (breit != null) return breit;
   bericht?.addAll([
-    'durchsucht: ${{...orte, ...wurzeln}.join('; ')}${orte.isEmpty ? '' : '; dazu Suchpfad, .local\\bin und VS Code'}',
+    'durchsucht: ${{...orte, ...wurzeln, ?macDesktop}.join('; ')}${orte.isEmpty && macDesktop == null ? '' : '; dazu Suchpfad, .local/bin und VS Code'}',
     if (verworfen.isNotEmpty) 'verworfen, keine Signatur von Anthropic: ${verworfen.join('; ')}',
   ]);
   return null;
@@ -290,13 +307,15 @@ String? _besteVersion(Iterable<_Fund> funde, bool Function(String) gut) {
 
 // Je Version ein Ordner; die exe liegt darin oder eine Ebene tiefer in einem
 // Ordner mit einer Prüfsumme (<Version>\<Prüfsumme>\claude.exe).
-String? _neuesteVersion(String ordner, bool Function(String) gut) {
+const _claudeMacProgramm = 'claude.app/Contents/MacOS/claude';
+
+String? _neuesteVersion(String ordner, bool Function(String) gut, {String datei = 'claude.exe'}) {
   final funde = <_Fund>[];
   for (final d in _unterordner(ordner)) {
     final ver = _version(p.basename(d));
     if (ver == null) continue;
     for (final o in [d, ..._unterordner(d)]) {
-      final exe = p.join(o, 'claude.exe');
+      final exe = p.joinAll([o, ...datei.split('/')]);
       if (File(exe).existsSync()) funde.add(_fund(ver, exe));
     }
   }

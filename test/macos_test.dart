@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:moocp/einrichtung.dart';
 import 'package:moocp/einstellungen_ort.dart';
 import 'package:moocp/einzelstart.dart';
+import 'package:moocp/plattform/signatur_mac.dart';
 import 'package:path/path.dart' as p;
 
 void main() {
@@ -87,6 +88,53 @@ void main() {
       final heim = p.join(tmp.path, 'heim');
       programm(p.join(heim, '.local', 'bin', 'claude'));
       expect(claudeFinden({'HOME': heim, 'PATH': ''}), p.join(heim, '.local', 'bin', 'claude'));
+    });
+
+    group('Claude Code aus Claude Desktop', () {
+      late String heim;
+      late String exe;
+      setUp(() {
+        heim = p.join(tmp.path, 'heim');
+        exe = p.join(heim, 'Library', 'Application Support', 'Claude', 'claude-code', '2.1.317', '91184d3d9ba3',
+            'claude.app', 'Contents', 'MacOS', 'claude');
+        programm(exe);
+      });
+      tearDown(() => claudeSigniertMac = vonAnthropicMac);
+
+      test('wird gefunden, wenn die Signatur von Anthropic stammt', () {
+        claudeSigniertMac = (_) => true;
+        expect(claudeFinden({'HOME': heim, 'PATH': ''}), exe);
+      });
+
+      test('ohne Signatur von Anthropic nicht, und der Bericht nennt den Ort und die Datei', () {
+        claudeSigniertMac = (_) => false;
+        final bericht = <String>[];
+        expect(claudeFinden({'HOME': heim, 'PATH': ''}, bericht: bericht), isNull);
+        expect(bericht.join('\n'), allOf(contains('Claude/claude-code'), contains('verworfen'), contains(exe)));
+      });
+
+      test('die höchste Version gewinnt', () {
+        claudeSigniertMac = (_) => true;
+        final neu = p.join(heim, 'Library', 'Application Support', 'Claude', 'claude-code', '2.10.0', 'abc',
+            'claude.app', 'Contents', 'MacOS', 'claude');
+        programm(neu);
+        expect(claudeFinden({'HOME': heim, 'PATH': ''}), neu);
+      });
+
+      test('echte Signaturprüfung: Anthropic ja, ein Programm von Apple nein', () {
+        final echt = Directory(p.join(Platform.environment['HOME'] ?? '/nicht', 'Library', 'Application Support',
+            'Claude', 'claude-code'));
+        final exe = echt.existsSync()
+            ? echt
+                .listSync(recursive: true)
+                .whereType<File>()
+                .map((f) => f.path)
+                .firstWhere((f) => f.endsWith('claude.app/Contents/MacOS/claude'), orElse: () => '')
+            : '';
+        if (exe.isNotEmpty) expect(vonAnthropicMac(exe), isTrue);
+        expect(vonAnthropicMac('/bin/ls'), isFalse);
+        expect(vonAnthropicMac(p.join(tmp.path, 'gibtsnicht')), isFalse);
+      });
     });
 
     test('Claude Code liest die Konfiguration unter HOME', () {
