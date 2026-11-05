@@ -1,6 +1,6 @@
 # Feature: Anonyme Bewertung von Abgaben (zuerst Packet Tracer)
 
-Konzept und Fortschritt in einem. Ausgangspunkt sind die Projektidee (`PROJEKTIDEE_PACKET_TRACER_MCP.md` in diesem Ordner) und der Punkt „Anonyme Aufgabenbewertung" in [TODO.md](../TODO.md). Ist das Feature fertig, wandert das Gültige als Anforderungen und Entscheidungen in [CLAUDE.md](../CLAUDE.md) und als Beschreibung in die README; dieser Ordner wird dann gelöscht.
+Konzept und Fortschritt in einem. Ausgangspunkt sind die Projektidee (`PROJEKTIDEE_PACKET_TRACER_MCP.md` in diesem Ordner) und der Punkt „Anonyme Aufgabenbewertung" in [Issue #21](https://github.com/topse/moocp/issues/21). Ist das Feature fertig, wandert das Gültige als Anforderungen und Entscheidungen in [CLAUDE.md](../CLAUDE.md) und als Beschreibung in die README; dieser Ordner wird dann gelöscht.
 
 Legende: `[ ]` offen · `[~]` in Arbeit · `[x]` erledigt (umgesetzt und geprüft im Sinne von A3)
 

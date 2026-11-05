@@ -5,7 +5,6 @@ Verbindliche Ablage für offene Punkte, Specs und daraus abgeleitete Umsetzungst
 ## Offene Punkte
 
 - Ein neuer offener Punkt (fehlende Funktion, Fehler, Aufgabe außerhalb des Codes, eine Lücke nach A6) wird als GitHub-Issue angelegt, nach Rückfrage bei der Lehrkraft.
-- Die bestehende `TODO.md` wird nicht mehr ergänzt; ein Punkt darin wird gestrichen, sobald er erledigt ist.
 - Messergebnisse und Befunde stehen als Kommentar am Quelltext oder in der ADR, nicht als Bericht im Issue.
 
 ## Specs veröffentlichen und pflegen

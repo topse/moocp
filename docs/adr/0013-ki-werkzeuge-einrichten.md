@@ -14,7 +14,7 @@ Gewählt ist jedes gefundene Werkzeug, das die Lehrkraft nicht abgewählt hat; g
 
 ## Auf dem Mac
 
-Dialog, Reihenfolge und Haken gelten unverändert. Gefunden werden Claude Code und Codex im `PATH` sowie unter `~/.local/bin`, `/opt/homebrew/bin` und `/usr/local/bin` (`_macVerzeichnisse` in `lib/einrichtung.dart`). LM Studio wird nicht angeboten ([E24](0024-plattformen.md)). Ein Entfernen der Einträge gibt es auf dem Mac nicht, weil es keinen Installer gibt; die Einträge bleiben bis zur Löschung von Hand. Das steht in [TODO.md](../../TODO.md).
+Dialog, Reihenfolge und Haken gelten unverändert. Gefunden werden Claude Code und Codex im `PATH` sowie unter `~/.local/bin`, `/opt/homebrew/bin` und `/usr/local/bin` (`_macVerzeichnisse` in `lib/einrichtung.dart`). LM Studio wird nicht angeboten ([E24](0024-plattformen.md)). Ein Entfernen der Einträge gibt es auf dem Mac nicht, weil es keinen Installer gibt; die Einträge bleiben bis zur Löschung von Hand. Das steht in [Issue #9](https://github.com/topse/moocp/issues/9).
 
 ## Verworfen
 

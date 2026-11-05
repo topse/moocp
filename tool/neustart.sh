@@ -17,7 +17,7 @@ set -e
 cd "$(dirname "$0")/.."
 if [ "$(uname)" = Darwin ]; then
   # Mac: Entwicklungsbau (Debug) in tool/mac_bau.sh, Start in tool/mac_start.sh.
-  # Kein Installer und keine Release-Fassung; siehe TODO.md.
+  # Kein Installer und keine Release-Fassung (E24).
   PY=python3
   # Die Skills zuerst: Die App bringt skills/dist/ als Assets mit.
   "$PY" skills/build.py
