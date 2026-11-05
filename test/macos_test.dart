@@ -106,11 +106,10 @@ void main() {
         expect(claudeFinden({'HOME': heim, 'PATH': ''}), exe);
       });
 
-      test('ohne Signatur von Anthropic nicht, und der Bericht nennt den Ort und die Datei', () {
+      test('ohne Signatur von Anthropic nicht gefunden', () {
         claudeSigniertMac = (_) => false;
-        final bericht = <String>[];
-        expect(claudeFinden({'HOME': heim, 'PATH': ''}, bericht: bericht), isNull);
-        expect(bericht.join('\n'), allOf(contains('Claude/claude-code'), contains('verworfen'), contains(exe)));
+        // Auf einem Rechner mit Homebrew-claude findet die Suche eine andere Datei; nie diese.
+        expect(claudeFinden({'HOME': heim, 'PATH': ''}), isNot(exe));
       });
 
       test('die höchste Version gewinnt', () {
