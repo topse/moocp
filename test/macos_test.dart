@@ -107,4 +107,14 @@ void main() {
       expect(LmStudio({'HOME': heim}, bruecke: p.join(tmp.path, 'x')).gefunden, isFalse);
     });
   }, skip: Platform.isMacOS ? null : 'Suche nach Programmen unter macOS nur auf dem Mac');
+
+  test('ohne Benutzerordner lösen sich die Orte der KI-Werkzeuge nicht relativ auf', () {
+    // Ohne HOME (Windows: USERPROFILE) fiele `.codex` in den Arbeitsordner.
+    expect(() => CodexCli({}).heim, throwsStateError);
+    expect(() => ClaudeCode({}).konfiguration, throwsStateError);
+    expect(() => LmStudio({}).heim, throwsStateError);
+    // Mit verlegtem Ordner braucht es den Benutzerordner nicht.
+    expect(CodexCli({'CODEX_HOME': p.join('a', 'codex')}).heim.path, p.join('a', 'codex'));
+    expect(ClaudeCode({'CLAUDE_CONFIG_DIR': p.join('a', 'claude')}).konfiguration.path, p.join('a', 'claude', '.claude.json'));
+  });
 }
