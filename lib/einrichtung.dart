@@ -62,6 +62,14 @@ List<String> _pfad(Map<String, String> umgebung) => [
 /// Das Benutzerverzeichnis: USERPROFILE unter Windows, sonst HOME.
 String? _heimOrdner(Map<String, String> umgebung) => _v(umgebung, Platform.isWindows ? 'USERPROFILE' : 'HOME');
 
+/// Das Benutzerverzeichnis für Orte, die ohne es nicht bestimmbar sind (Konfiguration
+/// der KI-Werkzeuge). Ohne es lösten sie sich relativ zum Arbeitsverzeichnis auf, und
+/// die App schriebe Konfigurationsdateien in einen beliebigen Ordner (E29).
+String _heimPflicht(Map<String, String> umgebung) =>
+    _heimOrdner(umgebung) ??
+    (throw StateError('Der Benutzerordner (${Platform.isWindows ? 'USERPROFILE' : 'HOME'}) ist nicht gesetzt; '
+        'die KI-Werkzeuge lassen sich nicht einrichten.'));
+
 /// Der Dateiname eines Programms: unter Windows mit .exe, auf dem Mac nackt.
 String _programm(String name) => Platform.isWindows ? '$name.exe' : name;
 
@@ -371,11 +379,9 @@ String? _vsCode(String erweiterungen, bool Function(String) gut) {
 /// nicht um -- Claude Desktop und VS Code lesen dieselben.
 class ClaudeCode extends KiWerkzeug {
   ClaudeCode(super.umgebung)
-      : _eigen = umgebung['CLAUDE_CONFIG_DIR'],
-        _heim = _heimOrdner(umgebung) ?? '';
+      : _eigen = umgebung['CLAUDE_CONFIG_DIR'];
 
   final String? _eigen;
-  final String _heim;
 
   @override
   String get id => 'claude';
@@ -400,10 +406,10 @@ class ClaudeCode extends KiWerkzeug {
   /// Protokoll.
   final List<String> suchbericht = [];
 
-  File get konfiguration => File(p.join(_eigen ?? _heim, '.claude.json'));
+  File get konfiguration => File(p.join(_eigen ?? _heimPflicht(umgebung), '.claude.json'));
 
   @override
-  Directory get skillOrdner => Directory(p.join(_eigen ?? p.join(_heim, '.claude'), 'skills'));
+  Directory get skillOrdner => Directory(p.join(_eigen ?? p.join(_heimPflicht(umgebung), '.claude'), 'skills'));
 
   // Auch ohne claude.exe gefunden: Wer `.claude.json` hat, benutzt Claude
   // Code -- dann soll der Dialog es zeigen und sagen, was fehlt, statt es
@@ -521,7 +527,7 @@ class CodexCli extends KiWerkzeug {
       'Klartext in config.toml im Codex-Ordner (in der Regel ~/.codex)';
 
   /// CODEX_HOME verlegt Konfiguration und Skills; sonst `~/.codex`.
-  Directory get heim => Directory(_v(umgebung, 'CODEX_HOME') ?? p.join(_heimOrdner(umgebung) ?? '', '.codex'));
+  Directory get heim => Directory(_v(umgebung, 'CODEX_HOME') ?? p.join(_heimPflicht(umgebung), '.codex'));
 
   File get konfiguration => File(p.join(heim.path, 'config.toml'));
 
@@ -757,7 +763,7 @@ class LmStudio extends KiWerkzeug {
   @override
   String get datenziel => 'Inhalte gehen an das eingestellte Modell, lokal oder in der Cloud';
 
-  Directory get heim => Directory(p.join(_heimOrdner(umgebung) ?? '', '.lmstudio'));
+  Directory get heim => Directory(p.join(_heimPflicht(umgebung), '.lmstudio'));
 
   /// Bionics Liste der MCP-Server.
   File get liste => File(p.join(heim.path, 'apps', 'bionic', '.internal', 'ng-mcp.json'));

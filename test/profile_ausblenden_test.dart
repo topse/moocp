@@ -369,7 +369,8 @@ void main() {
     tearDown(() => heim.deleteSync(recursive: true));
 
     testWidgets('ein Eintrag mit dem Schlüssel eines anderen Profils ist veraltet, „Installieren" erneuert ihn', (tester) async {
-      final env = {'USERPROFILE': heim.path};
+      // USERPROFILE gilt unter Windows, HOME auf dem Mac.
+      final env = {'USERPROFILE': heim.path, 'HOME': heim.path};
       final codex = CodexCli(env);
       // Ein Eintrag aus der Zeit, als alle Profile den globalen Schlüssel teilten.
       expect(await codex.eintragen(47812, 'global', name: 'moodle-test'), isNull);
