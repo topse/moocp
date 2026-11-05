@@ -1,15 +1,20 @@
-# E12 Git; auf GitHub ein Stand je Version
+# E12 Git und GitHub
 
 Status: gilt. Die Regeln dazu stehen im Index der [CLAUDE.md](../../CLAUDE.md).
 
 ## Entscheidung
 
-Entwickelt wird in einem eigenen Repository. Auf GitHub erscheint je Version ein Commit mit dem Stand des Tags (`publish_tag_to_github.sh`), die Nachricht aus CHANGELOG.md. Pull Requests auf GitHub werden deshalb nicht zusammengeführt, sondern von Hand übernommen. Was auf GitHub selbst an main entsteht, etwa aus einer Cloud-Sitzung, holt `import_from_github.sh` auf den Zweig `github-import` herein, gemergt wird von Hand; die nächste Version setzt dann auf diese Commits auf, und `publish_tag_to_github.sh` bricht ab, solange einer davon im Tag fehlt. main auf GitHub wird nie überschrieben, das Hochladen geht ohne Force.
+Das Repository ist `topse/moocp` auf GitHub, und dort wird entwickelt. Seit mehrere Personen am Projekt arbeiten, ist GitHub der einzige Ort; ein eigenes Repository daneben gibt es nicht mehr.
 
-Lokal führt die KI keine Git-Aktionen aus, das macht ausschließlich der Benutzer; in einer Cloud-Sitzung dagegen wird committet und direkt auf main gepusht, ohne Force und ohne eigenen Zweig, weil `import_from_github.sh` nur main hereinholt. Wer mit anderen Git-Regeln arbeitet (Fork, Feature-Zweige), legt das für sich in einer nicht eingecheckten `CLAUDE.local.md` fest.
+main ist geschützt. Änderungen kommen über Zweige und Pull Requests, auch aus Cloud-Sitzungen; niemand pusht mit Force, und main wird nie umgeschrieben. Lokal führt die KI Git-Aktionen nur aus, wenn der Benutzer es ausdrücklich verlangt. Wer mit anderen Git-Regeln arbeitet, legt das für sich in einer nicht eingecheckten `CLAUDE.local.md` fest.
+
+Eine Version entsteht auf main: Version in `pubspec.yaml`, Abschnitt in CHANGELOG.md, Tag `v<Version>`, dann ein Release aus diesem Tag mit dem Installer als Datei. Tag und Dateiname folgen dem Schema `v0.9.5` und `moocp_setup_0.9.5.exe`, das Release ist kein Entwurf und keine Vorabversion; sonst findet die Update-Prüfung der App die Version nicht ([E19](0019-updates.md)).
+
+Bis 0.10.0 wurde in einem eigenen Repository entwickelt, und auf GitHub erschien je Version ein Commit mit dem Stand des Tags. Dieser Verlauf bleibt so: Die Entwicklung davor ist nicht öffentlich und wird es nicht, denn sie kann enthalten, was nach A11 nicht ins Repository gehört.
 
 Zeilenenden LF, nur Batch-Dateien CRLF (`.gitattributes`).
 
 ## Verworfen
 
-Die neue Version wie zuvor auf die letzte Version zu setzen und main zu überschreiben (die Commits verschwänden aus der Geschichte auf GitHub, und eine Cloud-Sitzung, die auf ihnen weiterarbeitet, liefe auseinander).
+- Den bisherigen Verlauf nach GitHub zu bringen: Dafür müsste main überschrieben werden, und der Verlauf ist nicht auf A11 geprüft.
+- Weiter in einem eigenen Repository zu entwickeln und je Version einen Commit nach GitHub zu legen: Mit mehreren Bearbeitern und Pull Requests auf GitHub musste jede Änderung von dort von Hand hereingeholt werden.

@@ -99,9 +99,9 @@ bool updateMoeglich(List<String> argumente, Map<String, String> umgebung) {
   }
 }
 
-/// Der Tag eines Releases als Version: „v0.9.4" ergibt „0.9.4". Das Schema
-/// setzt publish_tag_to_github.sh; „github-v…" ist geduldet, weil die
-/// ersten Versionen so veröffentlicht wurden. Alles andere ergibt null --
+/// Der Tag eines Releases als Version: „v0.9.4" ergibt „0.9.4" (Schema der
+/// Tags, E12); „github-v…" ist geduldet, weil die ersten Versionen so
+/// veröffentlicht wurden. Alles andere ergibt null --
 /// dann meldet die Prüfung, dass sie den Tag nicht lesen kann, statt zu
 /// raten.
 String? versionAusTag(String tag) =>

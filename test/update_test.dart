@@ -10,7 +10,7 @@ import 'package:moocp/update/update.dart';
 
 void main() {
   group('Tag eines Releases', () {
-    test('das Schema von publish_tag_to_github.sh', () {
+    test('das Schema der Tags (v<Version>)', () {
       expect(versionAusTag('v0.9.4'), '0.9.4');
       expect(versionAusTag('0.9.4'), '0.9.4');
       expect(versionAusTag(' v1.2.3 '), '1.2.3');
