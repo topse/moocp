@@ -1,0 +1,36 @@
+name: Bug report
+description: Something does not work as expected
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please do not include real instance addresses, school names, course numbers or personal data.
+        Security vulnerabilities: do not report them here, use "Report a vulnerability" in the Security tab.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+  - type: dropdown
+    id: confirmed
+    attributes:
+      label: Affected systems, confirmed (you tried it there)
+      multiple: true
+      options: [Windows, macOS, Linux]
+  - type: dropdown
+    id: suspected
+    attributes:
+      label: Affected systems, suspected or unknown
+      description: Leave empty if you have no idea. A maintainer sets the `os:` label.
+      multiple: true
+      options: [Windows, macOS, Linux]
+  - type: input
+    id: version
+    attributes:
+      label: moocp version

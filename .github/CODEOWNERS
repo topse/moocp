@@ -1,0 +1,21 @@
+# Requests a review from the other maintainer on every PR (the author is never
+# requested). After moving to an organization, replace the names by a team,
+# e.g. @Moodle-in-Niedersachsene-V/maintainers.
+*                                  @topse @matthiasgruenwald
+
+# Areas where a careful second look is mandatory (see CONTRIBUTING.md).
+# Same owners for now; listed separately so they can be tightened later.
+/lib/moodle/sperrliste.dart        @topse @matthiasgruenwald
+/lib/moodle/moodle_zugang.dart     @topse @matthiasgruenwald
+/lib/moodle/browserliste.dart      @topse @matthiasgruenwald
+/lib/moodle/elemente.dart          @topse @matthiasgruenwald
+/lib/update/                       @topse @matthiasgruenwald
+/lib/freigabe.dart                 @topse @matthiasgruenwald
+/lib/anmeldedaten.dart             @topse @matthiasgruenwald
+/lib/anmeldung.dart                @topse @matthiasgruenwald
+/test/sperrliste_test.dart         @topse @matthiasgruenwald
+/test/update_test.dart             @topse @matthiasgruenwald
+/installer/                        @topse @matthiasgruenwald
+/CLAUDE.md                         @topse @matthiasgruenwald
+/AGENTS.md                         @topse @matthiasgruenwald
+/docs/adr/                         @topse @matthiasgruenwald
