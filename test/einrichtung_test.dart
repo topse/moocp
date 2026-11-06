@@ -261,7 +261,7 @@ void main() {
     });
 
     test('Verbindung: fehlt, aktuell, veraltet, Unterblock, token_url ist nicht url', () async {
-      final codex = CodexCli({'USERPROFILE': tmp.path});
+      final codex = CodexCli({'USERPROFILE': tmp.path, 'HOME': tmp.path});
       expect(codex.verbindung(47811, 'abc'), Verbindung.fehlt);
       expect(await codex.eintragen(47811, 'abc'), isNull);
       expect(codex.verbindung(47811, 'abc'), Verbindung.aktuell);
@@ -288,7 +288,7 @@ void main() {
     });
 
     test('je Profil ein eigener Schlüssel: der eines anderen Profils gilt als veraltet, „Installieren" erneuert ihn', () async {
-      final codex = CodexCli({'USERPROFILE': tmp.path});
+      final codex = CodexCli({'USERPROFILE': tmp.path, 'HOME': tmp.path});
       // Standardprofil mit dem globalen Schlüssel, ein weiteres mit eigenem Port und Schlüssel (E6).
       expect(await codex.eintragen(47811, 'global'), isNull);
       expect(await codex.eintragen(47812, 'eigener', name: 'moodle-test'), isNull);
@@ -427,7 +427,7 @@ void main() {
 
     test('Codex auch nur über npm', () {
       datei('roaming/npm/codex.cmd');
-      expect(CodexCli({'USERPROFILE': p.join(tmp.path, 'heim'), 'APPDATA': p.join(tmp.path, 'roaming')}).gefunden,
+      expect(CodexCli({'USERPROFILE': p.join(tmp.path, 'heim'), 'HOME': p.join(tmp.path, 'heim'), 'APPDATA': p.join(tmp.path, 'roaming')}).gefunden,
           isTrue);
     });
   });
@@ -473,7 +473,7 @@ void main() {
     late Map<String, String> u;
     setUp(() {
       heim = p.join(tmp.path, 'heim');
-      u = {'USERPROFILE': heim, 'LOCALAPPDATA': p.join(tmp.path, 'lokal')};
+      u = {'USERPROFILE': heim, 'HOME': heim, 'LOCALAPPDATA': p.join(tmp.path, 'lokal')};
     });
     void claudeEintrag() => datei('heim/.claude.json', jsonEncode(eintrag('http://127.0.0.1:47811/mcp', 'abc')));
     Directory skills(String werkzeug, String name) => Directory(p.join(heim, werkzeug, 'skills', name));
@@ -613,7 +613,7 @@ void main() {
   test('Wählbare Skills: nur gewählt installiert, abgewählt entfernt, Vorgabe aus dem Bestand', () async {
     final heim = p.join(tmp.path, 'heim');
     datei('heim/.claude.json', jsonEncode(eintrag('http://127.0.0.1:47811/mcp', 'abc')));
-    final u = {'USERPROFILE': heim};
+    final u = {'USERPROFILE': heim, 'HOME': heim};
     final claude = ClaudeCode(u);
     final moodle = SkillPaket('moodle', {'SKILL.md': utf8.encode('Kurs')});
     final ls = SkillPaket('lernsituation', {'SKILL.md': utf8.encode('Lernsituation')});
@@ -659,6 +659,7 @@ void main() {
         'CLAUDE_CONFIG_DIR': p.join(tmp.path, 'cfg'),
         'LOCALAPPDATA': p.join(tmp.path, 'lokal'),
         'USERPROFILE': p.join(tmp.path, 'heim'),
+        'HOME': p.join(tmp.path, 'heim'),
       };
       konfig = datei(
           'cfg/.claude.json',

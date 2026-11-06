@@ -265,24 +265,36 @@ void main() {
   group('Formularfelder der Sicherung', () {
     MapEntry<String, String> e(String k, String v) => MapEntry(k, v);
 
-    test('setting_root_users muss da sein und 0 sein, fehlt es, ist der Grund ein Abbruch', () {
-      expect(nutzerdatenPflichtFehler([e('stage', '1')]), contains('setting_root_users'));
+    test('setting_root_users mit 1 oder einem unbekannten Wert ist ein Abbruch', () {
       expect(nutzerdatenPflichtFehler([e('setting_root_users', '1')]), isNotNull);
+      expect(nutzerdatenPflichtFehler([e('setting_root_users', 'x')]), isNotNull);
       expect(nutzerdatenPflichtFehler([e('setting_root_users', '0')]), isNull);
       // Der letzte Wert zählt (Moodle setzt vor das Kontrollkästchen ein verstecktes Feld).
       expect(nutzerdatenPflichtFehler([e('setting_root_users', '0'), e('setting_root_users', '1')]), isNotNull);
-      expect(nutzerdatenAusdruecklichAus([e('stage', '1')]), isFalse);
       expect(nutzerdatenAusdruecklichAus([e('setting_root_users', '0')]), isTrue);
     });
 
-    test('die Bestätigung einer Sicherung ohne setting_root_users besteht nicht mehr', () {
-      Felder seite({String? users}) => [
+    test('fehlt setting_root_users und ist keine Nutzerdaten-Option eingeschaltet: kein Abbruch (Lehrkraft ohne Nutzerdaten-Recht)', () {
+      expect(nutzerdatenPflichtFehler([e('stage', '1')]), isNull);
+      expect(nutzerdatenPflichtFehler([e('stage', '1'), e('setting_activity_page_7_userinfo', '0')]), isNull);
+      expect(nutzerdatenPflichtFehler([e('stage', '1'), e('setting_root_logs', '0')]), isNull);
+    });
+
+    test('fehlt setting_root_users, aber eine Nutzerdaten-Option ist eingeschaltet: Abbruch', () {
+      expect(nutzerdatenPflichtFehler([e('stage', '1'), e('setting_root_enrolments', '1')]), contains('setting_root_enrolments'));
+      expect(nutzerdatenPflichtFehler([e('stage', '1'), e('setting_activity_page_7_userinfo', '1')]), contains('userinfo'));
+    });
+
+    test('die Bestätigung einer Sicherung ohne setting_root_users besteht, solange keine Nutzerdaten eingeschaltet sind', () {
+      Felder seite({String? users, String? userinfo}) => [
             e('stage', '4'),
             e('setting_activity_page_7_included', '1'),
             if (users != null) e('setting_root_users', users),
+            if (userinfo != null) e('setting_activity_page_7_userinfo', userinfo),
           ];
       expect(bestaetigungFehler(seite(users: '0'), cmid: 7), isNull);
-      expect(bestaetigungFehler(seite(), cmid: 7), contains('setting_root_users'));
+      expect(bestaetigungFehler(seite(), cmid: 7), isNull);
+      expect(bestaetigungFehler(seite(userinfo: '1'), cmid: 7), contains('userinfo'));
       expect(bestaetigungFehler(seite(users: '1'), cmid: 7), contains('setting_root_users'));
     });
 
@@ -308,7 +320,7 @@ void main() {
       }
     });
 
-    test('die Positivliste lässt ein Formular der Sicherung ohne setting_root_users nicht durch', () {
+    test('die Positivliste lässt ein Formular der Sicherung ohne setting_root_users durch, solange keine Nutzerdaten eingeschaltet sind', () {
       final z = MoodleZugang(Protokoll());
       bool post(List<MapEntry<String, String>> f) =>
           z.erlaubt('POST', Uri.parse('https://m.example/backup/backup.php'), f);
@@ -319,7 +331,10 @@ void main() {
         e('setting_root_users', '0'),
       ];
       expect(post(voll), isTrue);
-      expect(post([for (final x in voll) if (x.key != 'setting_root_users') x]), isFalse);
+      // Lehrkraft ohne Nutzerdaten-Recht: Moodle lässt das Feld weg.
+      expect(post([for (final x in voll) if (x.key != 'setting_root_users') x]), isTrue);
+      // Fehlt das Feld, aber eine Nutzerdaten-Option ist an, bleibt es ein Abbruch.
+      expect(post([for (final x in voll) if (x.key != 'setting_root_users') x, e('setting_root_logs', '1')]), isFalse);
       expect(post([for (final x in voll) x.key == 'setting_root_users' ? e(x.key, '1') : x]), isFalse);
     });
   });

@@ -28,6 +28,7 @@ import 'dart:math';
 import 'package:archive/archive.dart';
 import 'package:path/path.dart' as p;
 
+import 'plattform/signatur_mac.dart';
 import 'plattform/signatur_windows.dart';
 
 /// Die Skills, die die App mitbringt, liegen als Pakete von skills/build.py
@@ -60,6 +61,14 @@ List<String> _pfad(Map<String, String> umgebung) => [
 
 /// Das Benutzerverzeichnis: USERPROFILE unter Windows, sonst HOME.
 String? _heimOrdner(Map<String, String> umgebung) => _v(umgebung, Platform.isWindows ? 'USERPROFILE' : 'HOME');
+
+/// Das Benutzerverzeichnis für Orte, die ohne es nicht bestimmbar sind (Konfiguration
+/// der KI-Werkzeuge). Ohne es lösten sie sich relativ zum Arbeitsverzeichnis auf, und
+/// die App schriebe Konfigurationsdateien in einen beliebigen Ordner (E29).
+String _heimPflicht(Map<String, String> umgebung) =>
+    _heimOrdner(umgebung) ??
+    (throw StateError('Der Benutzerordner (${Platform.isWindows ? 'USERPROFILE' : 'HOME'}) ist nicht gesetzt; '
+        'die KI-Werkzeuge lassen sich nicht einrichten.'));
 
 /// Der Dateiname eines Programms: unter Windows mit .exe, auf dem Mac nackt.
 String _programm(String name) => Platform.isWindows ? '$name.exe' : name;
@@ -174,14 +183,20 @@ abstract class KiWerkzeug {
 // (_breiteSuche), auch für eine andere Verteilung, etwa ein Store-Paket mit
 // anderem Namen.
 //
-// macOS und Linux: keine Signaturprüfung (kein Authenticode; der Mac läuft
-// nur als Entwicklungsbau, E24); gesucht wird im Suchpfad, unter
-// ~/.local/bin und in den Mac-Ordnern.
+// macOS: Claude Desktop legt Claude Code unter
+// ~/Library/Application Support/Claude/claude-code/<Version>/<Prüfsumme>/
+// claude.app/Contents/MacOS/claude ab. Dort zählt nur eine Datei mit gültiger
+// Signatur von Anthropic (vonAnthropicMac, lib/plattform/signatur_mac.dart).
+// Die übrigen Orte (Suchpfad, ~/.local/bin, Homebrew) bleiben ohne Prüfung, wie
+// bisher; Linux prüft nichts.
 const _claudeDesktopPaket = 'Claude_pzs8sxrjxfjjc';
 
 /// Prüft unter Windows, ob eine gefundene claude.exe von Anthropic stammt.
 /// Austauschbar für die Tests, die mit leeren Dateien arbeiten.
 bool Function(String exe) claudeSigniert = vonAnthropic;
+
+/// Dasselbe unter macOS, aber nur für die Ablage von Claude Desktop.
+bool Function(String exe) claudeSigniertMac = vonAnthropicMac;
 
 /// Sucht die claude.exe: Claude Desktop (neue, dann alte Ablage, dann
 /// klassischer Installer), der Suchpfad, der eigenständige Installer, die
@@ -201,6 +216,15 @@ String? claudeFinden(Map<String, String> umgebung, {List<String>? bericht}) {
     return false;
   }
 
+  bool gutMac(String exe) {
+    if (!File(exe).existsSync()) return false;
+    if (claudeSigniertMac(exe)) return true;
+    verworfen.add(exe);
+    return false;
+  }
+
+  final macDesktop =
+      Platform.isMacOS && heim != null ? p.join(heim, 'Library', 'Application Support', 'Claude', 'claude-code') : null;
   final orte = [
     if (Platform.isWindows && lokal != null)
       p.join(lokal, 'Claude-Data', _claudeDesktopPaket.toLowerCase(), 'claude-code'),
@@ -210,6 +234,7 @@ String? claudeFinden(Map<String, String> umgebung, {List<String>? bericht}) {
   ];
   final kandidaten = <String? Function()>[
     for (final o in orte) () => _neuesteVersion(o, gut),
+    if (macDesktop != null) () => _neuesteVersion(macDesktop, gutMac, datei: _claudeMacProgramm),
     for (final d in _pfad(umgebung)) () => _einzeln(p.join(d, _programm('claude')), gut),
     if (heim != null) () => _einzeln(p.join(heim, '.local', 'bin', _programm('claude')), gut),
     if (!Platform.isWindows) for (final d in _macVerzeichnisse) () => _einzeln(p.join(d, 'claude'), gut),
@@ -228,7 +253,7 @@ String? claudeFinden(Map<String, String> umgebung, {List<String>? bericht}) {
   final breit = _besteVersion(_breiteSuche(wurzeln), gut);
   if (breit != null) return breit;
   bericht?.addAll([
-    'durchsucht: ${{...orte, ...wurzeln}.join('; ')}${orte.isEmpty ? '' : '; dazu Suchpfad, .local\\bin und VS Code'}',
+    'durchsucht: ${{...orte, ...wurzeln, ?macDesktop}.join('; ')}${orte.isEmpty && macDesktop == null ? '' : '; dazu Suchpfad, .local/bin und VS Code'}',
     if (verworfen.isNotEmpty) 'verworfen, keine Signatur von Anthropic: ${verworfen.join('; ')}',
   ]);
   return null;
@@ -290,13 +315,15 @@ String? _besteVersion(Iterable<_Fund> funde, bool Function(String) gut) {
 
 // Je Version ein Ordner; die exe liegt darin oder eine Ebene tiefer in einem
 // Ordner mit einer Prüfsumme (<Version>\<Prüfsumme>\claude.exe).
-String? _neuesteVersion(String ordner, bool Function(String) gut) {
+const _claudeMacProgramm = 'claude.app/Contents/MacOS/claude';
+
+String? _neuesteVersion(String ordner, bool Function(String) gut, {String datei = 'claude.exe'}) {
   final funde = <_Fund>[];
   for (final d in _unterordner(ordner)) {
     final ver = _version(p.basename(d));
     if (ver == null) continue;
     for (final o in [d, ..._unterordner(d)]) {
-      final exe = p.join(o, 'claude.exe');
+      final exe = p.joinAll([o, ...datei.split('/')]);
       if (File(exe).existsSync()) funde.add(_fund(ver, exe));
     }
   }
@@ -352,11 +379,9 @@ String? _vsCode(String erweiterungen, bool Function(String) gut) {
 /// nicht um -- Claude Desktop und VS Code lesen dieselben.
 class ClaudeCode extends KiWerkzeug {
   ClaudeCode(super.umgebung)
-      : _eigen = umgebung['CLAUDE_CONFIG_DIR'],
-        _heim = _heimOrdner(umgebung) ?? '';
+      : _eigen = umgebung['CLAUDE_CONFIG_DIR'];
 
   final String? _eigen;
-  final String _heim;
 
   @override
   String get id => 'claude';
@@ -381,10 +406,10 @@ class ClaudeCode extends KiWerkzeug {
   /// Protokoll.
   final List<String> suchbericht = [];
 
-  File get konfiguration => File(p.join(_eigen ?? _heim, '.claude.json'));
+  File get konfiguration => File(p.join(_eigen ?? _heimPflicht(umgebung), '.claude.json'));
 
   @override
-  Directory get skillOrdner => Directory(p.join(_eigen ?? p.join(_heim, '.claude'), 'skills'));
+  Directory get skillOrdner => Directory(p.join(_eigen ?? p.join(_heimPflicht(umgebung), '.claude'), 'skills'));
 
   // Auch ohne claude.exe gefunden: Wer `.claude.json` hat, benutzt Claude
   // Code -- dann soll der Dialog es zeigen und sagen, was fehlt, statt es
@@ -502,7 +527,7 @@ class CodexCli extends KiWerkzeug {
       'Klartext in config.toml im Codex-Ordner (in der Regel ~/.codex)';
 
   /// CODEX_HOME verlegt Konfiguration und Skills; sonst `~/.codex`.
-  Directory get heim => Directory(_v(umgebung, 'CODEX_HOME') ?? p.join(_heimOrdner(umgebung) ?? '', '.codex'));
+  Directory get heim => Directory(_v(umgebung, 'CODEX_HOME') ?? p.join(_heimPflicht(umgebung), '.codex'));
 
   File get konfiguration => File(p.join(heim.path, 'config.toml'));
 
@@ -738,7 +763,7 @@ class LmStudio extends KiWerkzeug {
   @override
   String get datenziel => 'Inhalte gehen an das eingestellte Modell, lokal oder in der Cloud';
 
-  Directory get heim => Directory(p.join(_heimOrdner(umgebung) ?? '', '.lmstudio'));
+  Directory get heim => Directory(p.join(_heimPflicht(umgebung), '.lmstudio'));
 
   /// Bionics Liste der MCP-Server.
   File get liste => File(p.join(heim.path, 'apps', 'bionic', '.internal', 'ng-mcp.json'));

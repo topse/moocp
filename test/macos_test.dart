@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:moocp/einrichtung.dart';
 import 'package:moocp/einstellungen_ort.dart';
 import 'package:moocp/einzelstart.dart';
+import 'package:moocp/plattform/signatur_mac.dart';
 import 'package:path/path.dart' as p;
 
 void main() {
@@ -89,6 +90,52 @@ void main() {
       expect(claudeFinden({'HOME': heim, 'PATH': ''}), p.join(heim, '.local', 'bin', 'claude'));
     });
 
+    group('Claude Code aus Claude Desktop', () {
+      late String heim;
+      late String exe;
+      setUp(() {
+        heim = p.join(tmp.path, 'heim');
+        exe = p.join(heim, 'Library', 'Application Support', 'Claude', 'claude-code', '2.1.317', '91184d3d9ba3',
+            'claude.app', 'Contents', 'MacOS', 'claude');
+        programm(exe);
+      });
+      tearDown(() => claudeSigniertMac = vonAnthropicMac);
+
+      test('wird gefunden, wenn die Signatur von Anthropic stammt', () {
+        claudeSigniertMac = (_) => true;
+        expect(claudeFinden({'HOME': heim, 'PATH': ''}), exe);
+      });
+
+      test('ohne Signatur von Anthropic nicht gefunden', () {
+        claudeSigniertMac = (_) => false;
+        // Auf einem Rechner mit Homebrew-claude findet die Suche eine andere Datei; nie diese.
+        expect(claudeFinden({'HOME': heim, 'PATH': ''}), isNot(exe));
+      });
+
+      test('die höchste Version gewinnt', () {
+        claudeSigniertMac = (_) => true;
+        final neu = p.join(heim, 'Library', 'Application Support', 'Claude', 'claude-code', '2.10.0', 'abc',
+            'claude.app', 'Contents', 'MacOS', 'claude');
+        programm(neu);
+        expect(claudeFinden({'HOME': heim, 'PATH': ''}), neu);
+      });
+
+      test('echte Signaturprüfung: Anthropic ja, ein Programm von Apple nein', () {
+        final echt = Directory(p.join(Platform.environment['HOME'] ?? '/nicht', 'Library', 'Application Support',
+            'Claude', 'claude-code'));
+        final exe = echt.existsSync()
+            ? echt
+                .listSync(recursive: true)
+                .whereType<File>()
+                .map((f) => f.path)
+                .firstWhere((f) => f.endsWith('claude.app/Contents/MacOS/claude'), orElse: () => '')
+            : '';
+        if (exe.isNotEmpty) expect(vonAnthropicMac(exe), isTrue);
+        expect(vonAnthropicMac('/bin/ls'), isFalse);
+        expect(vonAnthropicMac(p.join(tmp.path, 'gibtsnicht')), isFalse);
+      });
+    });
+
     test('Claude Code liest die Konfiguration unter HOME', () {
       final heim = p.join(tmp.path, 'heim');
       expect(ClaudeCode({'HOME': heim}).konfiguration.path, p.join(heim, '.claude.json'));
@@ -107,4 +154,14 @@ void main() {
       expect(LmStudio({'HOME': heim}, bruecke: p.join(tmp.path, 'x')).gefunden, isFalse);
     });
   }, skip: Platform.isMacOS ? null : 'Suche nach Programmen unter macOS nur auf dem Mac');
+
+  test('ohne Benutzerordner lösen sich die Orte der KI-Werkzeuge nicht relativ auf', () {
+    // Ohne HOME (Windows: USERPROFILE) fiele `.codex` in den Arbeitsordner.
+    expect(() => CodexCli({}).heim, throwsStateError);
+    expect(() => ClaudeCode({}).konfiguration, throwsStateError);
+    expect(() => LmStudio({}).heim, throwsStateError);
+    // Mit verlegtem Ordner braucht es den Benutzerordner nicht.
+    expect(CodexCli({'CODEX_HOME': p.join('a', 'codex')}).heim.path, p.join('a', 'codex'));
+    expect(ClaudeCode({'CLAUDE_CONFIG_DIR': p.join('a', 'claude')}).konfiguration.path, p.join('a', 'claude', '.claude.json'));
+  });
 }

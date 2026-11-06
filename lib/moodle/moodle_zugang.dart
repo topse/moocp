@@ -766,8 +766,10 @@ class MoodleZugang {
             )) &&
             _gesetzt(wertIn(f, 'sesskey')) &&
             // Anders als bei der Wiederherstellung reicht „fehlt = aus" hier nicht:
-            // setting_root_users muss ausdrücklich da sein und 0 sein.
-            nutzerdatenAusdruecklichAus(f) &&
+            // hat setting_root_users einen Wert, muss es 0 sein, und keine
+            // Nutzerdaten-Option darf an sein (nutzerdatenPflichtFehler). Fehlt das
+            // Feld, ist das das Konto ohne Nutzerdaten-Recht; das Archiv prüft dann.
+            nutzerdatenPflichtFehler(f) == null &&
             ohneNutzerdaten(f);
       },
     ),

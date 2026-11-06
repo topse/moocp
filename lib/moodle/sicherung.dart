@@ -494,8 +494,10 @@ final List<String> _nutzerdatenPunkte = [
   archivAutorenHinweis,
 ];
 
-/// Bricht ab, bevor etwas gesendet wird, wenn die Seite `setting_root_users` nicht
-/// ausdrücklich auf 0 hat ([nutzerdatenPflichtFehler]).
+/// Bricht ab, bevor etwas gesendet wird, wenn `setting_root_users` einen anderen Wert
+/// als 0 hat oder fehlt, während eine Nutzerdaten-Option an ist ([nutzerdatenPflichtFehler]).
+/// Fehlt das Feld ohne eingeschaltete Option, ist das ein Konto ohne Nutzerdaten-Recht
+/// und die Sicherung läuft weiter; die Prüfung des Archivs bleibt.
 void _nutzerdatenPflicht(Felder f) {
   final fehler = nutzerdatenPflichtFehler(f);
   if (fehler != null) throw MoodleFehler('Abgebrochen, nichts gesichert: $fehler');
