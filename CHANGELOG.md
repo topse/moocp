@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.10.2
+- Updates: moocp findet neue Versionen auch, wenn das Projekt zum Verein Moodle in Niedersachsen e. V. umzieht; gibt es die hinterlegten Update-Adressen nicht mehr, warnt die App bei der täglichen Suche.
+
 ## 0.10.0
 - Einrichtung: Claude Code aus aktuellen Versionen von Claude Desktop wird wieder gefunden; die App startet nur ein Claude Code, das von Anthropic signiert ist.
 - Datenschutz: Soll die KI an moocp vorbei mit Moodle arbeiten, etwa in einem eigenen Browser oder mit Ihrem Passwort, lehnt sie ab und warnt Sie.

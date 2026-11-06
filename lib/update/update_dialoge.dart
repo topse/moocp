@@ -63,6 +63,7 @@ Future<bool> updateSchritt(
   NeueVersion? neu;
   String? fehler;
   var abgebrochen = false;
+  var adressenWeg = false;
   BuildContext? anzeige;
   final uhr = Timer(_anzeigeAb, () {
     if (!context.mounted) return;
@@ -80,6 +81,9 @@ Future<bool> updateSchritt(
   } on UpdateAbgebrochen {
     abgebrochen = true;
     protokoll.eintrag(Art.info, 'Update: Prüfung abgebrochen');
+  } on UpdateAdressenWeg catch (e) {
+    adressenWeg = true;
+    protokoll.eintrag(Art.fehler, 'Update: ${e.meldung}');
   } on UpdateFehler catch (e) {
     fehler = e.meldung;
     protokoll.eintrag(Art.info, 'Update: Prüfung nicht möglich -- ${e.meldung}');
@@ -89,6 +93,14 @@ Future<bool> updateSchritt(
     if (offen != null && offen.mounted) Navigator.of(offen).pop();
   }
   if (!context.mounted || abgebrochen) return false;
+
+  // Anders als eine gescheiterte Abfrage auch beim Start sichtbar: Von selbst
+  // käme niemand darauf, dass keine Updates mehr ankommen. Dass die Warnung
+  // höchstens einmal am Tag kommt, regelt heuteSchonGeprueft oben.
+  if (adressenWeg) {
+    await showDialog<void>(context: context, builder: (_) => const UpdateAdressenWegDialog());
+    return false;
+  }
 
   if (neu == null) {
     if (manuell) {
@@ -134,6 +146,25 @@ Future<void> _melden(BuildContext context, String text) => showDialog<void>(
       ),
     );
 
+/// Die Warnung, wenn keine der hinterlegten Update-Adressen mehr taugt.
+class UpdateAdressenWegDialog extends StatelessWidget {
+  const UpdateAdressenWegDialog({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Automatische Updates sind anscheinend nicht mehr möglich.'),
+      content: const SizedBox(
+        width: 520,
+        child: Text('Die hinterlegten Update-Adressen bei GitHub gibt es nicht mehr. moocp '
+            'funktioniert weiter, findet aber keine neuen Versionen. Bitte besorgen Sie sich '
+            'die aktuelle Version manuell.'),
+      ),
+      actions: [FilledButton(onPressed: () => Navigator.pop(context), child: const Text('Schließen'))],
+    );
+  }
+}
+
 /// Die Frage beim ersten Start. Sie steht vor jeder Anfrage: Ohne
 /// ausdrückliches Ja nimmt die App keinen Kontakt zu GitHub auf.
 class UpdateFrageDialog extends StatelessWidget {
@@ -149,8 +180,8 @@ class UpdateFrageDialog extends StatelessWidget {
           const Text('moocp kann einmal täglich bei GitHub nachsehen, ob es eine neue Version '
               'gibt, und sie auf Wunsch gleich installieren.'),
           const SizedBox(height: 12),
-          const Text('Dazu fragt die App eine einzige Adresse bei GitHub ab. GitHub erfährt '
-              'dabei Ihre IP-Adresse und den Zeitpunkt. Nichts aus Moodle wird übertragen, '
+          const Text('Dazu fragt die App bei GitHub nur nach dem neuesten Release von moocp. '
+              'GitHub erfährt dabei Ihre IP-Adresse und den Zeitpunkt. Nichts aus Moodle wird übertragen, '
               'kein Benutzername, kein Passwort: Die Prüfung hat ihre eigene Verbindung, ohne '
               'Ihre Moodle-Sitzung.'),
           const SizedBox(height: 12),
