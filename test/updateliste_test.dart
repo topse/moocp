@@ -9,9 +9,16 @@ void main() {
       updateGesperrt(Uri.parse(adresse), download: download);
 
   group('Abfrage der Version', () {
-    test('genau die eine Adresse ist erlaubt', () {
-      expect(updateGesperrt(releaseAbfrage, download: false), isNull);
-      expect(releaseAbfrage.toString(), 'https://api.github.com/repos/topse/moocp/releases/latest');
+    test('genau die Abfrage je Herkunft ist erlaubt, der Verein zuerst', () {
+      expect(herkuenfte, ['Moodle-in-Niedersachsene-V/moocp', 'topse/moocp']);
+      expect(
+          sperre('https://api.github.com/repos/Moodle-in-Niedersachsene-V/moocp/releases/latest'),
+          isNull);
+      expect(sperre('https://api.github.com/repos/topse/moocp/releases/latest'), isNull);
+    });
+
+    test('die Umleitung eines umgezogenen Repositorys nicht', () {
+      expect(sperre('https://api.github.com/repositories/401025/releases/latest'), isNotNull);
     });
 
     test('alles andere bei GitHub nicht', () {
@@ -30,9 +37,14 @@ void main() {
   });
 
   group('Download des Installers', () {
-    test('das Release dieses Repositorys', () {
+    test('das Release jeder Herkunft', () {
       expect(
           sperre('https://github.com/topse/moocp/releases/download/v0.9.5/moocp_setup_0.9.5.exe',
+              download: true),
+          isNull);
+      expect(
+          sperre(
+              'https://github.com/Moodle-in-Niedersachsene-V/moocp/releases/download/v0.9.5/moocp_setup_0.9.5.exe',
               download: true),
           isNull);
     });
@@ -66,7 +78,7 @@ void main() {
     });
 
     test('die Abfrageadresse ist kein Download und umgekehrt', () {
-      expect(updateGesperrt(releaseAbfrage, download: true), isNotNull);
+      expect(updateGesperrt(releaseAbfrage(herkuenfte.first), download: true), isNotNull);
       expect(
           sperre('https://github.com/topse/moocp/releases/download/v1/moocp_setup_1.exe',
               download: false),

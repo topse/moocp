@@ -443,7 +443,7 @@ Dazu entfernt die App beim Lesen von Formularen Felder wie Autor, Ersteller, Nam
 
 Für den Browser der **Bildschirmfotos** gilt eine eigene, noch engere Liste ([lib/moodle/browserliste.dart](lib/moodle/browserliste.dart)): Als Seite lädt er nur die eine, die aufgenommen wird, als Rahmen darin die interaktiven Elemente dieser Seite, dazu Stylesheets, Schriften, Bilder, die Skripte, die STACK seinen Zeichnungen mitgibt, und einige Dienste für Vorlagen und Sprachtexte, alles über die App und hinter der Sperrliste. Lernlandkartenbilder zeigen ausschließlich den Kartenbereich.
 
-Die **Suche nach Updates** geht an GitHub statt an Moodle und hat deshalb ihre eigene Liste ([lib/update/updateliste.dart](lib/update/updateliste.dart)): erlaubt sind genau die Auskunft über das neueste Release dieses Repositorys und die Installationsdatei daraus, jeweils nur über `https` und samt jedem Umleitungsziel. Die Verbindung ist eine andere als die zu Moodle, Ihre Moodle-Sitzung geht also nicht mit.
+Die **Suche nach Updates** geht an GitHub statt an Moodle und hat deshalb ihre eigene Liste ([lib/update/updateliste.dart](lib/update/updateliste.dart)): erlaubt sind genau die Auskunft über das neueste Release von moocp und die Installationsdatei daraus, aus den beiden dort hinterlegten Repositorys, jeweils nur über `https` und samt jedem Umleitungsziel. Die Verbindung ist eine andere als die zu Moodle, Ihre Moodle-Sitzung geht also nicht mit.
 
 ### Updates
 
@@ -451,9 +451,11 @@ Beim ersten Start fragt die App, ob sie einmal täglich bei GitHub nach einer ne
 
 Ist die Suche eingeschaltet, läuft sie beim Start der App, bevor etwas anderes passiert – noch vor dem Einrichten und der Anmeldung. Dauert die Abfrage länger als einen Augenblick, erscheint „Prüfe auf Updates" mit „Abbrechen"; nach zehn Sekunden bricht die App von selbst ab. Ohne Netz, hinter einem Schulproxy oder wenn GitHub nicht antwortet, startet die App einfach weiter; im Protokoll steht eine Zeile. Gesucht wird höchstens einmal am Tag, auch wenn Sie die App mehrmals starten.
 
+Die App fragt zuerst das Repository des Vereins Moodle in Niedersachsen e. V. und nur dann das bisherige, wenn es beim Verein kein Release gibt. Meldet GitHub für beide, dass es dort nichts mehr gibt, warnt die App bei der Suche, dass automatische Updates anscheinend nicht mehr möglich sind; sie funktioniert weiter, aber eine neue Version müssen Sie dann selbst besorgen.
+
 Gibt es eine neue Version, zeigt die App, was sich ändert, und fragt: „Herunterladen und installieren" oder „Jetzt nicht". Bei „Jetzt nicht" passiert nichts weiter; am nächsten Tag fragt sie wieder. Sonst lädt sie den Installer – Sie sehen den Fortschritt – und startet ihn sichtbar. moocp schließt sich dafür und startet nach der Installation wieder; Einstellungen, gespeicherte Anmeldedaten und die Einrichtung der KI-Werkzeuge bleiben erhalten. Eine laufende Sitzung im KI-Werkzeug verliert dabei die Verbindung und muss neu gestartet werden. Lief etwas schief, sagt es die App beim nächsten Start im Protokoll und nennt den Pfad der geladenen Datei.
 
-Was GitHub dabei erfährt: Ihre IP-Adresse und den Zeitpunkt der Anfrage, wie bei jedem Aufruf einer Webseite. Nichts aus Moodle wird übertragen, kein Benutzername, kein Passwort – die Suche benutzt eine eigene Verbindung ohne Ihre Moodle-Sitzung und darf nur zwei Adressen anfragen: die Auskunft über die neueste Version und die Installationsdatei des Releases ([lib/update/updateliste.dart](lib/update/updateliste.dart)). Jede Anfrage steht mit ihrem Ergebnis im Protokoll.
+Was GitHub dabei erfährt: Ihre IP-Adresse und den Zeitpunkt der Anfrage, wie bei jedem Aufruf einer Webseite. Nichts aus Moodle wird übertragen, kein Benutzername, kein Passwort – die Suche benutzt eine eigene Verbindung ohne Ihre Moodle-Sitzung und darf nur die Auskunft über die neueste Version und die Installationsdatei des Releases anfragen ([lib/update/updateliste.dart](lib/update/updateliste.dart)). Jede Anfrage steht mit ihrem Ergebnis im Protokoll.
 
 Sucht die App nicht nach Updates, schauen Sie von Zeit zu Zeit selbst unter „Releases" nach. Nicht gesucht wird außerdem, wenn die App nicht aus `%LOCALAPPDATA%\Programs\moocp` läuft – dann würde ein Update sie gar nicht ersetzen – oder wenn sie mit `--kein-update` gestartet wird; so lässt sich die Suche auch über die Verknüpfung abschalten.
 

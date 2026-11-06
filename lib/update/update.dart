@@ -49,6 +49,17 @@ class UpdateFehler implements Exception {
   String toString() => meldung;
 }
 
+/// Keine der Herkünfte (updateliste.dart) taugt noch: GitHub war erreichbar
+/// und hat für jede gesagt, dass es dort kein Release mehr gibt. Vorübergehende
+/// Störungen sind das nie, sie bleiben ein gewöhnlicher [UpdateFehler]; sonst
+/// bekäme jeder hinter einem Schulproxy täglich eine falsche Warnung.
+class UpdateAdressenWeg extends UpdateFehler {
+  UpdateAdressenWeg() : super('Die hinterlegten Update-Adressen bei GitHub gibt es nicht mehr.');
+}
+
+/// Diese eine Herkunft taugt nicht mehr; die Prüfung versucht die nächste.
+class _AdresseWeg implements Exception {}
+
 /// Abgebrochen durch die Lehrkraft; kein Fehler, keine Meldung nötig.
 class UpdateAbgebrochen implements Exception {}
 
@@ -179,12 +190,22 @@ class Update {
     return k;
   }
 
-  /// Fragt bei GitHub nach dem neuesten Release. Rückgabe: die neue
-  /// Version, oder null, wenn die laufende schon die neueste ist.
+  /// Fragt bei GitHub nach dem neuesten Release, Herkunft für Herkunft.
+  /// Rückgabe: die neue Version, oder null, wenn die laufende schon die
+  /// neueste ist. Wirft [UpdateAdressenWeg], wenn keine Herkunft mehr taugt.
   Future<NeueVersion?> pruefen(String eigene) async {
     final klient = _neuerKlient();
     try {
-      final antwort = await _holen(releaseAbfrage, klient, download: false);
+      HttpClientResponse? antwort;
+      for (final herkunft in herkuenfte) {
+        try {
+          antwort = await _holen(releaseAbfrage(herkunft), klient, download: false);
+          break;
+        } on _AdresseWeg {
+          protokoll.eintrag(Art.info, 'Update: kein Release unter $herkunft');
+        }
+      }
+      if (antwort == null) throw UpdateAdressenWeg();
       final text = await antwort.transform(utf8.decoder).join().timeout(grenze);
       final j = jsonDecode(text);
       if (j is! Map<String, dynamic>) throw UpdateFehler('GitHub hat unerwartet geantwortet.');
@@ -294,6 +315,13 @@ class Update {
       final grund = updateGesperrt(uri, download: download);
       if (grund != null) {
         protokoll.eintrag(Art.gesperrt, 'Update gesperrt: GET ${_kurz(uri)} ($grund)');
+        // Ein umgezogenes Repository leitet GitHub innerhalb der API auf eine
+        // Adresse mit Nummer um (/repositories/…). Nur das heißt: Diese
+        // Herkunft taugt nicht mehr. Ein anderes Ziel kann die Anmeldeseite
+        // eines Schulproxys sein und sagt nichts über GitHub.
+        if (!download && uri.scheme == 'https' && uri.host == 'api.github.com') {
+          throw _AdresseWeg();
+        }
         throw UpdateFehler('Die Adresse ist nicht erlaubt ($grund).');
       }
       final anfrage = await klient.getUrl(uri).timeout(grenze);
@@ -310,6 +338,11 @@ class Update {
       }
       if (antwort.statusCode != 200) {
         await antwort.drain<void>();
+        // 404 auch bei einem Repository ohne Release: Für die Prüfung ist
+        // das dasselbe, dort gibt es keine Version zu holen.
+        if (!download && const {404, 410, 451}.contains(antwort.statusCode)) {
+          throw _AdresseWeg();
+        }
         // 403 und 429: zu viele Anfragen von dieser Adresse (an einer
         // Schule teilen sich alle eine). Kein Fehler der App.
         throw UpdateFehler(antwort.statusCode == 403 || antwort.statusCode == 429
