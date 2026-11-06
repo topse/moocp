@@ -1,6 +1,6 @@
 // Gruppierungen lesen und anlegen -- an einem nachgebauten Moodle, das nur die
 // Gruppenseiten kennt. Ob die echten Seiten so aussehen, ist auf einer Instanz
-// zu messen (TODO.md); hier steht, was die App aus solchen Seiten macht.
+// zu messen (TODO https://github.com/topse/moocp/issues/20); hier steht, was die App aus solchen Seiten macht.
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';

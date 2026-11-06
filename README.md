@@ -606,7 +606,7 @@ Die Einstellungen liegen unter `~/Library/Application Support/moocp`, dort auch 
 
 Das KI-Werkzeug LM Studio mit Bionic wird auf dem Mac nicht angeboten: Seine Brücke ist ein Windows-Programm. Claude Code und Codex CLI findet die App im `PATH` sowie unter `~/.local/bin`, `/opt/homebrew/bin` und `/usr/local/bin`.
 
-Bildschirmfotos suchen auf dem Mac Microsoft Edge, Google Chrome und Chromium in `/Applications` und `~/Applications`. Eine Richtlinie, die die Fernsteuerung abschaltet (`RemoteDebuggingAllowed`), liest die App aus den verwalteten Einstellungen; fehlt sie, ist die Fernsteuerung erlaubt. Beendet werden nur Browserprozesse mit dem eigenen Profil. Ob das auf dem Mac so läuft, ist ungemessen (siehe [TODO.md](TODO.md)). Findet die App keinen Browser, meldet das Werkzeug ihn, statt ihn zu raten.
+Bildschirmfotos suchen auf dem Mac Microsoft Edge, Google Chrome und Chromium in `/Applications` und `~/Applications`. Eine Richtlinie, die die Fernsteuerung abschaltet (`RemoteDebuggingAllowed`), liest die App aus den verwalteten Einstellungen; fehlt sie, ist die Fernsteuerung erlaubt. Beendet werden nur Browserprozesse mit dem eigenen Profil. Ob das auf dem Mac so läuft, ist ungemessen (siehe [Issue #9](https://github.com/topse/moocp/issues/9)). Findet die App keinen Browser, meldet das Werkzeug ihn, statt ihn zu raten.
 
 Die Skripte `tool/neustart.sh`, `tool/mcp_aufruf.sh` und `tool/mac_bau.sh` / `tool/mac_start.sh` erkennen den Mac über `uname`.
 
