@@ -45,9 +45,31 @@ Uint8List _archiv({required List<int> bild, bool mitNutzerdatei = false}) {
       '</files>');
   return _mbz({
     'moodle_backup.xml': utf8.encode(backup),
+    'activities/page_7/page.xml': utf8.encode(
+        r'<page><content><![CDATA[<img src="$@FILEPHP@$/bild.png">]]></content></page>'),
     'activities/page_7/inforef.xml': utf8.encode(mitNutzerdatei
         ? '<inforef><fileref><file><id>1</id></file><file><id>2</id></file></fileref></inforef>'
         : '<inforef><fileref><file><id>1</id></file></fileref></inforef>'),
+    'files.xml': utf8.encode(files.toString()),
+  });
+}
+
+/// Eine Seite mit dem Text [text] und den Quelldateien (id, Name, Inhalt). inforef.xml nennt
+/// alle Dateien des Dateibereichs; der Text bindet nur die ein, die er nennt.
+Uint8List _seitenArchiv(String text, List<(int, String, List<int>)> dateien) {
+  const backup = '<moodle_backup><activities><activity><modulename>page</modulename>'
+      '<title>Infoblatt</title><directory>activities/page_7</directory></activity></activities></moodle_backup>';
+  final files = StringBuffer('<files>');
+  for (final (id, name, inhalt) in dateien) {
+    files.write('<file id="$id"><contenthash>${_sha(inhalt)}</contenthash><filename>$name</filename>'
+        '<filepath>/</filepath><component>mod_page</component><filearea>content</filearea></file>');
+  }
+  files.write('</files>');
+  final refs = [for (final (id, _, _) in dateien) '<file><id>$id</id></file>'].join();
+  return _mbz({
+    'moodle_backup.xml': utf8.encode(backup),
+    'activities/page_7/page.xml': utf8.encode('<page><content><![CDATA[$text]]></content></page>'),
+    'activities/page_7/inforef.xml': utf8.encode('<inforef><fileref>$refs</fileref></inforef>'),
     'files.xml': utf8.encode(files.toString()),
   });
 }
@@ -220,6 +242,78 @@ void main() {
     expect(moodle.abrufe, ['/course/modedit.php?update=2']);
   });
 
+  group('Nur eingebundene Dateien zählen', () {
+    final alt = utf8.encode('alte Fassung');
+    const text = r'<img src="$@FILEPHP@$/bild.png">';
+
+    test('Datei im Dateibereich, die der Text nicht einbindet, gehört nicht zur Quelle', () {
+      final mbz = _seitenArchiv(text, [(1, 'bild.png', bild), (4, 'alt.png', alt)]);
+      expect(quelldateienAus(mbz, modul: 'page', titel: 'Infoblatt'),
+          [(name: 'bild.png', sha1: _sha(bild), dateimanager: false)]);
+    });
+
+    test('alte Datei im Dateibereich löst keinen Fehlalarm aus', () {
+      final mbz = _seitenArchiv(text, [(1, 'bild.png', bild), (4, 'alt.png', alt)]);
+      final p = vergleicheAnhaenge(
+        quelle: quelldateienAus(mbz, modul: 'page', titel: 'Infoblatt'),
+        ziel: [(name: 'bild.png', entwurf: false, status: 200, sha1: _sha(bild))],
+      );
+      expect(p.vollstaendig, isTrue);
+      expect(p.befunde, isEmpty);
+    });
+
+    test('eingebundene Datei fehlt im Ziel: nicht vollständig und abweichend', () {
+      final mbz = _seitenArchiv(text, [(1, 'bild.png', bild)]);
+      final p = vergleicheAnhaenge(quelle: quelldateienAus(mbz, modul: 'page', titel: 'Infoblatt'), ziel: []);
+      expect(p.vollstaendig, isFalse);
+      expect(p.abweichend, isTrue);
+      expect(p.text, contains('fehlend'));
+    });
+
+    test('zwei eingebundene Dateien mit gleichem Namen: mehrdeutig, nicht verifiziert', () {
+      final mbz = _seitenArchiv('$text<img src="\$@FILEPHP@\$/bild.png">',
+          [(1, 'bild.png', bild), (4, 'bild.png', alt)]);
+      final p = vergleicheAnhaenge(
+        quelle: quelldateienAus(mbz, modul: 'page', titel: 'Infoblatt'),
+        ziel: [(name: 'bild.png', entwurf: false, status: 200, sha1: _sha(bild))],
+      );
+      expect(p.vollstaendig, isFalse);
+      expect(p.text, contains('mehrdeutig'));
+    });
+  });
+
+  group('Namen im Ziel', () {
+    final quelle = _seitenArchiv(r'<img src="$@FILEPHP@$/bild.png">', [(1, 'bild.png', bild)]);
+    final liste = quelldateienAus(quelle, modul: 'page', titel: 'Infoblatt');
+
+    test('Zählersuffix und URL-Kodierung: bild%20%281%29.png gehört zu bild.png', () async {
+      const pfad = '/draftfile.php/12/user/draft/77/bild%20%281%29.png';
+      final moodle = _Moodle({
+        '/course/modedit.php?update=2': _antwort(200, utf8.encode(
+            '<form class="mform"><textarea name="page[text]">&lt;img src=&quot;$pfad&quot;&gt;</textarea></form>')),
+        pfad: _antwort(200, bild),
+      }, neueCmids: []);
+      final ziel = await zielLesen(moodle, 2);
+      final p = vergleicheAnhaenge(quelle: liste, ziel: ziel.abrufe);
+      expect(p.vollstaendig, isTrue);
+      expect(p.befunde, isEmpty);
+    });
+
+    test('Zählersuffix mit anderem Inhalt: geändert, nicht verifiziert', () {
+      final p = vergleicheAnhaenge(quelle: liste,
+          ziel: [(name: 'bild (1).png', entwurf: false, status: 200, sha1: 'bbb')]);
+      expect(p.vollstaendig, isFalse);
+      expect(p.text, contains('geändert'));
+    });
+
+    test('ähnlicher Name ohne Zählersuffix wird nicht zugeordnet', () {
+      final p = vergleicheAnhaenge(quelle: liste,
+          ziel: [(name: 'bild-neu.png', entwurf: false, status: 200, sha1: _sha(bild))]);
+      expect(p.vollstaendig, isFalse);
+      expect(p.text, contains('fremd'));
+    });
+  });
+
   group('Vergleich', () {
     const quelle = [(name: 'bild.png', sha1: 'aaa', dateimanager: false)];
     ZielAbruf ok(String name, String sha) => (name: name, entwurf: false, status: 200, sha1: sha);
@@ -326,6 +420,23 @@ void main() {
       final nachher = await vg.finde(v.id);
 
       expect(text, contains('verglichen'));
+      expect(nachher!.verified, isTrue);
+      expect(nachher.text, contains('verglichen'));
+    });
+
+    test('eingebettetes Bild mit Zählersuffix im Ziel: Abschluss verifiziert', () async {
+      final vg = Vorgaenge(ordner.path);
+      final v = await fertigerVorgang(vg);
+      const pfad = '/draftfile.php/12/user/draft/77/bild%20%281%29.png';
+      final moodle = _Moodle({
+        '/course/modedit.php?update=2': _antwort(200, utf8.encode(
+            '<form class="mform"><textarea name="page[text]">&lt;img src=&quot;$pfad&quot;&gt;</textarea></form>')),
+        pfad: _antwort(200, bild),
+      }, neueCmids: [(2, 'page', 'Infoblatt')]);
+
+      await wiederherstellungStatus(moodle, vg, id: v.id);
+      final nachher = await vg.finde(v.id);
+
       expect(nachher!.verified, isTrue);
       expect(nachher.text, contains('verglichen'));
     });
