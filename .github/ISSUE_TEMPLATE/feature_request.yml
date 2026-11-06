@@ -1,0 +1,23 @@
+name: Feature request
+description: A missing feature or a gap (see requirement A6)
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: Please do not include real instance addresses, school names, course numbers or personal data.
+  - type: textarea
+    id: need
+    attributes:
+      label: What is missing, and who needs it for what?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Idea for a solution (optional)
+  - type: dropdown
+    id: systems
+    attributes:
+      label: Relevant systems
+      multiple: true
+      options: [Windows, macOS, Linux, All]

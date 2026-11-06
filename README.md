@@ -701,6 +701,6 @@ Danach wird auf GitHub aus diesem Tag ein Release erzeugt, mit dem Installer als
 
 ### Mitwirken
 
-Fehlerberichte und Vorschläge sind als Issue willkommen. Code-Änderungen kommen als Pull Request auf `main`; größere bitte vorher als Issue besprechen. Beiträge stehen unter der MIT-Lizenz des Projekts. Das Projekt wird nebenbei gepflegt; eine Zusage für Unterstützung oder Antwortzeiten gibt es nicht.
+Fehlerberichte und Vorschläge sind als Issue willkommen. Code-Änderungen kommen als Pull Request auf `main`; größere bitte vorher als Issue besprechen. Wie wir zusammenarbeiten (Zweige, Review, Labels, Sprache), steht in [CONTRIBUTING.md](CONTRIBUTING.md), auf Englisch. Beiträge stehen unter der MIT-Lizenz des Projekts. Das Projekt wird nebenbei gepflegt; eine Zusage für Unterstützung oder Antwortzeiten gibt es nicht.
 
 Sicherheitslücken bitte nicht als öffentliches Issue melden, sondern vertraulich über „Report a vulnerability" im Reiter „Security".

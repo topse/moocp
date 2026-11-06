@@ -1,0 +1,11 @@
+name: Question
+description: Ask how something works or why it was decided that way
+labels: ["question", "needs-triage"]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+      description: Please do not include real instance addresses, school names, course numbers or personal data.
+    validations:
+      required: true
