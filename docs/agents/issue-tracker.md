@@ -19,6 +19,10 @@ Verbindliche Ablage für offene Punkte, Specs und daraus abgeleitete Umsetzungst
 - `/to-tickets` legt die aus einer Spec abgeleiteten Tickets ebenfalls als GitHub-Issues an und verknüpft sie mit der Spec.
 - Abhängigkeiten werden als native GitHub-Issue-Abhängigkeiten erfasst. Wenn diese nicht verfügbar sind, werden die blockierenden Issues ausdrücklich im Ticket verlinkt.
 
+## Pull Requests in der Triage
+
+**PRs as a request surface: no.** Pull Requests laufen nicht durch die Triage; `/triage` liest diesen Schalter.
+
 ## Zugriff und Fehler
 
 - GitHub-Connector oder `gh` mit explizitem Repository (`-R <Eigentümer>/moocp`) verwenden. Für mehrzeilige Inhalte strukturierte Argumente oder `--body-file` verwenden. Issues anlegen, kommentieren oder schließen nur nach Rückfrage; die Git-Regel des Projekts steht in der CLAUDE.md (Kopfzeile Git).
