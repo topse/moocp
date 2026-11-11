@@ -1,9 +1,11 @@
 // Bilder und Anhänge importierter Aktivitäten zurücklesen und vergleichen (E2, E3, E17).
 //
 // Quelle: die Sicherungsdatei im Sicherungsordner (vorgaenge.ordner/datei). Je
-// eindeutig zugeordneter Aktivität nennt inforef.xml die Dateien, files.xml gibt Name
-// und contenthash (SHA-1 des Inhalts). Nutzerdateien (component „user…") bleiben
-// außen (A1); ihre Inhalte werden nie gelesen.
+// eindeutig zugeordneter Aktivität nennt inforef.xml alle Dateien ihres Bereichs,
+// files.xml gibt Name und contenthash (SHA-1 des Inhalts). Gezählt wird nur, was der
+// Text der Aktivität einbindet oder was im Dateimanager liegt; eine im Bereich
+// liegende, im Text nicht verwendete Datei gehört nicht zur Quelle. Nutzerdateien
+// (component „user…") bleiben außen (A1); ihre Inhalte werden nie gelesen.
 //
 // Ziel: das Bearbeitungsformular der Aktivität (GET /course/modedit.php?update=cmid,
 // Positivliste). Seine Verweise auf /pluginfile.php und /draftfile.php werden nur
@@ -64,7 +66,60 @@ class AnhangPruefung {
 
 final RegExp _verweis = RegExp(r'/(pluginfile|draftfile)\.php/[^\s"\x27<>]+');
 
+/// Einbindungen im Text der Sicherung (`$@FILEPHP@$`) und im Formular (`@@PLUGINFILE@@`,
+/// Adressen unter /pluginfile.php und /draftfile.php).
+final RegExp _einbindung =
+    RegExp(r'(?:\$@FILEPHP@\$|@@PLUGINFILE@@|/pluginfile\.php|/draftfile\.php)/[^\s"\x27<>]+');
+
+/// Moodle hängt bei Namensgleichheit im Bereich „ (n)“ vor die Endung an.
+final RegExp _zaehlerName = RegExp(r'^(.*) \((\d+)\)(\.[^.]*)?$');
+
 String? _text(XmlElement e, String name) => e.getElement(name)?.innerText.trim();
+
+/// Löst escapetes HTML auf. Das `&amp;` kommt zuletzt, sonst würden doppelt escapete
+/// Zeichen zu früh aufgelöst.
+String _entschluesselt(String html) => html
+    .replaceAll('&quot;', '"')
+    .replaceAll('&#039;', "'")
+    .replaceAll('&#39;', "'")
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>')
+    .replaceAll('&amp;', '&');
+
+/// Der Dateiname einer Adresse: letztes Segment ohne Query und Anker, prozentkodiert
+/// (Leerzeichen als %20, Klammern als %28/%29). Eine nicht dekodierbare Kodierung bleibt roh.
+String _dateiname(String adresse) {
+  var roh = adresse;
+  final ende = roh.indexOf(RegExp(r'[?#]'));
+  if (ende > 0) roh = roh.substring(0, ende);
+  final letzter = roh.split('/').last;
+  try {
+    return Uri.decodeComponent(letzter);
+  } on FormatException {
+    return letzter;
+  }
+}
+
+/// Die Dateinamen, die der Text der Aktivität einbindet. Gelesen wird nur die Datei
+/// `<modul>.xml` der Aktivität: dort steht ihr Text (Intro, Inhalt, Kapitel). Die übrigen
+/// Dateien des Verzeichnisses (Rollen, Noten, Fragen) gehören nicht zur Einbindung und
+/// bleiben ungelesen (A1).
+Set<String> _eingebundeneNamen(Uint8List? xml) {
+  if (xml == null) return {};
+  final text = _entschluesselt(utf8.decode(xml, allowMalformed: true));
+  return {for (final m in _einbindung.allMatches(text)) _dateiname(m.group(0)!)};
+}
+
+/// Der Name der Quelle, zu dem ein Zielname gehört: der Name selbst, oder der Name ohne
+/// Moodle-Zähler („bild (1).png“ zu „bild.png“). Nur wenn der Grundname in der Quelle
+/// vorkommt; ähnliche Namen werden nie zugeordnet.
+String? _quellname(String name, Map<String, Set<String>> namen) {
+  if (namen.containsKey(name)) return name;
+  final m = _zaehlerName.firstMatch(name);
+  if (m == null) return null;
+  final grundname = '${m.group(1)}${m.group(3) ?? ''}';
+  return namen.containsKey(grundname) ? grundname : null;
+}
 
 /// Die Dateien einer Aktivität aus der Quellaufnahme. null, wenn es keine gibt, weil
 /// das Archiv unlesbar ist, die Aktivität nicht eindeutig darin vorkommt oder ihre
@@ -102,6 +157,9 @@ List<QuellDatei>? quelldateienAus(Uint8List mbz, {required String modul, require
       for (final f in XmlDocument.parse(utf8.decode(inforef, allowMalformed: true)).findAllElements('file'))
         if ((_text(f, 'id') ?? '').isNotEmpty) _text(f, 'id')!,
     };
+    // inforef.xml nennt alle Dateien des Bereichs, auch alte, die der Text nicht mehr
+    // einbindet. Gezählt wird nur, was der Text einbindet oder im Dateimanager liegt.
+    final eingebunden = _eingebundeneNamen(dateien['$verz/$modul.xml']);
     final liste = <QuellDatei>[];
     for (final f in XmlDocument.parse(utf8.decode(filesXml, allowMalformed: true)).findAllElements('file')) {
       // files.xml trägt die ID als Attribut; inforef.xml referenziert sie als Kindelement.
@@ -110,10 +168,12 @@ List<QuellDatei>? quelldateienAus(Uint8List mbz, {required String modul, require
       final name = _text(f, 'filename') ?? '';
       if (name.isEmpty || name == '.') continue; // Verzeichniseinträge
       final komponente = _text(f, 'component') ?? '';
+      final dateimanager = komponente == 'mod_resource' || komponente == 'mod_folder';
+      if (!dateimanager && !eingebunden.contains(name)) continue;
       liste.add((
         name: name,
         sha1: _text(f, 'contenthash') ?? '',
-        dateimanager: komponente == 'mod_resource' || komponente == 'mod_folder',
+        dateimanager: dateimanager,
       ));
     }
     return liste;
@@ -125,13 +185,7 @@ List<QuellDatei>? quelldateienAus(Uint8List mbz, {required String modul, require
 /// Die Verweise auf Dateien im Formular. Escapetes HTML wird zuerst aufgelöst. Nur der
 /// Pfad zählt: Ein fremder Host wird nie angefragt. Gleiche Pfade einmal.
 List<({bool entwurf, String pfad, String name})> verweiseAus(String html) {
-  final text = html
-      .replaceAll('&quot;', '"')
-      .replaceAll('&#039;', "'")
-      .replaceAll('&#39;', "'")
-      .replaceAll('&lt;', '<')
-      .replaceAll('&gt;', '>')
-      .replaceAll('&amp;', '&');
+  final text = _entschluesselt(html);
   final gesehen = <String>{};
   final liste = <({bool entwurf, String pfad, String name})>[];
   for (final m in _verweis.allMatches(text)) {
@@ -139,13 +193,7 @@ List<({bool entwurf, String pfad, String name})> verweiseAus(String html) {
     final ende = roh.indexOf(RegExp(r'[?#]'));
     if (ende > 0) roh = roh.substring(0, ende);
     if (!gesehen.add(roh)) continue;
-    String name;
-    try {
-      name = Uri.decodeComponent(roh.split('/').last);
-    } on FormatException {
-      name = roh.split('/').last;
-    }
-    liste.add((entwurf: m.group(1) == 'draftfile', pfad: roh, name: name));
+    liste.add((entwurf: m.group(1) == 'draftfile', pfad: roh, name: _dateiname(roh)));
   }
   return liste;
 }
@@ -221,7 +269,11 @@ AnhangPruefung vergleicheAnhaenge({required List<QuellDatei>? quelle, required L
     namen.putIfAbsent(q.name, () => {}).add(q.sha1);
   }
   final gelesen = <String>{};
+  // Welcher Quellname zu einem Zielnamen gehört (Moodle-Zähler „ (n)“ eingeschlossen).
+  final imZiel = <String>{};
   for (final z in ziel) {
+    final quellname = _quellname(z.name, namen);
+    if (quellname != null) imZiel.add(quellname);
     if (z.status == null) {
       befunde.add('„${z.name}": Abruf fehlgeschlagen');
       continue;
@@ -235,7 +287,7 @@ AnhangPruefung vergleicheAnhaenge({required List<QuellDatei>? quelle, required L
       }
       continue;
     }
-    final erwartet = namen[z.name];
+    final erwartet = quellname == null ? null : namen[quellname];
     if (erwartet == null) {
       abweichend = true;
       befunde.add('„${z.name}": fremd, die Quellaufnahme kennt die Datei nicht');
@@ -251,10 +303,10 @@ AnhangPruefung vergleicheAnhaenge({required List<QuellDatei>? quelle, required L
       befunde.add('„${z.name}": geändert, Inhalt weicht von der Quelle ab');
       continue;
     }
-    gelesen.add(z.name);
+    gelesen.add(quellname!);
   }
   for (final name in namen.keys) {
-    if (!gelesen.contains(name) && !ziel.any((z) => z.name == name)) {
+    if (!gelesen.contains(name) && !imZiel.contains(name)) {
       if (!imManager.contains(name)) abweichend = true;
       befunde.add(imManager.contains(name)
           ? 'Prüflücke: „$name" liegt im Dateimanager und ist nicht lesbar'
