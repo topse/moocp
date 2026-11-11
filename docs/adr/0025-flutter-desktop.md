@@ -8,9 +8,9 @@ moocp ist eine Flutter-Desktop-App mit einem Code für Windows und macOS. Die Ap
 
 Folgen für den Code:
 
-- **Keine nachgeladene Logik.** Alles, was die App tut, steht im ausgelieferten Code. Es gibt kein Werkzeug, das beliebigen Code ausführt oder beliebige Adressen anfragt (A1, E3).
+- **Keine nachgeladene Logik im Prozess der App.** Alles, was die App tut, steht im ausgelieferten Code. Es gibt kein Werkzeug, das beliebigen Code ausführt oder beliebige Adressen anfragt (A1, E3). Erweiterungen gibt es nur als Plugin: ein eigenes Programm neben der App, das erst nach Zustimmung der Lehrkraft läuft (E35).
 - **Wenige Pakete, nur freizügige Lizenzen** (E14). Wo ein Paket auf einer Plattform fehlt oder native Teile mitbrächte (WebView, TOML), wird es nicht aufgenommen (E18, E21).
-- **Eigenes Programm nur dort, wo ein Client es offen hält:** Die Brücke ist darum ohne Flutter geschrieben (E21).
+- **Eigenes Programm innerhalb dieses Projekts nur dort, wo ein Client es offen hält:** Die Brücke ist darum ohne Flutter geschrieben (E21).
 
 ## Verworfen
 

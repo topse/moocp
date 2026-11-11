@@ -110,6 +110,11 @@ _Nicht zu verwechseln mit_: Werkzeug (eine Funktion der App, die die KI aufruft)
 Eine Funktion der App, die ein KI-Werkzeug über den MCP-Server aufruft, etwa zum Lesen oder Ändern eines Kurses.
 _Nicht zu verwechseln mit_: Skill.
 
+**Plugin**
+Eine zusätzlich installierbare Erweiterung der App aus einem eigenen Projekt, die eigene Werkzeuge und Skills mitbringt. Die App nutzt ein Plugin erst, nachdem die Lehrkraft es in der Einrichtung angenommen hat.
+_Nicht zu verwechseln mit_: Moodle-Plugin (eine Erweiterung der Moodle-Instanz; die App setzt keines voraus).
+_Vermeiden_: internes Plugin, Modul als Bezeichnung für Teile der App selbst
+
 **Fragensammlung**
 Die Moodle-Aktivität, in der Fragen und ihre Kategorien liegen. Der Test verweist auf sie.
 
