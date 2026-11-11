@@ -22,7 +22,7 @@ Ein Plugin ist eine zusätzlich installierbare Erweiterung aus einem eigenen Pro
 
 **Installer.** Ein Plugin hat einen eigenen Installer, der es in den Plugin-Ordner legt und abbricht, wenn die App fehlt. Ein Update der App lässt den Ordner stehen; ihre Deinstallation entfernt alle Plugins und deren Skills (E15). Auf dem Mac laufen Plugins wie die App nur aus dem Entwicklungsbau (E24).
 
-**Verantwortung.** Die Zusagen der App (A1 bis A4) gelten für die App und für alles, was durch sie zu Moodle geht. Für seine eigenen Datenwege steht das Plugin ein, und der Dialog zur Zustimmung sagt das. Als letzte Sperre prüft die App Antworten eines Plugins an die KI gegen Namen (E36).
+**Verantwortung.** Die Zusagen der App (A1 bis A4) gelten für die App und für alles, was durch sie zu Moodle geht. Für seine eigenen Datenwege steht das Plugin ein, und der Dialog zur Zustimmung sagt das. Als letzte Sperre prüft die App Antworten eines Plugins an die KI und seine Zeilen im Protokoll gegen Namen (E36).
 
 **Fehler.** Ein abgestürztes Plugin startet die App einmal neu; danach melden seine Werkzeuge einen Fehler, und die Titelzeile zeigt es. Der Testbetrieb (E20) gibt für Plugins nichts automatisch frei.
 
