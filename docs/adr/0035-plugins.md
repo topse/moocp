@@ -30,6 +30,8 @@ Ein Plugin ist eine zusätzlich installierbare Erweiterung aus einem eigenen Pro
 
 Die eingebauten Werkzeuge bleiben fester Code der App. Sie laufen nicht über die Schnittstelle der Plugins und lassen sich nicht abschalten.
 
+**Plugins kommen in diesem Projekt nicht vor** (die Regel steht im Index): So bleibt klar, wofür moocp einsteht, und die Schnittstelle wird nach dem beschrieben, was sie allgemein leistet, nicht nach einem Anwendungsfall. Ein Verbot eines Themas ist das nicht: Was in moocp selbst aufgenommen wird, ist moocp und wird hier besprochen.
+
 ## Verworfen
 
 Eine DLL im Prozess der App (über eine C-Schnittstelle, weil eine fertig übersetzte Flutter-App keinen Dart-Code nachlädt): Sie hätte Zugriff auf Sitzungscookie und Passwort, risse die App bei einem Absturz mit und ließe sich schlecht debuggen. Plugins als Dart-Pakete zur Bauzeit: nicht zusätzlich installierbar, und jede Zusammenstellung wäre ein eigener Installer (E13). Die eingebauten Werkzeuge als „interne Plugins“ über dieselbe Schnittstelle: eine Prozessgrenze mit Serialisieren und Parsen ohne Gegenwert.
