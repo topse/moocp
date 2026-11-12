@@ -11,6 +11,15 @@ Everything on GitHub (issues, pull requests, commits, branch names, labels) is w
 - Everyone can start and build their own things without asking first. The only gate is the review before a merge.
 - Work is split by feature, never by platform. There are no `windows` or `macos` branches. A platform is described with labels and in the issue.
 
+## Contributing or building a plugin
+
+There are two ways to add something, and both are welcome:
+
+- **Contribute to moocp.** If a feature belongs in moocp itself, open an issue here. Once accepted, it is part of moocp, covered by its guarantees, and discussed here like everything else.
+- **Build a plugin.** If you want to develop independently, build a plugin in your own project, with its own repository, issues and releases. You do not need to ask first. The plugin interface is described in the README (part 4).
+
+A plugin is the responsibility of its own project. This repository, its issues and its pull requests therefore contain nothing about a particular plugin and nothing about features that only a plugin has. Questions and requests about the plugin interface itself belong here, described by what the interface has to do in general, not by one use case.
+
 ## Issues
 
 - Every piece of work starts as an issue. Small obvious fixes may go straight to a PR.
