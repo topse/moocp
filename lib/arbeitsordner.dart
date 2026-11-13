@@ -12,7 +12,7 @@
 // neuen Namen lehnte jedes Werkzeug den alten Pfad als „außerhalb des
 // Arbeitsordners" ab, und das liest sich wie die Datensperre. So fehlt nach
 // einem Neustart schlicht die Datei. Weil der Ort fest ist, läuft die App nur
-// einmal (windows/runner/main.cpp).
+// einmal (windows/runner/main.cpp, lib/einzelstart.dart).
 
 import 'dart:io';
 
@@ -29,11 +29,35 @@ class Arbeitsordner {
   /// Der Pfad in langer Form: %TEMP% steht auf manchen Rechnern mit Kurznamen
   /// (C:\Users\LEHRKR~1\…). `status` soll die Form nennen, die Windows selbst
   /// anzeigt und Claude weiterverwendet.
-  static (Arbeitsordner, int) einrichten() {
-    final d = Directory(p.join(Directory.systemTemp.path, 'moocp_arbeitsordner'))
-      ..createSync(recursive: true);
+  ///
+  /// Unter Linux teilen sich alle Benutzer /tmp: Der Name trägt den Benutzer
+  /// ([ordnername]), der Ordner gehört nur ihm (Rechte 700), und eine
+  /// Verknüpfung an seiner Stelle, die ein anderer Benutzer dort hinterlassen
+  /// hat, wird nicht benutzt. Sonst läse jeder auf dem Rechner mit, was die
+  /// App aus Moodle holt.
+  static (Arbeitsordner, int) einrichten({String? temp, bool? linux, Map<String, String>? umgebung}) {
+    final istLinux = linux ?? Platform.isLinux;
+    final pfad = p.join(
+      temp ?? Directory.systemTemp.path,
+      ordnername(umgebung ?? Platform.environment, linux: istLinux),
+    );
+    if (istLinux && FileSystemEntity.typeSync(pfad, followLinks: false) == FileSystemEntityType.link) {
+      throw StateError('Der Arbeitsordner ist eine Verknüpfung und wird nicht benutzt.');
+    }
+    final d = Directory(pfad)..createSync(recursive: true);
+    if (istLinux) Process.runSync('chmod', ['700', d.path]);
     final a = Arbeitsordner(d.resolveSymbolicLinksSync());
     return (a, a.leeren());
+  }
+
+  /// `moocp_arbeitsordner`, unter Linux mit dem Benutzer dahinter. Zeichen
+  /// außerhalb von Buchstaben, Ziffern, Punkt, Strich und Unterstrich fallen
+  /// weg: Der Name kommt aus der Umgebung und wird Teil eines Pfads.
+  static String ordnername(Map<String, String> umgebung, {required bool linux}) {
+    if (!linux) return 'moocp_arbeitsordner';
+    final roh = umgebung['USER'] ?? umgebung['LOGNAME'] ?? '';
+    final benutzer = roh.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '');
+    return benutzer.isEmpty ? 'moocp_arbeitsordner_benutzer' : 'moocp_arbeitsordner_$benutzer';
   }
 
   /// Löscht alles im Ordner, Eintrag für Eintrag: Was gerade in Benutzung ist

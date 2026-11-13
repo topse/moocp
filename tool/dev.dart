@@ -28,7 +28,11 @@ Future<void> main(List<String> args) async {
   void schreib(String s) =>
       log.writeln('${DateTime.now().toIso8601String().substring(11, 19)} $s');
 
-  final geraet = Platform.isMacOS ? 'macos' : 'windows';
+  final geraet = Platform.isMacOS
+      ? 'macos'
+      : Platform.isLinux
+      ? 'linux'
+      : 'windows';
   final testbetrieb = const [
     'MOOCP_TESTZUGANG_PROFILE',
     'MOOCP_TESTZUGANG',

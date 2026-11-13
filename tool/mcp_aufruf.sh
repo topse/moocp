@@ -9,7 +9,7 @@
 # Schreibende Werkzeuge warten auf die Freigabe in der App (bis 30 Minuten);
 # deshalb ohne Zeitgrenze.
 #
-# Unter Windows in Git Bash aufrufen, unter macOS in der Shell. Nicht aus
+# Unter Windows in Git Bash aufrufen, unter macOS und Linux in der Shell. Nicht aus
 # Python heraus: Das Python auf dem
 # Entwicklungsrechner ist ein gepacktes Programm, dem Windows %APPDATA%
 # umleitet -- es und jede Bash, die es startet, sehen die Einstellungen der App
@@ -18,7 +18,11 @@
 # Den Schlüssel liest das Skript aus den Einstellungen der App, ohne ihn
 # auszugeben. Jede Anfrage bekommt eigene Dateien; parallele Aufrufe
 # überschreiben sich nicht.
-if [ "$(uname)" = Darwin ]; then D="$HOME/Library/Application Support/moocp"; else D="$(cygpath -u "$APPDATA")/moocp"; fi
+case "$(uname)" in
+  Darwin) D="$HOME/Library/Application Support/moocp" ;;
+  Linux) D="${XDG_CONFIG_HOME:-$HOME/.config}/moocp" ;;
+  *) D="$(cygpath -u "$APPDATA")/moocp" ;;
+esac
 F="$D/einstellungen.json"
 H=(-H "Content-Type: application/json" -H "Accept: application/json, text/event-stream")
 if command -v cygpath >/dev/null; then PY=python; else PY=python3; fi

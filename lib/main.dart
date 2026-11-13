@@ -1117,7 +1117,7 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
         } catch (e) {
           _meldung =
               'Angemeldet. Die Anmeldedaten konnten nicht gespeichert werden '
-              '(${e.runtimeType}).';
+              '(${e.runtimeType}).${Anmeldedaten.speichernHinweis}';
         }
       }
     } on MoodleNichtErreichbar catch (e) {

@@ -39,11 +39,16 @@ class MacBrowser implements PlattformBrowser {
     final benutzer = Platform.environment['USER'];
     final orte = [
       p.join('/Library/Managed Preferences', domaene),
-      if (benutzer != null && benutzer.isNotEmpty) p.join('/Library/Managed Preferences', benutzer, domaene),
+      if (benutzer != null && benutzer.isNotEmpty)
+        p.join('/Library/Managed Preferences', benutzer, domaene),
     ];
     for (final ort in orte) {
       try {
-        final r = await Process.run('defaults', ['read', ort, 'RemoteDebuggingAllowed']);
+        final r = await Process.run('defaults', [
+          'read',
+          ort,
+          'RemoteDebuggingAllowed',
+        ]);
         if (r.exitCode == 0 && '${r.stdout}'.trim() == '0') return true;
       } on ProcessException {
         // Ohne defaults gibt es keine Richtlinie zu lesen.
@@ -52,25 +57,9 @@ class MacBrowser implements PlattformBrowser {
     return false;
   }
 
-  /// `ps` nennt die Prozesse mit ihrem Aufruf; die mit dem Profil im Aufruf
-  /// bekommen ein `kill -9`. Fremde Browserprozesse haben ein anderes Profil
-  /// und bleiben unberührt.
+  /// Die Prozesse mit dem Profil im Aufruf bekommen ein `kill -9`
+  /// ([unixProzesseBeenden]).
   @override
-  Future<int> prozesseBeenden(Directory profil, String programm) async {
-    try {
-      final r = await Process.run('ps', ['-axww', '-o', 'pid=,command=']);
-      final pids = <String>[];
-      for (final zeile in '${r.stdout}'.split('\n')) {
-        final m = RegExp(r'^\s*(\d+)\s(.*)$').firstMatch(zeile);
-        if (m == null || !m.group(2)!.contains(profil.path)) continue;
-        pids.add(m.group(1)!);
-      }
-      for (final pid in pids) {
-        await Process.run('kill', ['-9', pid]);
-      }
-      return pids.length;
-    } on ProcessException {
-      return -1;
-    }
-  }
+  Future<int> prozesseBeenden(Directory profil, String programm) =>
+      unixProzesseBeenden(profil);
 }

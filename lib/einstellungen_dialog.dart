@@ -141,8 +141,9 @@ class _EinstellungenDialogState extends State<EinstellungenDialog> {
                         ? 'Diese Version kann sich nicht selbst aktualisieren: Sie läuft nicht aus '
                               'dem Installationsverzeichnis, oder die Prüfung ist über die Kommandozeile '
                               'abgeschaltet ($keinUpdateSchalter).'
-                        : 'Diese Version aktualisiert sich nicht selbst. Auf dem Mac prüft moocp nicht '
-                              'bei GitHub und lädt nichts herunter; eine neue Version kommt von Hand.',
+                        : 'Diese Version aktualisiert sich nicht selbst. Auf dem Mac und unter Linux '
+                              'prüft moocp nicht bei GitHub und lädt nichts herunter; eine neue Version '
+                              'kommt von Hand.',
                     style: klein,
                   ),
                 )

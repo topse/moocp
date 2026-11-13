@@ -1,5 +1,8 @@
 # Changelog
 
+## Kommende Version
+- Neu: moocp läuft auch unter Linux (Debian 13), als Entwicklungsbau wie auf dem Mac – mit Anmeldung, gespeichertem Passwort im Schlüsselbund, Claude Code und Codex CLI, Einzelstart und Bildschirmfotos.
+
 ## 0.10.2
 - Updates: moocp findet neue Versionen auch, wenn das Projekt zum Verein Moodle in Niedersachsen e. V. umzieht; gibt es die hinterlegten Update-Adressen nicht mehr, warnt die App bei der täglichen Suche.
 - Wiederherstellung: Eingebettete Bilder lösen keinen Fehlalarm mehr aus, auch wenn im Dateibereich alte, nicht mehr eingebundene Dateien liegen oder Moodle einen Zähler wie „ (1)“ im Namen vergeben hat.

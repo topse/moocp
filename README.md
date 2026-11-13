@@ -612,6 +612,32 @@ Bildschirmfotos suchen auf dem Mac Microsoft Edge, Google Chrome und Chromium in
 
 Die Skripte `tool/neustart.sh`, `tool/mcp_aufruf.sh` und `tool/mac_bau.sh` / `tool/mac_start.sh` erkennen den Mac über `uname`.
 
+### Unter Linux bauen (nur Entwicklerversion)
+
+Voraussetzung: Flutter und Debian 13 (oder eine Distribution mit denselben Paketen), eine grafische Sitzung (X11 oder Wayland, auch eine xrdp-Sitzung) und Python 3 für die Skills. Eine Veröffentlichung für Linux gibt es nicht; die App läuft aus dem Entwicklungsbau, wie auf dem Mac.
+
+```sh
+sudo apt install clang cmake ninja-build pkg-config libgtk-3-dev libsecret-1-dev libjsoncpp-dev \
+  libsecret-1-0 libjsoncpp26 libglib2.0-bin gnome-keyring xdg-utils
+flutter analyze
+flutter test
+flutter run -d linux
+```
+
+**Ohne KI-Chat starten:** `bash moocp-starten.sh` im Hauptordner des Projekts. Das Skript baut die App (Release), wenn es noch keinen Bau gibt oder der Quelltext neuer ist, und startet sie; sonst startet es sofort den vorhandenen Bau. Läuft die App schon, holt ein zweiter Start sie nur nach vorn.
+
+Die Einstellungen und das Protokoll liegen unter `~/.config/moocp` (oder `$XDG_CONFIG_HOME/moocp`), dort auch der Socket der Einzelstart-Sperre (`moocp.sock`) und die Sicherungen. Der Arbeitsordner liegt im Temp-Verzeichnis, mit dem Benutzernamen im Namen und nur für den Benutzer lesbar (`moocp_arbeitsordner_<Benutzer>`), weil sich unter Linux alle Benutzer `/tmp` teilen.
+
+Das Passwort liegt im Schlüsselbund der Sitzung (Secret Service über libsecret, etwa GNOME Keyring oder KeePassXC); Haken und Benutzername stehen wie sonst in `shared_preferences`. Gespeichert wird nur, wenn der Standard-Schlüsselbund da und entsperrt ist. Das fragt die App vorher über `gdbus` ab, weil libsecret bei einem gesperrten Bund einen Dialog öffnet und dabei die ganze App anhält. Ist er es nicht, steht in der Meldung, dass sich das Passwort nicht speichern ließ, und die Anmeldung gilt trotzdem; das Passwort liegt nie an anderer Stelle. In einer xrdp-Sitzung entsperrt der Anmeldevorgang den Schlüsselbund, wenn PAM `pam_gnome_keyring` eingerichtet ist; das gehört zum Betrieb des Rechners, nicht zur App.
+
+Claude Code und Codex CLI findet die App im `PATH` sowie unter `/usr/local/bin`, `/usr/bin`, `~/.local/bin`, `~/.npm-global/bin`, `~/.bun/bin` und im Homebrew für Linux. Eine Sitzung über xrdp oder ein Starter im Menü hat oft nicht den `PATH` der Shell; deshalb stehen die festen Orte dabei. LM Studio mit Bionic wird unter Linux nicht angeboten, es gibt auch keine Brücke.
+
+Bildschirmfotos suchen Chromium, Google Chrome und Microsoft Edge im `PATH` und in `/opt/google/chrome` und `/opt/microsoft/msedge`. Ein Chromium aus Snap oder Flatpak läuft in einer Sandbox, die das Profil der App nicht lesen darf; dafür ein Paket der Distribution oder von Google nehmen. Eine Richtlinie, die die Fernsteuerung abschaltet (`RemoteDebuggingAllowed`), liest die App aus den JSON-Dateien unter `/etc/opt/chrome/policies/managed`, `/etc/chromium/policies/managed` und `/etc/opt/edge/policies/managed`; fehlt sie, ist die Fernsteuerung erlaubt. Beendet werden nur Browserprozesse mit dem eigenen Profil. Gebraucht wird kein Fenster, aber ein Browser, der ohne Anzeige startet.
+
+Die Zwischenablage bekommt bei der Übergabe an die Lehrkraft nur den Text, nicht HTML (wie auf dem Mac). Eine Selbstaktualisierung gibt es nicht; eine neue Version kommt von Hand.
+
+Die Skripte `tool/neustart.sh`, `tool/mcp_aufruf.sh` und `tool/linux_bau.sh` / `tool/linux_start.sh` erkennen Linux über `uname`.
+
 ### Bildschirmfotos
 
 `bildschirmfoto` rendert mit Microsoft Edge, sonst Google Chrome, ohne Fenster und steuert ihn über das DevTools-Protokoll; ein Paket braucht es dafür nicht. Jede Anfrage des Browsers hält die App an, und zwar auf der Ebene des Browsers, nicht der Seite: Abgeschottete Rahmen wie die Zeichnungen in STACK-Fragen laufen als eigene Ziele, deren Anfragen sonst direkt ins Netz gingen. Sie stellt sie selbst – geprüft gegen Sperrliste und eine eigene, enge Liste (`lib/moodle/browserliste.dart`) und mit Eintrag im Protokoll; der Browser bekommt das Sitzungscookie nie und lädt als Seite nur die eine, die aufgenommen wird, auch nicht in einem eingebetteten Rahmen. Nur MathJax lädt er selbst, von der Adresse, die die Seite dafür einstellt. Interaktive Elemente lädt er als Rahmen, ebenfalls über die App; Fehler in ihrem Skript meldet ihr Kopf per `postMessage` an die Seite, wo die App sie einsammelt und in der Antwort nennt. Aufgenommen wird nur der Inhalt selbst, also was auch die Textwerkzeuge liefern; ein Wiki nur, wenn es gemeinsam ist und nicht im Gruppenmodus steht. Mit `druck: true` wird jede Seite der Druckaufbereitung ein Bild, ohne sie der Inhalt mit den Druck-Stylesheets. Jeder Aufruf braucht einen Grund (`grund`), der im Freigabedialog über dem Bild steht. Das Ansehen hat dieselben Nebenwirkungen wie im Browser: Moodle protokolliert den Aufruf unter dem eigenen Konto, und die Fragenvorschau legt einen Vorschauversuch an. Freigegebene Bilder legt die App als PNG in den Arbeitsordner; die Antwort nennt die Pfade. Beim Entwickeln ersetzt das Werkzeug Bildschirmfotos von Hand: Claude sieht sich Messungen im Testkurs selbst an.

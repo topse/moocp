@@ -1,4 +1,4 @@
-// Die App läuft auf dem Mac nur einmal je Benutzer, wie unter Windows
+// Die App läuft auf dem Mac und unter Linux nur einmal je Benutzer, wie unter Windows
 // (windows/runner/main.cpp, dort ein benannter Mutex). Eine zweite teilte
 // Einstellungen und Arbeitsordner mit der ersten (lib/arbeitsordner.dart).
 //
@@ -14,6 +14,7 @@
 // den Dart nicht herausgibt, und damit den FFI-Aufruf von open(2) mit seinem
 // variadischen mode-Argument, das auf dem Mac anders übergeben wird.
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -32,15 +33,21 @@ class Einzelstart {
 
   /// Liefert null, wenn schon eine moocp läuft; deren Fenster ist dann nach
   /// vorn geholt worden, und diese Anmeldung soll enden. Sonst die Sperre, die
-  /// bis zum Ende des Prozesses gilt. Außerhalb des Mac gibt es nichts zu
-  /// sperren (unter Windows prüft main.cpp): Dann immer die Sperre ohne Socket.
+  /// bis zum Ende des Prozesses gilt. Unter Windows gibt es nichts zu sperren
+  /// (dort prüft main.cpp): Dann immer die Sperre ohne Socket. [unix] sagt, ob
+  /// der Socket gilt; ohne Angabe ist das überall außer unter Windows der Fall
+  /// (Mac und Linux).
   static Future<Einzelstart?> sichern(
     String ordner, {
-    bool? macos,
+    bool? unix,
   }) async {
-    if (!(macos ?? Platform.isMacOS)) return Einzelstart._(null, const Stream.empty());
+    if (!(unix ?? !Platform.isWindows)) return Einzelstart._(null, const Stream.empty());
     await Directory(ordner).create(recursive: true);
     final pfad = p.join(ordner, _socketName);
+    // Ein Unix-Socket-Pfad fasst unter Linux nur 107 Zeichen (sun_path), auf
+    // dem Mac 103. Ein längerer Pfad ließe bind() immer scheitern; dann lieber
+    // ohne Sperre starten (siehe unten) als jedes Mal eine Datei zu löschen.
+    if (utf8.encode(pfad).length > 100) return Einzelstart._(null, const Stream.empty());
     final kanal = StreamController<void>();
     for (var versuch = 0; versuch < 3; versuch++) {
       try {

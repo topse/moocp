@@ -77,6 +77,20 @@ String _programm(String name) => Platform.isWindows ? '$name.exe' : name;
 /// PATH einer App liegen (eine Finder-gestartete App erbt den PATH der Shell nicht).
 const _macVerzeichnisse = ['/opt/homebrew/bin', '/usr/local/bin'];
 
+/// Dasselbe unter Linux: Eine Sitzung über xrdp oder ein Starter im Menü erbt
+/// den PATH der Shell ebenfalls nicht. Dazu die Orte, an die npm ohne
+/// Administratorrechte installiert (`~/.npm-global`, `~/.local/bin`), und
+/// Homebrew für Linux.
+List<String> _linuxVerzeichnisse(String? heim) => [
+  '/usr/local/bin',
+  '/usr/bin',
+  '/home/linuxbrew/.linuxbrew/bin',
+  if (heim != null) ...[p.join(heim, '.local', 'bin'), p.join(heim, '.npm-global', 'bin'), p.join(heim, '.bun', 'bin')],
+];
+
+/// Die festen Programmordner dieser Plattform außerhalb von PATH.
+List<String> _unixVerzeichnisse(String? heim) => Platform.isLinux ? _linuxVerzeichnisse(heim) : _macVerzeichnisse;
+
 // ---------------------------------------------------------------------------
 // Die Verbindung: der MCP-Eintrag „moodle"
 // ---------------------------------------------------------------------------
@@ -237,7 +251,7 @@ String? claudeFinden(Map<String, String> umgebung, {List<String>? bericht}) {
     if (macDesktop != null) () => _neuesteVersion(macDesktop, gutMac, datei: _claudeMacProgramm),
     for (final d in _pfad(umgebung)) () => _einzeln(p.join(d, _programm('claude')), gut),
     if (heim != null) () => _einzeln(p.join(heim, '.local', 'bin', _programm('claude')), gut),
-    if (!Platform.isWindows) for (final d in _macVerzeichnisse) () => _einzeln(p.join(d, 'claude'), gut),
+    if (!Platform.isWindows) for (final d in _unixVerzeichnisse(heim)) () => _einzeln(p.join(d, 'claude'), gut),
     if (Platform.isWindows && heim != null) () => _vsCode(p.join(heim, '.vscode', 'extensions'), gut),
   ];
   for (final k in kandidaten) {
@@ -541,7 +555,7 @@ class CodexCli extends KiWerkzeug {
     final dirs = [
       ..._pfad(umgebung),
       if (Platform.isWindows && _v(umgebung, 'APPDATA') != null) p.join(umgebung['APPDATA']!, 'npm'),
-      if (!Platform.isWindows) ..._macVerzeichnisse,
+      if (!Platform.isWindows) ..._unixVerzeichnisse(_heimOrdner(umgebung)),
     ];
     final namen = Platform.isWindows ? const ['codex.exe', 'codex.cmd', 'codex.bat'] : const ['codex'];
     for (final d in dirs) {

@@ -8,9 +8,14 @@
 
 import 'dart:async';
 
+import 'package:moocp/anmeldedaten.dart';
+import 'package:moocp/plattform/linux_schluesselbund.dart';
 import 'package:moocp/testschalter.dart';
 
 Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   testbetriebFuerTestsSetzen(true);
+  // Die Tests ersetzen den sicheren Speicher durch einen Kanal; den Secret
+  // Service von Linux gibt es auf dem Testrechner nicht (anmeldedaten.dart).
+  Anmeldedaten.schluesselbundPruefer = () async => Schluesselbund.bereit;
   await testMain();
 }

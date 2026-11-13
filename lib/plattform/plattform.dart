@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'linux.dart';
 import 'macos.dart';
 import 'windows.dart';
 
@@ -17,7 +18,7 @@ enum BrowserArt {
 }
 
 /// Was die Bildschirmfotos vom Betriebssystem brauchen. Die Umsetzungen
-/// stehen in [windows.dart] und [macos.dart]; der Kern kennt nur diese
+/// stehen in [windows.dart], [macos.dart] und [linux.dart]; der Kern kennt nur diese
 /// Schnittstelle (E29).
 abstract interface class PlattformBrowser {
   /// Die Browserarten, die es auf diesem System gibt, in Suchreihenfolge.
@@ -36,5 +37,31 @@ abstract interface class PlattformBrowser {
   Future<int> prozesseBeenden(Directory profil, String programm);
 }
 
+/// Beendet hart (`kill -9`) alle Prozesse, deren Aufruf [profil] enthält, und
+/// liefert ihre Zahl (-1, wenn sie sich nicht ermitteln ließ). Gemeinsam für
+/// Mac und Linux: `ps -axww -o pid=,command=` versteht beider `ps`. Fremde
+/// Browserprozesse haben ein anderes Profil und bleiben unberührt.
+Future<int> unixProzesseBeenden(Directory profil) async {
+  try {
+    final r = await Process.run('ps', ['-axww', '-o', 'pid=,command=']);
+    final pids = <String>[];
+    for (final zeile in '${r.stdout}'.split('\n')) {
+      final m = RegExp(r'^\s*(\d+)\s(.*)$').firstMatch(zeile);
+      if (m == null || !m.group(2)!.contains(profil.path)) continue;
+      pids.add(m.group(1)!);
+    }
+    for (final pid in pids) {
+      await Process.run('kill', ['-9', pid]);
+    }
+    return pids.length;
+  } on ProcessException {
+    return -1;
+  }
+}
+
 /// Die einzige Stelle, die nach dem Betriebssystem fragt.
-final PlattformBrowser plattformBrowser = Platform.isMacOS ? MacBrowser() : WindowsBrowser();
+final PlattformBrowser plattformBrowser = Platform.isMacOS
+    ? MacBrowser()
+    : Platform.isLinux
+    ? LinuxBrowser()
+    : WindowsBrowser();

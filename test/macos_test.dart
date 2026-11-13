@@ -41,11 +41,11 @@ void main() {
     tearDown(() => tmp.deleteSync(recursive: true));
 
     test('zweiter Start bekommt keine Sperre, die erste meldet das Fokus-Signal', () async {
-      final erster = await Einzelstart.sichern(tmp.path, macos: true);
+      final erster = await Einzelstart.sichern(tmp.path, unix: true);
       expect(erster, isNotNull);
       final fokus = expectLater(erster!.fokus.first, completes);
 
-      final zweiter = await Einzelstart.sichern(tmp.path, macos: true);
+      final zweiter = await Einzelstart.sichern(tmp.path, unix: true);
       expect(zweiter, isNull);
       await fokus;
       await erster.schliessen();
@@ -54,18 +54,18 @@ void main() {
     test('eine liegengebliebene Socket-Datei ohne Zuhörer wird ersetzt', () async {
       // Was ein Absturz hinterlässt: der Pfad ist belegt, aber niemand hört zu.
       File(p.join(tmp.path, 'moocp.sock')).writeAsStringSync('tot');
-      final e = await Einzelstart.sichern(tmp.path, macos: true);
+      final e = await Einzelstart.sichern(tmp.path, unix: true);
       expect(e, isNotNull);
       await e!.schliessen();
     });
 
-    test('ohne macOS keine Sperre und kein Ordner', () async {
+    test('unter Windows keine Sperre und kein Ordner', () async {
       final ordner = p.join(tmp.path, 'nicht');
-      final e = await Einzelstart.sichern(ordner, macos: false);
+      final e = await Einzelstart.sichern(ordner, unix: false);
       expect(e, isNotNull);
       expect(Directory(ordner).existsSync(), isFalse);
     });
-  }, skip: Platform.isWindows ? 'Unix-Socket-Sperre gibt es nur auf dem Mac' : null);
+  }, skip: Platform.isWindows ? 'Unix-Socket-Sperre gibt es nur auf Mac und Linux' : null);
 
   group('KI-Werkzeuge unter macOS', () {
     late Directory tmp;

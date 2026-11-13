@@ -8,10 +8,11 @@ import 'package:path/path.dart' as p;
 const standardPort = 47811;
 
 /// `%APPDATA%\moocp` unter Windows, `~/Library/Application Support/moocp` auf
-/// dem Mac: Einstellungen und Protokoll.
+/// dem Mac, `~/.config/moocp` unter Linux: Einstellungen und Protokoll.
 String get einstellungenOrdner => einstellungenOrdnerFuer(
   Platform.environment,
   macos: Platform.isMacOS,
+  linux: Platform.isLinux,
 );
 
 /// Der Ordner für eine gegebene Umgebung; getrennt, damit sich der Pfad auch
@@ -19,6 +20,7 @@ String get einstellungenOrdner => einstellungenOrdnerFuer(
 String einstellungenOrdnerFuer(
   Map<String, String> umgebung, {
   required bool macos,
+  bool linux = false,
 }) {
   // Ohne Benutzerordner gäbe es nur den Temp-Ordner, und Einstellungen wie
   // Sicherungen lägen dann dort, wo der Rechner sie jederzeit löscht. Also
@@ -29,6 +31,18 @@ String einstellungenOrdnerFuer(
       throw StateError('Der Benutzerordner (HOME) ist nicht gesetzt; die Einstellungen können nicht gespeichert werden.');
     }
     return p.join(heim, 'Library', 'Application Support', 'moocp');
+  }
+  if (linux) {
+    // XDG Base Directory: $XDG_CONFIG_HOME, wenn gesetzt und absolut (die
+    // Spezifikation verlangt, ein relativer Wert wird ignoriert), sonst
+    // ~/.config.
+    final xdg = umgebung['XDG_CONFIG_HOME'];
+    if (xdg != null && p.isAbsolute(xdg)) return p.join(xdg, 'moocp');
+    final heim = umgebung['HOME'];
+    if (heim == null || heim.isEmpty) {
+      throw StateError('Der Benutzerordner (HOME) ist nicht gesetzt; die Einstellungen können nicht gespeichert werden.');
+    }
+    return p.join(heim, '.config', 'moocp');
   }
   final appdata = umgebung['APPDATA'];
   if (appdata == null || appdata.isEmpty) {
@@ -41,8 +55,10 @@ File get einstellungenDatei => File(p.join(einstellungenOrdner, 'einstellungen.j
 
 /// Der Ordner für Sicherungen einer Aktivität (E29): außerhalb des Arbeitsordners,
 /// der beim Start und Beenden geleert wird. Unter Windows `%APPDATA%\moocp\sicherungen`,
-/// auf dem Mac `~/Library/Application Support/moocp/sicherungen`.
-String get sicherungenOrdner => sicherungenOrdnerFuer(Platform.environment, macos: Platform.isMacOS);
+/// auf dem Mac `~/Library/Application Support/moocp/sicherungen`, unter Linux
+/// `~/.config/moocp/sicherungen`.
+String get sicherungenOrdner =>
+    sicherungenOrdnerFuer(Platform.environment, macos: Platform.isMacOS, linux: Platform.isLinux);
 
-String sicherungenOrdnerFuer(Map<String, String> umgebung, {required bool macos}) =>
-    p.join(einstellungenOrdnerFuer(umgebung, macos: macos), 'sicherungen');
+String sicherungenOrdnerFuer(Map<String, String> umgebung, {required bool macos, bool linux = false}) =>
+    p.join(einstellungenOrdnerFuer(umgebung, macos: macos, linux: linux), 'sicherungen');
