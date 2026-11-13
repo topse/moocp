@@ -45,9 +45,9 @@ class Einzelstart {
     await Directory(ordner).create(recursive: true);
     final pfad = p.join(ordner, _socketName);
     // Ein Unix-Socket-Pfad fasst unter Linux nur 107 Zeichen (sun_path), auf
-    // dem Mac 103. Ein längerer Pfad ließe bind() immer scheitern; dann lieber
+    // dem Mac 103; die kleinere Grenze gilt für beide. Ein längerer Pfad ließe bind() immer scheitern; dann lieber
     // ohne Sperre starten (siehe unten) als jedes Mal eine Datei zu löschen.
-    if (utf8.encode(pfad).length > 100) return Einzelstart._(null, const Stream.empty());
+    if (utf8.encode(pfad).length > 103) return Einzelstart._(null, const Stream.empty());
     final kanal = StreamController<void>();
     for (var versuch = 0; versuch < 3; versuch++) {
       try {
