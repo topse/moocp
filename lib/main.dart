@@ -18,6 +18,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:zwischenablage_html/zwischenablage_html.dart';
 
 import 'anmeldedaten.dart';
+import 'plattform/linux_schluesselbund.dart' show SchluesselbundFehler;
 import 'anmeldung.dart';
 import 'testzugang.dart';
 import 'arbeitsordner.dart';
@@ -28,6 +29,7 @@ import 'einstellungen_dialog.dart';
 import 'einstellungen_ort.dart';
 import 'einzelstart.dart';
 import 'freigabe.dart';
+import 'installer/installer_start.dart';
 import 'profile_dialog.dart';
 import 'log.dart';
 import 'mcp/mcp_dienst.dart';
@@ -49,6 +51,9 @@ Future<void> main(List<String> argumente) async {
   // Speicher beim Entschlüsseln). Fehler gehen nur mit ihrem TYP ins
   // Protokoll, nie mit ihrem Text. So gerät das Passwort in keine Ausgabe.
   debugPrint = (String? message, {int? wrapWidth}) {};
+  // Der Installer unter Linux (E24) läuft aus dem entpackten Paket, ohne
+  // Einzelstart-Sperre, Einstellungen und MCP-Server.
+  if (Platform.isLinux && installerVerlangt(argumente)) exit(await linuxInstallerAusfuehren(argumente));
   if (argumente.contains(claudeEntfernenSchalter)) {
     exit(await _claudeEntfernen());
   }
@@ -697,8 +702,13 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
       // App still abgemeldet.
       instanz.dienst.protokoll.eintrag(
         Art.anmeldung,
-        'Kein gespeichertes Passwort (nicht lesbar oder verworfen) -- bitte in der App anmelden',
+        d.speicherProblem == null
+            ? 'Kein gespeichertes Passwort (nicht lesbar oder verworfen) -- bitte in der App anmelden'
+            : 'Gespeichertes Passwort nicht gelesen: ${d.speicherProblem}',
       );
+      // Sichtbar, nicht nur im Protokoll: Sonst stünde die Lehrkraft vor einem
+      // leeren Passwortfeld und wüsste nicht, warum die App nicht anmeldet.
+      if (d.speicherProblem != null && mounted) setState(() => _meldung = d.speicherProblem);
       return;
     }
     instanz.dienst.protokoll.eintrag(
@@ -949,6 +959,13 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
       }
       return;
     }
+    if (d.merken && d.passwort == null && d.speicherProblem != null) {
+      instanz.dienst.protokoll.eintrag(
+        Art.anmeldung,
+        'Gespeichertes Passwort nicht gelesen: ${d.speicherProblem}',
+      );
+      if (mounted) setState(() => _meldung = d.speicherProblem);
+    }
     // Hier steht ohne Passwort kein Fehlversuch: Hat Moodle das gespeicherte
     // abgelehnt, hat _anmelden es verworfen, und dieser Wechsel meldet nicht
     // noch einmal damit an (E7) -- bis die Lehrkraft ein neues eingegeben hat.
@@ -1117,7 +1134,7 @@ class _HauptseiteState extends State<Hauptseite> with WindowListener {
         } catch (e) {
           _meldung =
               'Angemeldet. Die Anmeldedaten konnten nicht gespeichert werden '
-              '(${e.runtimeType}).${Anmeldedaten.speichernHinweis}';
+              '(${e.runtimeType}).${e is SchluesselbundFehler ? ' ${e.meldung}' : ''}';
         }
       }
     } on MoodleNichtErreichbar catch (e) {

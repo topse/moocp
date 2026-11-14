@@ -52,18 +52,6 @@ class Anmeldedaten {
       ? 'nur mit Ihrem Benutzerkonto lesbar'
       : 'nur mit Ihrem Windows-Konto lesbar';
 
-  /// Was die Lehrkraft prüfen kann, wenn das Speichern scheitert. Unter Linux
-  /// liegt das Passwort im Schlüsselbund der Sitzung (libsecret, Secret
-  /// Service); ohne laufenden, entsperrten Schlüsselbund (etwa in einer
-  /// Sitzung ohne Anmeldung am Schlüsselbund) scheitert es, und die App legt
-  /// das Passwort dann nie auf eine andere Art ab (A2). Leer, wo es nichts
-  /// Besonderes zu sagen gibt.
-  static String get speichernHinweis => Platform.isLinux
-      ? ' Läuft in dieser Sitzung ein Schlüsselbund (Secret Service, etwa GNOME Keyring oder KeePassXC), '
-            'und ist er entsperrt? Ohne ihn lässt sich das Passwort nicht speichern; die Anmeldung selbst '
-            'gilt trotzdem.'
-      : '';
-
   // Ohne Rückgriff auf die Windows-Anmeldeinformationsverwaltung älterer
   // Paketversionen: nur die DPAPI-verschlüsselte Datei. Auf dem Mac der alte
   // Schlüsselbund statt der Datenschutz-Schlüsselbundgruppe: Die verlangt eine
@@ -76,38 +64,49 @@ class Anmeldedaten {
   /// Unter Linux wartet libsecret bei einem gesperrten oder fehlenden
   /// Schlüsselbund auf einen Dialog und blockiert dabei die ganze App
   /// (plattform/linux_schluesselbund.dart). Darum wird vor jedem Zugriff
-  /// gefragt, ob der Bund benutzbar ist. Ist er es nicht, scheitert der
-  /// Zugriff mit einem StateError, und es geht ohne gespeichertes Passwort
-  /// weiter; die App legt das Passwort nie auf eine andere Art ab (A2). Unter
-  /// Windows und auf dem Mac gibt es keinen solchen Dialog.
+  /// gefragt, ob der Bund benutzbar ist; ein gesperrter wird über einen
+  /// eigenen Prozess zum Entsperren aufgefordert, ohne die App anzuhalten.
+  /// Bleibt er unbenutzbar, scheitert der Zugriff mit einem
+  /// [SchluesselbundFehler], und es geht ohne gespeichertes Passwort weiter;
+  /// die App legt das Passwort nie auf eine andere Art ab (A2). Unter Windows
+  /// und auf dem Mac gibt es keinen solchen Dialog.
   /// [fehltIstEgal]: Zum Löschen genügt es, wenn es gar keinen Bund gibt;
   /// dann liegt auch kein Passwort darin.
-  /// Nur für Tests: ersetzt die Abfrage des Secret Service, die es auf dem
-  /// Testrechner nicht gibt (test/flutter_test_config.dart setzt „bereit").
-  @visibleForTesting
-  static Future<Schluesselbund> Function() schluesselbundPruefer = schluesselbundPruefen;
-
   static Future<T?> _zugriff<T>(Future<T> Function() zugriff, {bool fehltIstEgal = false}) async {
     if (Platform.isLinux) {
-      switch (await schluesselbundPruefer()) {
-        case Schluesselbund.bereit || Schluesselbund.unbekannt:
+      var zustand = await schluesselbundPruefer();
+      if (zustand == Schluesselbund.gesperrt) zustand = await schluesselbundEntsperrer();
+      switch (zustand) {
+        case Schluesselbund.bereit:
           break;
         case Schluesselbund.fehlt when fehltIstEgal:
           return null;
-        case Schluesselbund.fehlt:
-          throw StateError('Kein Schlüsselbund in dieser Sitzung.');
-        case Schluesselbund.gesperrt:
-          throw StateError('Der Schlüsselbund ist gesperrt.');
+        default:
+          throw SchluesselbundFehler(zustand);
       }
     }
     return zugriff();
   }
 
+  /// Nur für Tests: ersetzt die Abfrage des Secret Service, die es auf dem
+  /// Testrechner nicht gibt (test/flutter_test_config.dart setzt „bereit").
+  @visibleForTesting
+  static Future<Schluesselbund> Function() schluesselbundPruefer = schluesselbundPruefen;
+
+  /// Nur für Tests, wie [schluesselbundPruefer].
+  @visibleForTesting
+  static Future<Schluesselbund> Function() schluesselbundEntsperrer = schluesselbundEntsperren;
+
   final bool merken;
   final String? benutzer;
   final String? passwort;
 
-  const Anmeldedaten(this.merken, this.benutzer, this.passwort);
+  /// [speicherProblem]: Warum das gespeicherte Passwort nicht gelesen wurde,
+  /// wenn es an einem unbenutzbaren Schlüsselbund liegt (nur Linux); fester
+  /// Text für die Lehrkraft, ohne Inhalte (E11).
+  const Anmeldedaten(this.merken, this.benutzer, this.passwort, {this.speicherProblem});
+
+  final String? speicherProblem;
 
   /// Nur für Tests: ersetzt die Testzugänge aus der Umgebung (die ein Test
   /// nicht setzen kann). Ohne Wert gilt die Umgebung (Testzugang.ausUmgebung).
@@ -171,13 +170,17 @@ class Anmeldedaten {
     final merken = prefs.getBool(_schluessel(_merken, kennung)) ?? false;
     if (!merken) return const Anmeldedaten(false, null, null);
     String? passwort;
+    String? problem;
     try {
       passwort = await _zugriff<String?>(() => _sicher.read(key: _schluessel(_passwort, kennung)));
+    } on SchluesselbundFehler catch (e) {
+      // Unter Linux: Der Bund ist gesperrt oder fehlt. Die Lehrkraft erfährt
+      // den Grund, statt vor einem leeren Passwortfeld zu stehen.
+      problem = e.meldung;
     } catch (_) {
-      // Nicht zu entschlüsseln (etwa anderes Windows-Konto) oder der
-      // Schlüsselbund unter Linux gesperrt: dann eben eintippen.
+      // Nicht zu entschlüsseln (etwa anderes Windows-Konto): dann eben eintippen.
     }
-    return Anmeldedaten(true, prefs.getString(_schluessel(_benutzer, kennung)), passwort);
+    return Anmeldedaten(true, prefs.getString(_schluessel(_benutzer, kennung)), passwort, speicherProblem: problem);
   }
 
   // Im Testbetrieb mit Testzugang (testzugang.dart) kommen die Zugangsdaten

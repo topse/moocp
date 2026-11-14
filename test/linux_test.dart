@@ -189,6 +189,7 @@ void schluesselbundTests() {
         null,
       );
       Anmeldedaten.schluesselbundPruefer = () async => Schluesselbund.bereit;
+      Anmeldedaten.schluesselbundEntsperrer = () async => Schluesselbund.bereit;
     });
 
     test('bereit: lesen und speichern gehen durch', () async {
@@ -198,28 +199,47 @@ void schluesselbundTests() {
       expect(aufrufe, containsAll(['read', 'write']));
     });
 
-    for (final zustand in [Schluesselbund.gesperrt, Schluesselbund.fehlt]) {
-      test('$zustand: libsecret wird nicht gerufen, Laden ohne Passwort, Speichern mit Fehler', () async {
+    for (final zustand in [Schluesselbund.gesperrt, Schluesselbund.fehlt, Schluesselbund.unbekannt]) {
+      test('$zustand: libsecret wird nicht gerufen, Laden nennt den Grund, Speichern scheitert sichtbar', () async {
         Anmeldedaten.schluesselbundPruefer = () async => zustand;
+        // Bleibt der Bund nach dem Entsperrversuch gesperrt, ist er nicht benutzbar.
+        Anmeldedaten.schluesselbundEntsperrer = () async => zustand;
         final daten = await Anmeldedaten.laden();
         expect(daten.passwort, isNull);
         expect(daten.benutzer, 'e.mustermann');
-        await expectLater(Anmeldedaten.speichern('e.mustermann', 'pw'), throwsStateError);
+        expect(daten.speicherProblem, SchluesselbundFehler(zustand).meldung, reason: 'kein stilles Scheitern');
+        await expectLater(Anmeldedaten.speichern('e.mustermann', 'pw'), throwsA(isA<SchluesselbundFehler>()));
         expect(aufrufe, isEmpty, reason: 'kein Aufruf an den Schlüsselbund');
       });
     }
+
+    test('gesperrt, dann von der Lehrkraft entsperrt: der Zugriff geht durch', () async {
+      var entsperrt = false;
+      Anmeldedaten.schluesselbundPruefer = () async => entsperrt ? Schluesselbund.bereit : Schluesselbund.gesperrt;
+      Anmeldedaten.schluesselbundEntsperrer = () async {
+        entsperrt = true;
+        return Schluesselbund.bereit;
+      };
+      final daten = await Anmeldedaten.laden();
+      expect(daten.passwort, 'geheim');
+      expect(daten.speicherProblem, isNull);
+    });
 
     test('Löschen: ohne Bund nichts zu tun, bei gesperrtem Bund ein Fehler', () async {
       Anmeldedaten.schluesselbundPruefer = () async => Schluesselbund.fehlt;
       await Anmeldedaten.loeschen();
       expect(aufrufe, isEmpty);
       Anmeldedaten.schluesselbundPruefer = () async => Schluesselbund.gesperrt;
-      await expectLater(Anmeldedaten.loeschen(), throwsStateError);
+      Anmeldedaten.schluesselbundEntsperrer = () async => Schluesselbund.gesperrt;
+      await expectLater(Anmeldedaten.loeschen(), throwsA(isA<SchluesselbundFehler>()));
       expect(aufrufe, isEmpty);
     });
 
-    test('Hinweis nennt den Schlüsselbund nur unter Linux', () {
-      expect(Anmeldedaten.speichernHinweis, contains('Schlüsselbund'));
+    test('Meldungen sind fester Text und nennen, was zu tun ist', () {
+      for (final z in Schluesselbund.values) {
+        expect(SchluesselbundFehler(z).meldung, isNotEmpty);
+      }
+      expect(SchluesselbundFehler(Schluesselbund.unbekannt).meldung, contains('libglib2.0-bin'));
       expect(Anmeldedaten.schutz, contains('Secret Service'));
     });
   }, skip: Platform.isLinux ? null : 'Zugriff auf den Schlüsselbund unter Linux nur auf Linux');

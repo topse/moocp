@@ -17,5 +17,6 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   // Die Tests ersetzen den sicheren Speicher durch einen Kanal; den Secret
   // Service von Linux gibt es auf dem Testrechner nicht (anmeldedaten.dart).
   Anmeldedaten.schluesselbundPruefer = () async => Schluesselbund.bereit;
+  Anmeldedaten.schluesselbundEntsperrer = () async => Schluesselbund.bereit;
   await testMain();
 }
