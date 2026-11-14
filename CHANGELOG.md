@@ -1,7 +1,7 @@
 # Changelog
 
 ## Kommende Version
-- Neu: Unter Linux (Debian 13) läuft moocp als Entwicklerversion, mit einem selbst gebauten Installer, der Startmenü-Eintrag und Verknüpfung anlegt und sich wieder entfernen lässt.
+- Neu: Unter Linux (Debian 13) läuft moocp als Entwicklerversion, mit selbst gebauten Paketen: Installer, AppImage und Debian-Paket (systemweit, mit Administratorrechten). Der Installer legt Startmenü-Eintrag und Verknüpfung an und lässt sich wieder entfernen.
 
 ## 0.10.2
 - Updates: moocp findet neue Versionen auch, wenn das Projekt zum Verein Moodle in Niedersachsen e. V. umzieht; gibt es die hinterlegten Update-Adressen nicht mehr, warnt die App bei der täglichen Suche.

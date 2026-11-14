@@ -53,6 +53,8 @@ failures/
 # Fertige Installer (create_installer.bat)
 /installer/*.exe
 /installer/*.run
+/installer/*.AppImage
+/installer/*.deb
 
 # Lokale Codex-Entwicklungseinstellungen
 .codex/config.toml
